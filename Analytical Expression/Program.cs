@@ -1,17 +1,10 @@
-﻿using System.Text;
+﻿using Analytical_Expression;
+using System.Text;
 
-Dictionary<string, int> dctPriority = new()
-{
-    { "#", -99 },
-    { "+", 0 },
-    { "-", 0 },
-    { "*", 1 },
-    { @"\", 1 },
-    { "(", -2 },
-    { ")", -2 },
-};
+var dctPrior = PriorityDictionary.Data;
 
-string expression = @"1\((1+2)*(3+4))";
+
+string expression = @"num1<34";
 Console.WriteLine(Analyze(expression));
 
 string Analyze(string expression)
@@ -53,7 +46,7 @@ string Analyze(string expression)
 
             // 是否构成合法的运算符
             sbOpt.Append(c); // 添加字符到运算符
-            if (!dctPriority.ContainsKey(sbOpt.ToString()))
+            if (!dctPrior.ContainsKey(sbOpt.ToString()))
             { // 否
                 continue;
             }
@@ -64,8 +57,7 @@ string Analyze(string expression)
         sbOpt = new();
 
         if (stackOpt.Count == 0
-            || dctPriority[newOpt] >= dctPriority[stackOpt.Peek()] // 高优先级跳过
-            || newOpt == "(" //跳过左括号
+            || dctPrior[stackOpt.Peek()][newOpt] > 0 // 高优先级跳过
             )
         {
             stackOpt.Push(newOpt); // 保存当前操作符
@@ -80,7 +72,7 @@ string Analyze(string expression)
             var fstOp = stackOperand.Pop(); // 获取第一操作数            
             lstOp = new Operand(fstOp, opt, lstOp); // 构造新操作数
 
-        } while (stackOpt.Count > 0 && dctPriority[newOpt] < dctPriority[stackOpt.Peek()]);
+        } while (stackOpt.Count > 0 && dctPrior[stackOpt.Peek()][newOpt] < 0);
 
         stackOperand.Push(lstOp); // 保存新操作数
 
