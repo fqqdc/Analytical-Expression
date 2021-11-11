@@ -2,44 +2,33 @@
 using System.Text;
 
 var dctPrior = PriorityDictionary.Data;
-
-
 string expression = @"aa+bbb*((c+d1)/ee22)";
+CharacterSupplier cs = new(expression);
+
+//TestCharacterSupplier_GetChar(cs);
+//TestGetNextWord(cs);
 Console.WriteLine(Analyze(expression));
-//string? word;
-//int index = 0;
-//var wordType = GetNextWord(new(expression), ref index, out word);
-//while (wordType != Type.EOS)
-//{
-//    Console.WriteLine($"{word} {wordType}");
-//    wordType = GetNextWord(new(expression), ref index, out word);
-//}
+
 
 
 string Analyze(string expression)
 {
-    var sb = new StringBuilder(expression).Append("#");
-    var sbOp = new StringBuilder();
-    var sbOpt = new StringBuilder();
-
     Stack<Operand> stackOperand = new();
     Stack<string> stackOpt = new();
 
-    string? word;
-    int index = 0;
-    var wordType = GetNextWord(sb, ref index, out word);
-    while (wordType != Type.EOS)
+    Word word;
+
+    while (TryGetWord(cs, out word))
     {
         // 操作数
-        if (wordType == Type.Op)
+        if (word.Type == WordType.Op)
         {
-            stackOperand.Push(new(word));
+            stackOperand.Push(new(word.Content));
         }
         else
         {
             // 运算符
-            string newOpt = word;
-            sbOpt = new();
+            string newOpt = word.Content;
 
             if (stackOpt.Count == 0
                 || dctPrior[stackOpt.Peek()][newOpt] > 0 // 高优先级跳过
@@ -61,11 +50,11 @@ string Analyze(string expression)
 
                 stackOperand.Push(lstOp); // 保存新操作数
 
-                if (word == ")")
+                if (word.Content == ")")
                 {
                     stackOpt.Pop(); // 去除多余的左括号
                 }
-                else if (word == "#") // 结束操作符
+                else if (word.Content == "#") // 结束操作符
                 {
                     break;
                 }
@@ -75,78 +64,88 @@ string Analyze(string expression)
                 }
             }
         }
-
-        wordType = GetNextWord(sb, ref index, out word);
     }
 
     return stackOperand.Pop().ToString();
 }
 
-Type GetNextWord(StringBuilder expression, ref int index, out string? word)
+bool TryGetWord(CharacterSupplier cs, out Word word)
 {
-    StringBuilder sb = new();
+    StringBuilder sbWord = new();
 
     bool isOp = false;
-    while (index < expression.Length)
+    char c;
+    while (cs.TryGetChar(out c))
     {
-        char c = expression[index];
         if (char.IsWhiteSpace(c)) continue;
 
         bool isDigitOrLetter = char.IsDigit(c) || char.IsLetter(c);
 
-        if (sb.Length == 0 && isDigitOrLetter)
+        if (sbWord.Length == 0 && isDigitOrLetter)
             isOp = true;
 
         if (isOp)
         {
             if (isDigitOrLetter)
-                sb.Append(c);
+                sbWord.Append(c);
             else
             {
-                word = sb.ToString();
-                return Type.Op;
+                cs.Return();
+                word = new(WordType.Op, sbWord.ToString());
+                return true;
             }
         }
         else
         {
             if (!isDigitOrLetter)
             {
-                sb.Append(c);
-                if (!dctPrior.ContainsKey(sb.ToString()))
+                sbWord.Append(c);
+                if (!dctPrior.ContainsKey(sbWord.ToString()))
                 {
-                    sb.Length += -1;
-                    word = sb.ToString();
-                    return Type.Opt;
+                    cs.Return();
+                    sbWord.Length += -1;
+                    word = new(WordType.Opt, sbWord.ToString());
+                    return true;
                 }
             }
             else
             {
-                word = sb.ToString();
-                return Type.Opt;
+                cs.Return();
+                word = new(WordType.Opt, sbWord.ToString());
+                return true;
             }
-
-            
         }
-
-        index++;
     }
 
-    if (sb.Length > 0)
+    if (sbWord.Length > 0)
     {
-        word = sb.ToString();
-        return isOp ? Type.Op : Type.Opt;
+        word = isOp ? new(WordType.Op, sbWord.ToString()) : new(WordType.Opt, sbWord.ToString());
+        return true;
     }
 
     word = null;
-    return Type.EOS;
+    return false;
 }
 
-enum Type
+void TestCharacterSupplier_GetChar(CharacterSupplier cs)
 {
-    Op,
-    Opt,
-    EOS,
+    char c;
+    while (cs.TryGetChar(out c))
+    {
+        Console.WriteLine(c);
+    }
 }
+
+void TestGetNextWord(CharacterSupplier cs)
+{
+    Word word;
+    while (TryGetWord(cs, out word))
+    {
+        Console.WriteLine($"{word.Type} {word.Content}");
+    }
+}
+
+
 
 class Operand
 {
