@@ -6,91 +6,142 @@ var dctPrior = PriorityDictionary.Data;
 
 string expression = @"aa*(bb+cc)";
 Console.WriteLine(Analyze(expression));
+//string? word;
+//int index = 0;
+//var wordType = GetNextWord(new(expression), ref index, out word);
+//while (wordType != Type.EOS)
+//{
+//    Console.WriteLine($"{word} {wordType}");
+//    wordType = GetNextWord(new(expression), ref index, out word);
+//}
+
 
 string Analyze(string expression)
 {
-    var sb = new StringBuilder().Append(expression).Append("#");
+    var sb = new StringBuilder(expression).Append("#");
     var sbOp = new StringBuilder();
     var sbOpt = new StringBuilder();
 
     Stack<Operand> stackOperand = new();
     Stack<string> stackOpt = new();
 
-    while (sb.Length != 0)
+    string? word;
+    int index = 0;
+    var wordType = GetNextWord(sb, ref index, out word);
+    while (wordType != Type.EOS)
     {
-        char c = sb[0];
-        sb.Remove(0, 1);
-
-        if (char.IsWhiteSpace(c))
-            continue;
-
-        if (char.IsNumber(c) || char.IsLetter(c)) // 是否是字母和数字
-        { // 是
-            // 判断运算符是否非法
-            if (sbOpt.Length != 0)
-            {
-                throw new NotSupportedException($"\"{sbOpt.ToString()}\"是非法运算符");
-            }
-
-            sbOp.Append(c); // 添加字符到操作数
-            continue;
-        }
-        else
-        { // 否
-            // 生成操作数
-            if (sbOp.Length != 0) // 连续的操作符会导致操作数为空：1 *( 2+3)
-            {
-                stackOperand.Push(new(sbOp.ToString()));
-                sbOp = new();
-            }
-
-            // 是否构成合法的运算符
-            sbOpt.Append(c); // 添加字符到运算符
-            if (!dctPrior.ContainsKey(sbOpt.ToString()))
-            { // 否
-                continue;
-            }
-        }
-
-        // 生成运算符
-        string newOpt = sbOpt.ToString();
-        sbOpt = new();
-
-        if (stackOpt.Count == 0
-            || dctPrior[stackOpt.Peek()][newOpt] > 0 // 高优先级跳过
-            )
+        // 操作数
+        if (wordType == Type.Op)
         {
-            stackOpt.Push(newOpt); // 保存当前操作符
-            continue;
-        }
-
-        // 低优先级：计算之前的表达式
-        var lstOp = stackOperand.Pop(); // 获取第二操作数
-        do
-        {
-            var opt = stackOpt.Pop(); // 操作符
-            var fstOp = stackOperand.Pop(); // 获取第一操作数            
-            lstOp = new Operand(fstOp, opt, lstOp); // 构造新操作数
-
-        } while (stackOpt.Count > 0 && dctPrior[stackOpt.Peek()][newOpt] < 0);
-
-        stackOperand.Push(lstOp); // 保存新操作数
-
-        if (c == ')')
-        {
-            stackOpt.Pop(); // 去除多余的左括号
-        }
-        else if (c == '#') // 表达式技术操作符
-        {
-            break;
+            stackOperand.Push(new(word));
         }
         else
         {
-            stackOpt.Push(newOpt); // 保存当前操作符
+            // 运算符
+            string newOpt = word;
+            sbOpt = new();
+
+            if (stackOpt.Count == 0
+                || dctPrior[stackOpt.Peek()][newOpt] > 0 // 高优先级跳过
+                )
+            {
+                stackOpt.Push(newOpt); // 保存当前操作符
+            }
+            else
+            {
+                // 低优先级：计算之前的表达式
+                var lstOp = stackOperand.Pop(); // 获取第二操作数
+                do
+                {
+                    var opt = stackOpt.Pop(); // 操作符
+                    var fstOp = stackOperand.Pop(); // 获取第一操作数            
+                    lstOp = new Operand(fstOp, opt, lstOp); // 构造新操作数
+
+                } while (stackOpt.Count > 0 && dctPrior[stackOpt.Peek()][newOpt] < 0);
+
+                stackOperand.Push(lstOp); // 保存新操作数
+
+                if (word == ")")
+                {
+                    stackOpt.Pop(); // 去除多余的左括号
+                }
+                else if (word == "#") // 结束操作符
+                {
+                    break;
+                }
+                else
+                {
+                    stackOpt.Push(newOpt); // 保存当前操作符
+                }
+            }
         }
+
+        wordType = GetNextWord(sb, ref index, out word);
     }
 
     return stackOperand.Pop().ToString();
+}
+
+Type GetNextWord(StringBuilder expression, ref int index, out string? word)
+{
+    StringBuilder sb = new();
+
+    bool isOp = false;
+    while (index < expression.Length)
+    {
+        char c = expression[index];
+        if (char.IsWhiteSpace(c)) continue;
+
+        bool isDigitOrLetter = char.IsDigit(c) || char.IsLetter(c);
+
+        if (sb.Length == 0 && isDigitOrLetter)
+            isOp = true;
+
+        if (isOp)
+        {
+            if (isDigitOrLetter)
+                sb.Append(c);
+            else
+            {
+                word = sb.ToString();
+                return Type.Op;
+            }
+        }
+        else
+        {
+            if (isDigitOrLetter)
+            {
+                word = sb.ToString();
+                return Type.Opt;
+            }
+
+            sb.Append(c);
+            if (!dctPrior.ContainsKey(sb.ToString()))
+            {
+                sb.Length += -1;
+                word = sb.ToString();
+                return Type.Opt;
+            }
+        }
+
+        index++;
+    }
+
+    if (sb.Length > 0)
+    {
+        word = sb.ToString();
+        return isOp ? Type.Op : Type.Opt;
+    }
+
+    word = null;
+    return Type.EOS;
+}
+
+enum Type
+{
+    Op,
+    Opt,
+    EOS,
 }
 
 class Operand
