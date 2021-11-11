@@ -4,7 +4,7 @@ using System.Text;
 var dctPrior = PriorityDictionary.Data;
 
 
-string expression = @"aa*(bb+cc)";
+string expression = @"aa+bbb*((c+d1)/ee22)";
 Console.WriteLine(Analyze(expression));
 //string? word;
 //int index = 0;
@@ -109,19 +109,23 @@ Type GetNextWord(StringBuilder expression, ref int index, out string? word)
         }
         else
         {
-            if (isDigitOrLetter)
+            if (!isDigitOrLetter)
+            {
+                sb.Append(c);
+                if (!dctPrior.ContainsKey(sb.ToString()))
+                {
+                    sb.Length += -1;
+                    word = sb.ToString();
+                    return Type.Opt;
+                }
+            }
+            else
             {
                 word = sb.ToString();
                 return Type.Opt;
             }
 
-            sb.Append(c);
-            if (!dctPrior.ContainsKey(sb.ToString()))
-            {
-                sb.Length += -1;
-                word = sb.ToString();
-                return Type.Opt;
-            }
+            
         }
 
         index++;
