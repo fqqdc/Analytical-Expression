@@ -4,7 +4,7 @@ using System.Text;
 var dctPrior = PriorityDictionary.Data;
 
 
-string expression = @"num1<34";
+string expression = @"aa*(bb+cc)";
 Console.WriteLine(Analyze(expression));
 
 string Analyze(string expression)
