@@ -127,6 +127,47 @@ bool TryGetWord(CharacterSupplier cs, out Word word)
     return false;
 }
 
+bool TryGetWord2(CharacterSupplier cs, out Word word)
+{
+    throw new NotImplementedException();
+
+    StringBuilder sbWord = new();
+    char c;
+
+    while (cs.TryGetChar(out c))
+    {
+        if (char.IsWhiteSpace(c))
+            continue;
+
+        switch (c)
+        {
+            //
+            case var _ when ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z'):
+                {
+                    sbWord.Append(c);
+                    while (cs.TryGetChar(out c))
+                    {
+                        if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z'))
+                            sbWord.Append(c);
+                        else
+                        {
+                            cs.Return();
+                            word = new(WordType.Op, sbWord.ToString());
+                            return true;
+                        }
+                    }
+
+                    break;
+                }
+            default:
+                break;
+        }
+    }
+
+    word = null;
+    return false;
+}
+
 void TestCharacterSupplier_GetChar(CharacterSupplier cs)
 {
     char c;
