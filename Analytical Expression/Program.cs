@@ -1,187 +1,204 @@
-﻿using Analytical_Expression;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
-var dctPrior = PriorityDictionary.Data;
-string expression = @"aa+bbb*((c+d1)/ee22)";
-CharacterSupplier cs = new(expression);
-
-//TestCharacterSupplier_GetChar(cs);
-//TestGetNextWord(cs);
-Console.WriteLine(Analyze(expression));
-
-
-
-string Analyze(string expression)
+namespace Analytical_Expression
 {
-    Stack<Operand> stackOperand = new();
-    Stack<string> stackOpt = new();
-
-    Word word;
-
-    while (TryGetWord(cs, out word))
+    public class Program
     {
-        // 操作数
-        if (word.Type == WordType.Op)
+        static void Main(string[] args)
         {
-            stackOperand.Push(new(word.Content));
+            //var nfa = NfaDigraphCreater.CreateSingleCharacter('b')
+            //    .Union(NfaDigraphCreater.CreateSingleCharacter('c'))
+            //    .Closure();
+            var nfa = NfaDigraphCreater.CreateSingleCharacter('b');
+            NfaDigraphCreater.PrintDigraph(nfa);
+
+            DfaDigraphNode dfa = CreateFrom(nfa);
+            PrintDigraph(dfa);
         }
-        else
+
+        static void PrintDigraph(DfaDigraphNode dig)
         {
-            // 运算符
-            string newOpt = word.Content;
+            HashSet<DfaDigraphNode> setVisited = new();
+            Queue<DfaDigraphNode> queue = new();
+            queue.Enqueue(dig);
 
-            if (stackOpt.Count == 0
-                || dctPrior[stackOpt.Peek()][newOpt] > 0 // 高优先级跳过
-                )
+            while (queue.Count > 0)
             {
-                stackOpt.Push(newOpt); // 保存当前操作符
-            }
-            else
-            {
-                // 低优先级：计算之前的表达式
-                var lstOp = stackOperand.Pop(); // 获取第二操作数
-                do
+                var n = queue.Dequeue();
+                if (setVisited.Contains(n))
                 {
-                    var opt = stackOpt.Pop(); // 操作符
-                    var fstOp = stackOperand.Pop(); // 获取第一操作数            
-                    lstOp = new Operand(fstOp, opt, lstOp); // 构造新操作数
-
-                } while (stackOpt.Count > 0 && dctPrior[stackOpt.Peek()][newOpt] < 0);
-
-                stackOperand.Push(lstOp); // 保存新操作数
-
-                if (word.Content == ")")
-                {
-                    stackOpt.Pop(); // 去除多余的左括号
+                    continue;
                 }
-                else if (word.Content == "#") // 结束操作符
+
+                setVisited.Add(n);
+                Console.WriteLine(n);
+
+                foreach (var e in n.Edges)
                 {
-                    break;
-                }
-                else
-                {
-                    stackOpt.Push(newOpt); // 保存当前操作符
+                    queue.Enqueue(e.Node);
                 }
             }
         }
-    }
 
-    return stackOperand.Pop().ToString();
-}
-
-bool TryGetWord(CharacterSupplier cs, out Word word)
-{
-    StringBuilder sbWord = new();
-
-    bool isOp = false;
-    char c;
-    while (cs.TryGetChar(out c))
-    {
-        if (char.IsWhiteSpace(c)) continue;
-
-        bool isDigitOrLetter = char.IsDigit(c) || char.IsLetter(c);
-
-        if (sbWord.Length == 0 && isDigitOrLetter)
-            isOp = true;
-
-        if (isOp)
+        static DfaDigraphNode CreateFrom(NfaDigraph nfa)
         {
-            if (isDigitOrLetter)
-                sbWord.Append(c);
-            else
+            Dictionary<HashSet<NfaDigraphNode>, DfaDigraphNode> dict = new();
+            HashSet<HashSet<NfaDigraphNode>> Q = new();
+            DfaDigraphNode? head = null;
+
+            var n0 = nfa.Head;
+            var q0 = n0.EpsilonClosure();
+            Q.Add(q0);
+            var workList = new Queue<HashSet<NfaDigraphNode>>();
+            workList.Enqueue(q0);
+            while (workList.Count > 0)
             {
-                cs.Return();
-                word = new(WordType.Op, sbWord.ToString());
-                return true;
-            }
-        }
-        else
-        {
-            if (!isDigitOrLetter)
-            {
-                sbWord.Append(c);
-                if (!dctPrior.ContainsKey(sbWord.ToString()))
+                var q = workList.Dequeue();
+                for (int i = 20; i < 127; i++)
                 {
-                    cs.Return();
-                    sbWord.Length += -1;
-                    word = new(WordType.Opt, sbWord.ToString());
-                    return true;
-                }
-            }
-            else
-            {
-                cs.Return();
-                word = new(WordType.Opt, sbWord.ToString());
-                return true;
-            }
-        }
-    }
+                    char c = (char)i;
+                    var t = delta(q, c);
+                    if (t.Count == 0) continue;
+                    t = EpsilonClosure(t);
 
-    if (sbWord.Length > 0)
-    {
-        word = isOp ? new(WordType.Op, sbWord.ToString()) : new(WordType.Opt, sbWord.ToString());
-        return true;
-    }
-
-    word = null;
-    return false;
-}
-
-bool TryGetWord2(CharacterSupplier cs, out Word word)
-{
-    throw new NotImplementedException();
-
-    StringBuilder sbWord = new();
-    char c;
-
-    while (cs.TryGetChar(out c))
-    {
-        if (char.IsWhiteSpace(c))
-            continue;
-
-        switch (c)
-        {
-            //
-            case var _ when ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z'):
-                {
-                    sbWord.Append(c);
-                    while (cs.TryGetChar(out c))
+                    DfaDigraphNode qNode;
+                    if (!dict.TryGetValue(q, out qNode))
                     {
-                        if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z'))
-                            sbWord.Append(c);
-                        else
-                        {
-                            cs.Return();
-                            word = new(WordType.Op, sbWord.ToString());
-                            return true;
-                        }
+                        qNode = new DfaDigraphNode { NfaElement = q };
+                        if (head == null) head = qNode;
+                        dict[q] = qNode;
+                    }
+                    var isContain = Add(Q, ref t);
+
+                    DfaDigraphNode tNode;
+                    if (!dict.TryGetValue(t, out tNode))
+                    {
+                        tNode = new DfaDigraphNode { NfaElement = t };
+                        dict[t] = tNode;
                     }
 
-                    break;
+                    qNode.Edges.Add((new(new int[] { i }), tNode));
+
+                    if (!isContain)
+                        workList.Enqueue(t);
                 }
-            default:
-                break;
+            }
+
+            return head;
+        }
+
+        static bool Add(HashSet<HashSet<NfaDigraphNode>> container, ref HashSet<NfaDigraphNode> item)
+        {
+            foreach (var set in container)
+            {
+                if (set.SetEquals(item))
+                {
+                    item = set;
+                    return false;
+                }
+            }
+            container.Add(item);
+            return true;
+        }
+
+        static HashSet<NfaDigraphNode> delta(HashSet<NfaDigraphNode> q, char c)
+        {
+            HashSet<NfaDigraphNode> set = new();
+
+            foreach (var n in q)
+            {
+                foreach (var edge in n.Edges)
+                {
+                    if (edge.Value == c)
+                    {
+                        set.Add(edge.Node);
+                    }
+                }
+            }
+
+            return set;
+        }
+
+        static Dictionary<NfaDigraphNode, HashSet<NfaDigraphNode>> EpsilonClosureCache = new();
+        static HashSet<NfaDigraphNode> EpsilonClosure(HashSet<NfaDigraphNode> set)
+        {
+            HashSet<NfaDigraphNode> newSet = new();
+
+            foreach (var n in set)
+            {
+                HashSet<NfaDigraphNode> eClosureSet;
+                if (!EpsilonClosureCache.TryGetValue(n, out eClosureSet))
+                {
+                    eClosureSet = n.EpsilonClosure();
+                    EpsilonClosureCache[n] = eClosureSet;
+                }
+                newSet.UnionWith(eClosureSet);
+            }
+
+            return newSet;
+        }
+
+    }
+
+
+    class DfaDigraphNode
+    {
+        static int number;
+
+        public int ID { get; private set; }
+        public DfaDigraphNode()
+        {
+            ID = Interlocked.Increment(ref number);
+        }
+
+        public HashSet<NfaDigraphNode> NfaElement { get; init; } = new();
+
+        public HashSet<(HashSet<int> Value, DfaDigraphNode Node)> Edges { get; init; } = new();
+
+        public override string ToString()
+        {
+            StringBuilder builder = new();
+            builder.AppendLine($"\"dfa{ID} [{JoinNfaElement(NfaElement)}]\"");
+            foreach (var e in Edges)
+            {
+                builder.AppendLine($"  --({JoinEdgeValue(e)})-->\"dfa{e.Node.ID}\"");
+            }
+
+            return builder.ToString();
+        }
+
+        private string JoinNfaElement(HashSet<NfaDigraphNode> elem)
+        {
+            StringBuilder builder = new();
+            foreach (var n
+                in elem)
+            {
+                if (builder.Length > 0)
+                    builder.Append(",");
+                builder.Append($"nfa{n.ID}");
+            }
+
+            return builder.ToString();
+        }
+        private string JoinEdgeValue((HashSet<int> Value, DfaDigraphNode Node) edge)
+        {
+            StringBuilder builder = new();
+            foreach (var v in edge.Value)
+            {
+                if (builder.Length > 0)
+                    builder.Append(",");
+                builder.Append($"{v}[{ (v >= 0 && v <= 127 ? (char)v : "??") }]");
+            }
+
+            return builder.ToString();
         }
     }
 
-    word = null;
-    return false;
-}
 
-void TestCharacterSupplier_GetChar(CharacterSupplier cs)
-{
-    char c;
-    while (cs.TryGetChar(out c))
-    {
-        Console.WriteLine(c);
-    }
-}
-
-void TestGetNextWord(CharacterSupplier cs)
-{
-    Word word;
-    while (TryGetWord(cs, out word))
-    {
-        Console.WriteLine($"{word.Type} {word.Content}");
-    }
 }
