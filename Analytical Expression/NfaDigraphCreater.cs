@@ -54,7 +54,7 @@ namespace Analytical_Expression
             for (char c = (char)(from + 1); c <= to; c++)
             {
                 var newDig = CreateSingleCharacter(c);
-                dig = dig.Join(newDig);
+                dig = dig.Union(newDig);
             }
 
             return dig;

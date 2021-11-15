@@ -16,15 +16,15 @@ namespace Analytical_Expression
 
         public HashSet<NfaDigraphNode> NfaElement { get; init; } = new();
 
-        public HashSet<(HashSet<int> Value, DfaDigraphNode Node)> Edges { get; init; } = new();
+        public HashSet<(int Value, DfaDigraphNode Node)> Edges { get; init; } = new();
 
         public override string ToString()
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"dfa{ID} [{JoinNfaElement(NfaElement)}]\"");
+            builder.AppendLine($"\"dfa{ID}\" {{ {JoinNfaElement(NfaElement)} }}");
             foreach (var e in Edges)
             {
-                builder.AppendLine($"  --({JoinEdgeValue(e)})-->\"dfa{e.Node.ID}\"");
+                builder.AppendLine($"  --({e.Value}[{ (e.Value >= 0 && e.Value <= 127 ? (char)e.Value : "??") }])-->\"dfa{e.Node.ID}\"");
             }
 
             return builder.ToString();

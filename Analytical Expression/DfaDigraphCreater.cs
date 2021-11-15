@@ -19,40 +19,43 @@ namespace Analytical_Expression
             DfaDigraphNode? head = null;
 
             var n0 = nfa.Head;
-            var q0 = n0.EpsilonClosure();
-            setQ.Add(q0);
+            var q0Set = n0.EpsilonClosure();
+            setQ.Add(q0Set);
             var workList = new Queue<HashSet<NfaDigraphNode>>();
-            workList.Enqueue(q0);
+            workList.Enqueue(q0Set);
             while (workList.Count > 0)
             {
-                var q = workList.Dequeue();
-                for (int i = 20; i < 127; i++)
+                var qSet = workList.Dequeue();
+                for (int i = Constant.MinimumCharacter; i < Constant.MaximumCharacter + 1; i++)
                 {
                     char c = (char)i;
-                    var t = GetDeltaSet(q, c);
-                    if (t.Count == 0) continue;
-                    t = GetEpsilonClosureSet(t, ecSetCache);
+                    var deltaSet = GetDeltaSet(qSet, c); // 通过c到达子集q终点的集合
+                    if (deltaSet.Count == 0) continue;
+
+                    var tSet = GetEpsilonClosureSet(deltaSet, ecSetCache); // 集合的e闭包
 
                     DfaDigraphNode qNode;
-                    if (!dict.TryGetValue(q, out qNode))
+                    if (!dict.TryGetValue(qSet, out qNode))
                     {
-                        qNode = new DfaDigraphNode { NfaElement = q };
+                        qNode = new DfaDigraphNode { NfaElement = qSet };
+
                         if (head == null) head = qNode;
-                        dict[q] = qNode;
+                        dict[qSet] = qNode;
                     }
-                    var isContain = setQ.AddEx(ref t);
+                    var isContain = !setQ.AddEx(ref tSet);
 
                     DfaDigraphNode tNode;
-                    if (!dict.TryGetValue(t, out tNode))
+                    if (!dict.TryGetValue(tSet, out tNode))
                     {
-                        tNode = new DfaDigraphNode { NfaElement = t };
-                        dict[t] = tNode;
+                        tNode = new DfaDigraphNode { NfaElement = tSet };
+
+                        dict[tSet] = tNode;
                     }
 
-                    qNode.Edges.Add((new(new int[] { i }), tNode));
+                    qNode.Edges.Add((i, tNode));
 
                     if (!isContain)
-                        workList.Enqueue(t);
+                        workList.Enqueue(tSet);
                 }
             }
 
@@ -73,24 +76,31 @@ namespace Analytical_Expression
             return true;
         }
 
-        private static HashSet<NfaDigraphNode> GetDeltaSet(HashSet<NfaDigraphNode> q, char c)
+        /// <summary>
+        /// 集合set中各元素经过c能到达的终点的集合
+        /// </summary>
+        private static HashSet<NfaDigraphNode> GetDeltaSet(HashSet<NfaDigraphNode> set, char c)
         {
-            HashSet<NfaDigraphNode> set = new();
+            HashSet<NfaDigraphNode> returnSet = new();
 
-            foreach (var n in q)
+            foreach (var n in set)
             {
                 foreach (var edge in n.Edges)
                 {
                     if (edge.Value == c)
                     {
-                        set.Add(edge.Node);
+                        returnSet.Add(edge.Node);
                     }
                 }
             }
 
-            return set;
+            return returnSet;
         }
 
+        /// <summary>
+        /// 集合set中各个元素e闭包并集
+        /// </summary>
+        /// <param name="cache">存储元素e闭包</param>
         private static HashSet<NfaDigraphNode> GetEpsilonClosureSet(HashSet<NfaDigraphNode> set, Dictionary<NfaDigraphNode, HashSet<NfaDigraphNode>> cache)
         {
             HashSet<NfaDigraphNode> newSet = new();
