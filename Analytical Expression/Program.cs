@@ -11,21 +11,67 @@ namespace Analytical_Expression
     {
         static void Main2(string[] args)
         {
+
+
+        }
+
+        static NfaDigraph Clone(NfaDigraph old, int index)
+        {
+            Dictionary<NfaDigraphNode, NfaDigraphNode> tableOld2New = new();
+
+            Queue<NfaDigraphNode> queue = new();
+            queue.Enqueue(old.Head);
+            while (queue.Count > 0)
+            {
+                var oldNode = queue.Dequeue();
+                if (!tableOld2New.TryGetValue(oldNode, out NfaDigraphNode newNode))
+                {
+                    newNode = new() { ID = index++ };
+                    tableOld2New[oldNode] = newNode;
+
+                    foreach (var n in oldNode.Edges.Select(e => e.Node).Distinct())
+                    {
+                        queue.Enqueue(n);
+                    }
+                }
+            }
+
+            queue = new();
+            queue.Enqueue(old.Head);
+            HashSet<NfaDigraphNode> visited = new();
+            while (queue.Count > 0)
+            {
+                var oldNode = queue.Dequeue();
+                visited.Add(oldNode);
+
+                foreach (var (value, oldOpNode) in oldNode.Edges)
+                {
+                    var newNode = tableOld2New[oldNode];
+                    newNode.Edges.Add((value, tableOld2New[oldOpNode]));
+
+                    if (!visited.Contains(oldOpNode))
+                    {
+                        queue.Enqueue(oldOpNode);
+                    }
+                }
+            }
+
+            return new() { Head = tableOld2New[old.Head], Tail = tableOld2New[old.Tail] };
         }
 
         static void Main(string[] args)
         {
-            //// a(b|c) *
+            // a(b|c) *
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('b') // b
             //    .Union(NfaDigraphCreater.CreateSingleCharacter('c')) // b|c
             //    .Closure(); // (b|c)*
             //nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(nfa); // a(b|c) *
 
+            // ab
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('a')
-            //    .Join(NfaDigraphCreater.CreateSingleCharacter('b'))
-            //    .Join(NfaDigraphCreater.CreateSingleCharacter('c'));
+            //   .Join(NfaDigraphCreater.CreateSingleCharacter('b'));
 
-            //// fee|fie
+            //// fee | fie
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
             //    .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
             //    );
@@ -35,29 +81,36 @@ namespace Analytical_Expression
             //    .Union(NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')))
             //    .Union(NfaDigraphCreater.CreateSingleCharacter('b').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')));
 
-            // [a-z]([a-z])*
-            var nfa = NfaDigraphCreater.CreateCharacterRange('a','z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
+            //// [a-z]([a-z])*
+            //var nfa = NfaDigraphCreater.CreateCharacterRange('a', 'z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
 
+            var a = NfaDigraphCreater.CreateSingleCharacter('a');
+            var b = NfaDigraphCreater.CreateSingleCharacter('b');
+            var nfa = a.Join(b);
+            nfa = nfa.Join(nfa);
 
+            NfaDigraphCreater.PrintDigraph(a);
+            Console.WriteLine("=============");
+            NfaDigraphCreater.PrintDigraph(b);
+            Console.WriteLine("=============");
             NfaDigraphCreater.PrintDigraph(nfa);
 
-            Console.WriteLine("=============");
+            //Console.WriteLine("=============");
 
-            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            DfaDigraphCreater.PrintDigraph(dfa);
+            //DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
+            //DfaDigraphCreater.PrintDigraph(dfa, "dfa", true);
 
-            Console.WriteLine("=============");
+            //Console.WriteLine("=============");
 
-            var sets = SplitByTail(dfa, nfa.Tail);
-
-            sets = Split(sets);
-            foreach (var item in sets)
-            {
-                Console.WriteLine($"subSet : {ToString(item)}");
-            }
+            //var dmin = dfa.Minimize(nfa.Head, nfa.Tail);
+            //DfaDigraphCreater.PrintDigraph(dmin, "dmin", false);
         }
 
-        static string ToString(HashSet<DfaDigraphNode> set)
+
+
+
+
+        static string NodeSetPrintString(HashSet<DfaDigraphNode> set)
         {
             StringBuilder builder = new StringBuilder();
             builder.Append("{ ");
@@ -68,106 +121,6 @@ namespace Analytical_Expression
             builder.Append("}");
 
             return builder.ToString();
-        }
-
-        /// <summary>
-        /// Hopcroft算法
-        /// </summary>
-        static HashSet<HashSet<DfaDigraphNode>> Split(HashSet<HashSet<DfaDigraphNode>> set)
-        {
-            bool haveSplited = false;
-            set = new(set);
-            do
-            {
-                haveSplited = false;
-                foreach (var subSet in set.ToArray())
-                {
-                    set.Remove(subSet);
-                    var newSet = SingleSplit(subSet);
-                    if (newSet.Count > 1)
-                        haveSplited = true;
-                    set.UnionWith(newSet);
-                }
-            } while (haveSplited);
-
-            return set;
-        }
-        static HashSet<HashSet<DfaDigraphNode>> SingleSplit(HashSet<DfaDigraphNode> set)
-        {
-            HashSet<HashSet<DfaDigraphNode>> sets = new();
-            var chars = set.SelectMany(n => n.Edges).Select(e => e.Value).Distinct().ToArray();
-
-            for (int i = 0; i < chars.Length; i++)
-            {
-                if (set.Count <= 1)
-                    break;
-
-                char c = (char)chars[i];
-                HashSet<DfaDigraphNode> newSet = new(set.Where(n
-                    => n.Edges.Any(e
-                         =>
-                     {
-                         return e.Value == c
-                         && !set.Contains(e.Node);
-                     })));
-
-                if (newSet.Count > 0)
-                {
-                    set = new(set.Except(newSet));
-                    sets.Add(newSet);
-                }
-            }
-            if (set.Count > 0)
-                sets.Add(new(set));
-
-            return sets;
-        }
-
-        static HashSet<HashSet<DfaDigraphNode>> SplitByTail(DfaDigraphNode digraph, NfaDigraphNode endNode)
-        {
-            HashSet<DfaDigraphNode> N = new(), A = new(), visited = new();
-            Queue<DfaDigraphNode> queue = new();
-            var node = digraph;
-            queue.Enqueue(node);
-            while (queue.Count > 0)
-            {
-                node = queue.Dequeue();
-
-                visited.Add(node);
-                if (node.NfaElement.Contains(endNode)) A.Add(node);
-                else N.Add(node);
-
-                foreach (var edge in node.Edges)
-                {
-                    if (!visited.Contains(edge.Node))
-                        queue.Enqueue(edge.Node);
-                }
-            }
-
-            return new() { N, A };
-        }
-    }
-
-
-
-    class HashSetEqualityComparer<T> : IEqualityComparer<HashSet<T>>
-    {
-        bool IEqualityComparer<HashSet<T>>.Equals(HashSet<T>? x, HashSet<T>? y)
-        {
-            if (x == null || y == null) return false;
-            return x.SetEquals(y);
-        }
-
-        int IEqualityComparer<HashSet<T>>.GetHashCode(HashSet<T> obj)
-        {
-            StringBuilder builder = new();
-            foreach (var item in obj)
-            {
-                if (item == null) continue;
-
-                builder.Append(item.GetHashCode());
-            }
-            return builder.ToString().GetHashCode();
         }
     }
 

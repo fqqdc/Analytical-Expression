@@ -6,25 +6,23 @@ namespace Analytical_Expression
 {
     public class DfaDigraphNode
     {
-        static int number;
-
         public int ID { get; private set; }
-        public DfaDigraphNode()
+        public DfaDigraphNode(int id)
         {
-            ID = Interlocked.Increment(ref number);
+            ID = id;
         }
 
         public HashSet<NfaDigraphNode> NfaElement { get; init; } = new();
 
-        public HashSet<(int Value, DfaDigraphNode Node)> Edges { get; init; } = new();
+        public Dictionary<int, DfaDigraphNode> Edges { get; init; } = new();
 
-        public override string ToString()
+        public string PrintString(string pre, bool showNfa)
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"dfa{ID}\" {{ {JoinNfaElement(NfaElement)} }}");
-            foreach (var e in Edges)
+            builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{{ " + JoinNfaElement(NfaElement) + " }}" : string.Empty)}");
+            foreach (var (value, node) in Edges)
             {
-                builder.AppendLine($"  --({e.Value}[{ (e.Value >= 0 && e.Value <= 127 ? (char)e.Value : "??") }])-->\"dfa{e.Node.ID}\"");
+                builder.AppendLine($"  --({value}[{ (value >= 0 && value <= 127 ? (char)value : "??") }])-->\"{pre}{node.ID}\"");
             }
 
             return builder.ToString();

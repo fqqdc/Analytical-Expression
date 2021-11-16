@@ -13,5 +13,6 @@ namespace Analytical_Expression
 
         public NfaDigraphNode Head { get; init; }
         public NfaDigraphNode Tail { get; init; }
+
     }
 }

@@ -9,8 +9,8 @@ namespace Analytical_Expression
     public static class DfaDigraphCreater
     {
         public static DfaDigraphNode CreateFrom(NfaDigraph nfa)
-        {
-            // 子集构造算法
+        {   // 子集构造算法
+            int id = 0;
 
             Dictionary<HashSet<NfaDigraphNode>, DfaDigraphNode> dict = new();
             Dictionary<NfaDigraphNode, HashSet<NfaDigraphNode>> ecSetCache = new();
@@ -37,7 +37,7 @@ namespace Analytical_Expression
                     DfaDigraphNode qNode;
                     if (!dict.TryGetValue(qSet, out qNode))
                     {
-                        qNode = new DfaDigraphNode { NfaElement = qSet };
+                        qNode = new DfaDigraphNode(id++) { NfaElement = qSet };
 
                         if (head == null) head = qNode;
                         dict[qSet] = qNode;
@@ -47,12 +47,12 @@ namespace Analytical_Expression
                     DfaDigraphNode tNode;
                     if (!dict.TryGetValue(tSet, out tNode))
                     {
-                        tNode = new DfaDigraphNode { NfaElement = tSet };
+                        tNode = new DfaDigraphNode(id++) { NfaElement = tSet };
 
                         dict[tSet] = tNode;
                     }
 
-                    qNode.Edges.Add((i, tNode));
+                    qNode.Edges[i] = tNode;
 
                     if (!isContain)
                         workList.Enqueue(tSet);
@@ -119,7 +119,7 @@ namespace Analytical_Expression
             return newSet;
         }
 
-        public static void PrintDigraph(DfaDigraphNode dig)
+        public static void PrintDigraph(DfaDigraphNode dig, string pre, bool showNfa)
         {
             HashSet<DfaDigraphNode> setVisited = new();
             Queue<DfaDigraphNode> queue = new();
@@ -134,13 +134,150 @@ namespace Analytical_Expression
                 }
 
                 setVisited.Add(n);
-                Console.WriteLine(n);
+                Console.WriteLine(n.PrintString(pre, showNfa));
 
                 foreach (var e in n.Edges)
                 {
-                    queue.Enqueue(e.Node);
+                    queue.Enqueue(e.Value);
                 }
             }
+        }
+
+        /// <summary>
+        /// 最小化
+        /// </summary>
+        /// <param name="headNode">对应NFA中的头节点</param>
+        /// <param name="tailNode">对应NFA中的尾节点</param>
+        /// <returns></returns>
+        public static DfaDigraphNode Minimize(this DfaDigraphNode node, NfaDigraphNode headNode, NfaDigraphNode tailNode)
+        {
+            var sets = SplitByTail(node, tailNode);
+            sets = HopcroftSplit(sets);
+            return CreateFrom(sets, headNode);
+        }
+
+        /// <summary>
+        /// 将Hopcroft算法得出的子集生成DFA
+        /// </summary>
+        static DfaDigraphNode CreateFrom(HashSet<HashSet<DfaDigraphNode>> setQ, NfaDigraphNode head)
+        {
+            int id = 0;
+            Dictionary<HashSet<DfaDigraphNode>, DfaDigraphNode> tableSet2Dfa = new(new HashSetEqualityComparer<DfaDigraphNode>());
+
+            foreach (var setQelem in setQ)
+            {
+                // 为每一个集合创建节点
+                DfaDigraphNode node = new(id++) { NfaElement = new(setQelem.SelectMany(n => n.NfaElement)) };
+                tableSet2Dfa[setQelem] = node;
+            }
+
+
+            foreach (var setQelem in setQ)
+            {
+                var beforeNode = tableSet2Dfa[setQelem];
+
+                // 根据集合为每个节点添加边
+                var edges = setQelem.SelectMany(n => n.Edges).Distinct(); // 查询集合原dfa节点所有的原边
+                // 遍历原边，并根据原边的终点dfa节点找到对应的集合
+                foreach (var (value, node) in edges)
+                {
+                    //所有办好原本终点的集合
+                    HashSet<HashSet<DfaDigraphNode>> setQsub = new(setQ.Where(sub => sub.Contains(node)));
+                    foreach (var setQsubElem in setQsub)
+                    {
+                        var afterNode = tableSet2Dfa[setQsubElem];
+                        beforeNode.Edges[value] = afterNode;
+                    }
+                }
+            }
+
+            return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
+        }
+
+        /// <summary>
+        /// Hopcroft算法 分割多个子集
+        /// </summary>
+        static HashSet<HashSet<DfaDigraphNode>> HopcroftSplit(HashSet<HashSet<DfaDigraphNode>> set)
+        {
+            bool haveSplited = false;
+            set = new(set);
+            do
+            {
+                haveSplited = false;
+                foreach (var subSet in set.ToArray())
+                {
+                    set.Remove(subSet);
+                    var newSet = SingleSplit(subSet);
+                    if (newSet.Count > 1)
+                        haveSplited = true;
+                    set.UnionWith(newSet);
+                }
+            } while (haveSplited);
+
+            return set;
+        }
+
+        /// <summary>
+        /// 分割单个子集
+        /// </summary>
+        static HashSet<HashSet<DfaDigraphNode>> SingleSplit(HashSet<DfaDigraphNode> set)
+        {
+            HashSet<HashSet<DfaDigraphNode>> sets = new();
+            var chars = set.SelectMany(n => n.Edges).Select(p => p.Key).Distinct().ToArray();
+
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (set.Count <= 1)
+                    break;
+
+                char c = (char)chars[i];
+                //HashSet<DfaDigraphNode> newSet = new(set.Where(n
+                //    => n.Edges.Any(e
+                //         =>
+                //    {
+                //        return e.Value == c
+                //        && !set.Contains(e.Node);
+                //    })));
+                HashSet<DfaDigraphNode> newSet = new(set.Where(n => n.Edges.ContainsKey(c) && !set.Contains(n.Edges[c])));
+
+
+                if (newSet.Count > 0)
+                {
+                    set = new(set.Except(newSet));
+                    sets.Add(newSet);
+                }
+            }
+            if (set.Count > 0)
+                sets.Add(new(set));
+
+            return sets;
+        }
+
+        /// <summary>
+        /// 将DFA的所有元素，按接受状态和非接受状态，划分子集
+        /// </summary>
+        static HashSet<HashSet<DfaDigraphNode>> SplitByTail(DfaDigraphNode digraph, NfaDigraphNode endNode)
+        {
+            HashSet<DfaDigraphNode> N = new(), A = new(), visited = new();
+            Queue<DfaDigraphNode> queue = new();
+            var node = digraph;
+            queue.Enqueue(node);
+            while (queue.Count > 0)
+            {
+                node = queue.Dequeue();
+
+                visited.Add(node);
+                if (node.NfaElement.Contains(endNode)) A.Add(node);
+                else N.Add(node);
+
+                foreach (var edge in node.Edges)
+                {
+                    if (!visited.Contains(edge.Value))
+                        queue.Enqueue(edge.Value);
+                }
+            }
+
+            return new() { N, A };
         }
     }
 }

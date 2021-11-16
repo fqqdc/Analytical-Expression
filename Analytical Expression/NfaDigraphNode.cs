@@ -9,26 +9,25 @@ namespace Analytical_Expression
 {
     public class NfaDigraphNode
     {
-        static int number;
+        public int ID { get; set; }
 
-        public int ID { get; private set; }
-        public NfaDigraphNode()
-        {
-            ID = Interlocked.Increment(ref number);
-        }
+        public HashSet<(int Value, NfaDigraphNode Node)> Edges { get; init; }
 
-        public HashSet<(int Value, NfaDigraphNode Node)> Edges { get; init; } = new();
-
-        public override string ToString()
+        public string PrintString(bool showCode)
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"nfa{ID}\"");
+            builder.AppendLine($"\"nfa{ID}\" {(showCode ? "{ " + GetHashCode() + " }" : "")}");
             foreach (var e in Edges)
             {
                 builder.AppendLine($"  --({e.Value}[{ (e.Value >= 0 && e.Value <= 127 ? (char)e.Value : "??") }])-->\"nfa{e.Node.ID}\"");
             }
 
             return builder.ToString();
+        }
+
+        public NfaDigraphNode()
+        {
+            Edges = new();
         }
     }
 }
