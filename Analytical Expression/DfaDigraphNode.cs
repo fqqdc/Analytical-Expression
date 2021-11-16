@@ -16,10 +16,15 @@ namespace Analytical_Expression
 
         public Dictionary<int, DfaDigraphNode> Edges { get; init; } = new();
 
+        public override string ToString()
+        {
+            return $"Dfa-{ID}";
+        }
+
         public string PrintString(string pre, bool showNfa)
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{{ " + JoinNfaElement(NfaElement) + " }}" : string.Empty)}");
+            builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{ " + JoinNfaElement(NfaElement) + " }" : string.Empty)}");
             foreach (var (value, node) in Edges)
             {
                 builder.AppendLine($"  --({value}[{ (value >= 0 && value <= 127 ? (char)value : "??") }])-->\"{pre}{node.ID}\"");

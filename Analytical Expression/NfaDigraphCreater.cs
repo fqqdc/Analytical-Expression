@@ -10,7 +10,6 @@ namespace Analytical_Expression
     public static class NfaDigraphCreater
     {
         public const int EPSILON = -1;
-        public static int IncNodeID { get; set; } = 0;
 
         //{fst}{snd}
         public static NfaDigraph Join(this NfaDigraph fst, NfaDigraph snd)
@@ -28,10 +27,13 @@ namespace Analytical_Expression
         //{fst}|{snd}
         public static NfaDigraph Union(this NfaDigraph fst, NfaDigraph snd)
         {
-            var head = new NfaDigraphNode { ID = IncNodeID++ };
+            int id = 0;
+            var head = new NfaDigraphNode { ID = id++ };
+            fst = fst.Clone(ref id);
+            snd = snd.Clone(ref id);
             head.Edges.Add((EPSILON, fst.Head));
             head.Edges.Add((EPSILON, snd.Head));
-            var tail = new NfaDigraphNode { ID = IncNodeID++ };
+            var tail = new NfaDigraphNode { ID = id++ };
             fst.Tail.Edges.Add((EPSILON, tail));
             snd.Tail.Edges.Add((EPSILON, tail));
 
@@ -41,8 +43,10 @@ namespace Analytical_Expression
         //{dig}*
         public static NfaDigraph Closure(this NfaDigraph dig)
         {
-            var head = new NfaDigraphNode { ID = IncNodeID++ };
-            var tail = new NfaDigraphNode { ID = IncNodeID++ };
+            int id = 0;
+            var head = new NfaDigraphNode { ID = id++ };
+            dig = dig.Clone(ref id);
+            var tail = new NfaDigraphNode { ID = id++ };
             head.Edges.Add((EPSILON, dig.Head));
             head.Edges.Add((EPSILON, tail));
             dig.Tail.Edges.Add((EPSILON, dig.Head));
@@ -65,11 +69,42 @@ namespace Analytical_Expression
             return dig;
         }
 
+        public static NfaDigraph CreateRepeatJoin(this NfaDigraph dig, int min, int max)
+        {
+            if (min < 0) throw new ArgumentOutOfRangeException("min");
+            if (min > max) throw new ArgumentOutOfRangeException("max");
+
+            var join = CreateEpsilon();
+            for (int i = 0; i < min; i++)
+            {
+                join = join.Join(dig);
+            }
+            var union = join.Join(CreateEpsilon());
+            for (int i = min; i < max; i++)
+            {
+                union = union.Join(dig);
+                join = join.Union(union);
+            }
+
+            return join;
+        }
+
+        public static NfaDigraph CreateEpsilon()
+        {
+            int id = 0;
+            var head = new NfaDigraphNode { ID = id++ };
+            var tail = new NfaDigraphNode { ID = id++ };
+            head.Edges.Add((EPSILON, tail));
+
+            return new NfaDigraph { Head = head, Tail = tail };
+        }
+
         //{c}
         public static NfaDigraph CreateSingleCharacter(char c)
         {
-            var head = new NfaDigraphNode { ID = IncNodeID++ };
-            var tail = new NfaDigraphNode { ID = IncNodeID++ };
+            int id = 0;
+            var head = new NfaDigraphNode { ID = id++ };
+            var tail = new NfaDigraphNode { ID = id++ };
             head.Edges.Add((c, tail));
 
             return new NfaDigraph { Head = head, Tail = tail };

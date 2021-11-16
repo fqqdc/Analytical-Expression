@@ -153,6 +153,7 @@ namespace Analytical_Expression
         {
             var sets = SplitByTail(node, tailNode);
             sets = HopcroftSplit(sets);
+            var sets2 = HopcroftSplit2(sets);
             return CreateFrom(sets, headNode);
         }
 
@@ -192,6 +193,93 @@ namespace Analytical_Expression
             }
 
             return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
+        }
+
+        static HashSet<HashSet<DfaDigraphNode>> HopcroftSplit2(HashSet<HashSet<DfaDigraphNode>> set)
+        {
+            //P := {F, Q \ F};
+            //W := {F, Q \ F};
+            //while (W is not empty) do
+            //     choose and remove a set A from W
+            //     for each c in Σ do
+            //          let X be the set of states for which a transition on c leads to a state in A
+            //          for each set Y in P for which X ∩ Y is nonempty and Y \ X is nonempty do
+            //               replace Y in P by the two sets X ∩ Y and Y \ X
+            //               if Y is in W
+            //                    replace Y in W by the same two sets
+            //               else
+            //                    if |X ∩ Y| <= |Y \ X|
+            //                         add X ∩ Y to W
+            //                    else
+            //                         add Y \ X to W
+            //          end;
+            //     end;
+            //end;
+            HashSet<HashSet<DfaDigraphNode>> P = new(new HashSetEqualityComparer<DfaDigraphNode>());
+            HashSet<HashSet<DfaDigraphNode>> W = new(new HashSetEqualityComparer<DfaDigraphNode>());
+            //P := {F, Q \ F};
+            //W := {F, Q \ F};
+            foreach (var subSet in set)
+            {
+                P.Add(new(subSet));
+                W.Add(new(subSet));
+            }
+            while (W.Count > 0) //while (W is not empty) do
+            {
+                //choose and remove a set A from W
+                var A = W.First();
+                W.Remove(A);
+                //for each c in Σ do
+                for (int i = Constant.MinimumCharacter; i < Constant.MaximumCharacter + 1; i++)
+                {
+                    char c = (char)i;
+                    //let X be the set of states for which a transition on c leads to a state in A
+                    HashSet<DfaDigraphNode> X = new(A.SelectMany(n => n.Edges.Values));
+                    if (X.Count == 0) continue;
+                    //for each set Y in P for which X ∩ Y is nonempty and Y \ X is nonempty do
+                    foreach (var Y in P.ToArray())
+                    {
+                        HashSet<DfaDigraphNode> intersectSet = new(X.Intersect(Y).Count());
+                        HashSet<DfaDigraphNode> exceptSet = new(X.Intersect(Y).Count());                        
+                        if (X.Intersect(Y).Count() != 0 && Y.Except(X).Count() != 0)
+                        {
+                            //replace Y in P by the two sets X ∩ Y and Y \ X
+                            P.Remove(Y);
+                            P.Add(intersectSet);
+                            P.Add(exceptSet);
+
+                            if (W.Contains(Y)) //if Y is in W
+                            {
+                                //replace Y in W by the same two sets
+                                W.Remove(Y);
+                                W.Add(intersectSet);
+                                W.Add(exceptSet);
+                            }
+                            else
+                            {
+                                //if |X ∩ Y| <= |Y \ X|
+                                if (intersectSet.Count <= exceptSet.Count)
+                                {
+                                    //add X ∩ Y to W
+                                    W.Add(intersectSet);
+                                }
+                                else
+                                {
+                                    //add Y \ X to W
+                                    W.Add(exceptSet);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+
+            HashSet<HashSet<DfaDigraphNode>> ResultSet = new(new HashSetEqualityComparer<DfaDigraphNode>());
+            ResultSet.Union(P);
+            ResultSet.Union(W);
+
+            return ResultSet;
         }
 
         /// <summary>

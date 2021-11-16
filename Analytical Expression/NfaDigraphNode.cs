@@ -13,6 +13,11 @@ namespace Analytical_Expression
 
         public HashSet<(int Value, NfaDigraphNode Node)> Edges { get; init; }
 
+        public override string ToString()
+        {
+            return $"Nfa-{ID}";
+        }
+
         public string PrintString(bool showCode)
         {
             StringBuilder builder = new();

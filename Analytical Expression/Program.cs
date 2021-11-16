@@ -71,10 +71,10 @@ namespace Analytical_Expression
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('a')
             //   .Join(NfaDigraphCreater.CreateSingleCharacter('b'));
 
-            //// fee | fie
-            //var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    );
+            // fee | fie
+            var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+                .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+                );
 
             ////ace | adf | bdf
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('c')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
@@ -84,26 +84,21 @@ namespace Analytical_Expression
             //// [a-z]([a-z])*
             //var nfa = NfaDigraphCreater.CreateCharacterRange('a', 'z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
 
-            var a = NfaDigraphCreater.CreateSingleCharacter('a');
-            var b = NfaDigraphCreater.CreateSingleCharacter('b');
-            var nfa = a.Join(b);
-            nfa = nfa.Join(nfa);
+            //var exp_a = NfaDigraphCreater.CreateSingleCharacter('a');
+            //var exp_aa = exp_a.Join(exp_a);
+            //var exp_aaa = exp_a.Join(exp_a).Join(exp_a);
 
-            NfaDigraphCreater.PrintDigraph(a);
-            Console.WriteLine("=============");
-            NfaDigraphCreater.PrintDigraph(b);
-            Console.WriteLine("=============");
+            //var nfa = exp_a.Union(exp_aa);//.Union(exp_aaa);
+
             NfaDigraphCreater.PrintDigraph(nfa);
 
-            //Console.WriteLine("=============");
+            Console.WriteLine("=============");
+            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
+            DfaDigraphCreater.PrintDigraph(dfa, "dfa", true);
 
-            //DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            //DfaDigraphCreater.PrintDigraph(dfa, "dfa", true);
-
-            //Console.WriteLine("=============");
-
-            //var dmin = dfa.Minimize(nfa.Head, nfa.Tail);
-            //DfaDigraphCreater.PrintDigraph(dmin, "dmin", false);
+            Console.WriteLine("=============");
+            var dmin = dfa.Minimize(nfa.Head, nfa.Tail);
+            DfaDigraphCreater.PrintDigraph(dmin, "dmin", true);
         }
 
 
