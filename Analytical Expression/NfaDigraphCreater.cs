@@ -125,7 +125,7 @@ namespace Analytical_Expression
                 }
 
                 setVisited.Add(n);
-                Console.WriteLine(n.PrintString(showCode));
+                Console.WriteLine(n.PrintString(showCode, dig.Tail));
 
                 foreach (var e in n.Edges)
                 {

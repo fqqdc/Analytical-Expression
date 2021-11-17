@@ -34,10 +34,17 @@ namespace Analytical_Expression
 
                     var tSet = GetEpsilonClosureSet(deltaSet, ecSetCache); // 集合的e闭包
 
+
+
                     DfaDigraphNode qNode;
                     if (!dict.TryGetValue(qSet, out qNode))
                     {
-                        qNode = new DfaDigraphNode(id++) { NfaElement = qSet };
+                        DfaNodeType type = DfaNodeType.Unacceptable;
+                        if (qSet.Contains(nfa.Head))
+                            type = type | DfaNodeType.Start;
+                        if (qSet.Contains(nfa.Tail))
+                            type = type | DfaNodeType.Acceptable;
+                        qNode = new DfaDigraphNode(id++) { Type = type };
 
                         if (head == null) head = qNode;
                         dict[qSet] = qNode;
@@ -47,7 +54,12 @@ namespace Analytical_Expression
                     DfaDigraphNode tNode;
                     if (!dict.TryGetValue(tSet, out tNode))
                     {
-                        tNode = new DfaDigraphNode(id++) { NfaElement = tSet };
+                        DfaNodeType type = DfaNodeType.Unacceptable;
+                        if (tSet.Contains(nfa.Head))
+                            type = type | DfaNodeType.Start;
+                        if (tSet.Contains(nfa.Tail))
+                            type = type | DfaNodeType.Acceptable;
+                        tNode = new DfaDigraphNode(id++) { Type = type };
 
                         dict[tSet] = tNode;
                     }
@@ -149,17 +161,17 @@ namespace Analytical_Expression
         /// <param name="headNode">对应NFA中的头节点</param>
         /// <param name="tailNode">对应NFA中的尾节点</param>
         /// <returns></returns>
-        public static DfaDigraphNode Minimize(this DfaDigraphNode node, NfaDigraphNode headNode, NfaDigraphNode tailNode)
+        public static DfaDigraphNode Minimize(this DfaDigraphNode node)
         {
-            var sets = SplitByTail(node, tailNode);
+            var sets = SplitByTail(node);
             var sets2 = SplitByState(sets);
-            return CreateFrom(sets2, headNode);
+            return CreateFrom(sets2);
         }
 
         /// <summary>
         /// 将Hopcroft算法得出的子集生成DFA
         /// </summary>
-        static DfaDigraphNode CreateFrom(HashSet<HashSet<DfaDigraphNode>> setQ, NfaDigraphNode head)
+        static DfaDigraphNode CreateFrom(HashSet<HashSet<DfaDigraphNode>> setQ)
         {
             int id = 0;
             Dictionary<HashSet<DfaDigraphNode>, DfaDigraphNode> tableSet2Dfa = new(HashSetComparer<DfaDigraphNode>.Instance);
@@ -167,7 +179,16 @@ namespace Analytical_Expression
             foreach (var setQelem in setQ)
             {
                 // 为每一个集合创建节点
-                DfaDigraphNode node = new(id++) { NfaElement = new(setQelem.SelectMany(n => n.NfaElement)) };
+
+                //var nfaNodes = setQelem.SelectMany(n => n.NfaElement);
+                DfaNodeType type = DfaNodeType.Unacceptable;
+                if (setQelem.Any(n => n.Type == DfaNodeType.Start))
+                    type |= DfaNodeType.Start;
+                if (setQelem.Any(n => n.Type == DfaNodeType.Acceptable))
+                    type |= DfaNodeType.Acceptable;
+
+                DfaDigraphNode node = new(id++) { Type = type };
+
                 tableSet2Dfa[setQelem] = node;
             }
 
@@ -191,7 +212,8 @@ namespace Analytical_Expression
                 }
             }
 
-            return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
+            //return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
+            return tableSet2Dfa.Values.Single(n => (n.Type & DfaNodeType.Start) == DfaNodeType.Start);
         }
 
         /// <summary>
@@ -280,7 +302,7 @@ namespace Analytical_Expression
         /// <summary>
         /// 将DFA的所有元素，按接受状态和非接受状态，划分子集
         /// </summary>
-        static HashSet<HashSet<DfaDigraphNode>> SplitByTail(DfaDigraphNode digraph, NfaDigraphNode endNode)
+        static HashSet<HashSet<DfaDigraphNode>> SplitByTail(DfaDigraphNode digraph)
         {
             HashSet<DfaDigraphNode> N = new(), A = new(), visited = new();
             Queue<DfaDigraphNode> queue = new();
@@ -291,7 +313,7 @@ namespace Analytical_Expression
                 node = queue.Dequeue();
 
                 visited.Add(node);
-                if (node.NfaElement.Contains(endNode)) A.Add(node);
+                if ((node.Type & DfaNodeType.Acceptable) == DfaNodeType.Acceptable) A.Add(node);
                 else N.Add(node);
 
                 foreach (var edge in node.Edges)

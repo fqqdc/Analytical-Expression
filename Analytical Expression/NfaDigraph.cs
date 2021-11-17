@@ -11,7 +11,7 @@ namespace Analytical_Expression
     {
         internal NfaDigraph() { }
 
-        public NfaDigraphNode Head { get; init; }
-        public NfaDigraphNode Tail { get; init; }
+        public NfaDigraphNode? Head { get; init; }
+        public NfaDigraphNode? Tail { get; init; }
     }
 }

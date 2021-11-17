@@ -18,10 +18,10 @@ namespace Analytical_Expression
             return $"Nfa-{ID}";
         }
 
-        public string PrintString(bool showCode)
+        public string PrintString(bool showCode, NfaDigraphNode tail)
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"nfa{ID}\" {(showCode ? "{ " + GetHashCode() + " }" : "")}");
+            builder.AppendLine($"\"nfa{ID}\" {(showCode ? "{ " + GetHashCode() + " }" : "")} {(this == tail ? "[A]" : "")}");
             foreach (var e in Edges)
             {
                 builder.AppendLine($"  --({e.Value}[{ (e.Value >= 0 && e.Value <= 127 ? (char)e.Value : "??") }])-->\"nfa{e.Node.ID}\"");

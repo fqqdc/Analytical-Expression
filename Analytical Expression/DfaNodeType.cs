@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 
 namespace Analytical_Expression
 {
-    public enum DigraphNodeType
+    public enum DfaNodeType : int
     {
-        Acceptable,
-        Unacceptable,
+        Unacceptable = 0b000,
+        Start = 0b001,
+        Acceptable = 0b010,
+
     }
 }

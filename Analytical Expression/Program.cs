@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,57 +7,33 @@ namespace Analytical_Expression
 {
     public class Program
     {
-        static void Main2(string[] args)
-        {
-
-
-        }
-
-        static NfaDigraph Clone(NfaDigraph old, int index)
-        {
-            Dictionary<NfaDigraphNode, NfaDigraphNode> tableOld2New = new();
-
-            Queue<NfaDigraphNode> queue = new();
-            queue.Enqueue(old.Head);
-            while (queue.Count > 0)
-            {
-                var oldNode = queue.Dequeue();
-                if (!tableOld2New.TryGetValue(oldNode, out NfaDigraphNode newNode))
-                {
-                    newNode = new() { ID = index++ };
-                    tableOld2New[oldNode] = newNode;
-
-                    foreach (var n in oldNode.Edges.Select(e => e.Node).Distinct())
-                    {
-                        queue.Enqueue(n);
-                    }
-                }
-            }
-
-            queue = new();
-            queue.Enqueue(old.Head);
-            HashSet<NfaDigraphNode> visited = new();
-            while (queue.Count > 0)
-            {
-                var oldNode = queue.Dequeue();
-                visited.Add(oldNode);
-
-                foreach (var (value, oldOpNode) in oldNode.Edges)
-                {
-                    var newNode = tableOld2New[oldNode];
-                    newNode.Edges.Add((value, tableOld2New[oldOpNode]));
-
-                    if (!visited.Contains(oldOpNode))
-                    {
-                        queue.Enqueue(oldOpNode);
-                    }
-                }
-            }
-
-            return new() { Head = tableOld2New[old.Head], Tail = tableOld2New[old.Tail] };
-        }
-
         static void Main(string[] args)
+        {
+            //n = [0-9]
+            //nn *| nn *.|.nn *| nn *.nn *
+            var exp_n = NfaDigraphCreater.CreateCharacterRange('0', '9');
+            var exp_dot = NfaDigraphCreater.CreateSingleCharacter('.');
+            var exp_nns = exp_n.Join(exp_n.Closure());
+            var nfa = exp_nns.Join(exp_dot).Join(exp_nns);
+            nfa = nfa.Union(exp_nns);
+            nfa = nfa.Union(exp_nns.Join(exp_dot));
+            nfa = nfa.Union(exp_dot.Join(nfa));
+            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
+            var dmin = dfa.Minimize();
+
+            StateMachine sm = new(dmin);
+            Console.WriteLine($"State:{sm.State} A:{sm.Acceptable}");
+            foreach (var c in "12.")
+            {                
+                bool isError = sm.Jump(c);
+                Console.WriteLine($"State:{sm.State} Act:{sm.Acceptable} JUMP:{isError}");
+            }
+            
+
+
+        }
+
+        static void Main2(string[] args)
         {
             // a(b|c) *
             //var nfa = NfaDigraphCreater.CreateSingleCharacter('b') // b
@@ -67,56 +41,44 @@ namespace Analytical_Expression
             //    .Closure(); // (b|c)*
             //nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(nfa); // a(b|c) *
 
-            // ab
-            //var nfa = NfaDigraphCreater.CreateSingleCharacter('a')
-            //   .Join(NfaDigraphCreater.CreateSingleCharacter('b'));
-
             // fee | fie
-            //var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    );
-
-            //ace | adf | bdf
-            var nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('c')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-                .Union(NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')))
-                .Union(NfaDigraphCreater.CreateSingleCharacter('b').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')));
+            var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+                .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+                );
 
             // [a-z]([a-z])*
             //var nfa = NfaDigraphCreater.CreateCharacterRange('a', 'z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
 
+            // a|aa|aaa
             //var exp_a = NfaDigraphCreater.CreateSingleCharacter('a');
             //var exp_aa = exp_a.Join(exp_a);
             //var exp_aaa = exp_a.Join(exp_a).Join(exp_a);
-
             //var nfa = exp_a.Union(exp_aa).Union(exp_aaa);
+
+            //n = [0-9]
+            //nn*|nn*.|.nn*|nn*.nn*
+            //var exp_n = nfadigraphcreater.createcharacterrange('0', '9');
+            //var exp_dot = nfadigraphcreater.createsinglecharacter('.');
+            //var exp_nns = exp_n.join(exp_n.closure());
+            //var nfa = exp_nns.join(exp_dot).join(exp_nns);
+            //nfa = nfa.union(exp_nns);
+            //nfa = nfa.union(exp_nns.join(exp_dot));
+            //nfa = nfa.union(exp_dot.join(nfa));
 
             NfaDigraphCreater.PrintDigraph(nfa);
 
             Console.WriteLine("=============");
             DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            DfaDigraphCreater.PrintDigraph(dfa, "dfa", true);
+            DfaDigraphCreater.PrintDigraph(dfa, "dfa", false);
 
             Console.WriteLine("=============");
-            var dmin = dfa.Minimize(nfa.Head, nfa.Tail);
-            DfaDigraphCreater.PrintDigraph(dmin, "dmin", true);
+            var dmin = dfa.Minimize();
+            DfaDigraphCreater.PrintDigraph(dmin, "dmin", false);
         }
 
 
 
 
-
-        static string NodeSetPrintString(HashSet<DfaDigraphNode> set)
-        {
-            StringBuilder builder = new StringBuilder();
-            builder.Append("{ ");
-            foreach (DfaDigraphNode node in set)
-            {
-                builder.Append($"\"dfa{node.ID}\" ");
-            }
-            builder.Append("}");
-
-            return builder.ToString();
-        }
     }
 
 }

@@ -11,6 +11,7 @@ namespace Analytical_Expression
         {
             ID = id;
         }
+        public DfaNodeType Type { get; init; }
 
         public HashSet<NfaDigraphNode> NfaElement { get; init; } = new();
 
@@ -24,7 +25,11 @@ namespace Analytical_Expression
         public string PrintString(string pre, bool showNfa)
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{ " + JoinNfaElement(NfaElement) + " }" : string.Empty)}");
+            string flagS = "", flagA = "";
+            if ((Type & DfaNodeType.Start) == DfaNodeType.Start) flagS = "[S]";
+            if ((Type & DfaNodeType.Acceptable) == DfaNodeType.Acceptable) flagA = "[A]";
+
+            builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{ " + JoinNfaElement(NfaElement) + " }" : string.Empty)} {flagS} {flagA}");
             foreach (var (value, node) in Edges)
             {
                 builder.AppendLine($"  --({value}[{ (value >= 0 && value <= 127 ? (char)value : "??") }])-->\"{pre}{node.ID}\"");
