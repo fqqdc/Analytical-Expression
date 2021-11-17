@@ -152,9 +152,8 @@ namespace Analytical_Expression
         public static DfaDigraphNode Minimize(this DfaDigraphNode node, NfaDigraphNode headNode, NfaDigraphNode tailNode)
         {
             var sets = SplitByTail(node, tailNode);
-            sets = HopcroftSplit(sets);
-            var sets2 = HopcroftSplit2(sets);
-            return CreateFrom(sets, headNode);
+            var sets2 = SplitByState(sets);
+            return CreateFrom(sets2, headNode);
         }
 
         /// <summary>
@@ -163,7 +162,7 @@ namespace Analytical_Expression
         static DfaDigraphNode CreateFrom(HashSet<HashSet<DfaDigraphNode>> setQ, NfaDigraphNode head)
         {
             int id = 0;
-            Dictionary<HashSet<DfaDigraphNode>, DfaDigraphNode> tableSet2Dfa = new(new HashSetEqualityComparer<DfaDigraphNode>());
+            Dictionary<HashSet<DfaDigraphNode>, DfaDigraphNode> tableSet2Dfa = new(HashSetComparer<DfaDigraphNode>.Instance);
 
             foreach (var setQelem in setQ)
             {
@@ -195,150 +194,87 @@ namespace Analytical_Expression
             return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
         }
 
-        static HashSet<HashSet<DfaDigraphNode>> HopcroftSplit2(HashSet<HashSet<DfaDigraphNode>> set)
-        {
-            //P := {F, Q \ F};
-            //W := {F, Q \ F};
-            //while (W is not empty) do
-            //     choose and remove a set A from W
-            //     for each c in Σ do
-            //          let X be the set of states for which a transition on c leads to a state in A
-            //          for each set Y in P for which X ∩ Y is nonempty and Y \ X is nonempty do
-            //               replace Y in P by the two sets X ∩ Y and Y \ X
-            //               if Y is in W
-            //                    replace Y in W by the same two sets
-            //               else
-            //                    if |X ∩ Y| <= |Y \ X|
-            //                         add X ∩ Y to W
-            //                    else
-            //                         add Y \ X to W
-            //          end;
-            //     end;
-            //end;
-            HashSet<HashSet<DfaDigraphNode>> P = new(new HashSetEqualityComparer<DfaDigraphNode>());
-            HashSet<HashSet<DfaDigraphNode>> W = new(new HashSetEqualityComparer<DfaDigraphNode>());
-            //P := {F, Q \ F};
-            //W := {F, Q \ F};
-            foreach (var subSet in set)
-            {
-                P.Add(new(subSet));
-                W.Add(new(subSet));
-            }
-            while (W.Count > 0) //while (W is not empty) do
-            {
-                //choose and remove a set A from W
-                var A = W.First();
-                W.Remove(A);
-                //for each c in Σ do
-                for (int i = Constant.MinimumCharacter; i < Constant.MaximumCharacter + 1; i++)
-                {
-                    char c = (char)i;
-                    //let X be the set of states for which a transition on c leads to a state in A
-                    HashSet<DfaDigraphNode> X = new(A.SelectMany(n => n.Edges.Values));
-                    if (X.Count == 0) continue;
-                    //for each set Y in P for which X ∩ Y is nonempty and Y \ X is nonempty do
-                    foreach (var Y in P.ToArray())
-                    {
-                        HashSet<DfaDigraphNode> intersectSet = new(X.Intersect(Y).Count());
-                        HashSet<DfaDigraphNode> exceptSet = new(X.Intersect(Y).Count());                        
-                        if (X.Intersect(Y).Count() != 0 && Y.Except(X).Count() != 0)
-                        {
-                            //replace Y in P by the two sets X ∩ Y and Y \ X
-                            P.Remove(Y);
-                            P.Add(intersectSet);
-                            P.Add(exceptSet);
-
-                            if (W.Contains(Y)) //if Y is in W
-                            {
-                                //replace Y in W by the same two sets
-                                W.Remove(Y);
-                                W.Add(intersectSet);
-                                W.Add(exceptSet);
-                            }
-                            else
-                            {
-                                //if |X ∩ Y| <= |Y \ X|
-                                if (intersectSet.Count <= exceptSet.Count)
-                                {
-                                    //add X ∩ Y to W
-                                    W.Add(intersectSet);
-                                }
-                                else
-                                {
-                                    //add Y \ X to W
-                                    W.Add(exceptSet);
-                                }
-                            }
-                        }
-                    }
-
-                }
-            }
-
-            HashSet<HashSet<DfaDigraphNode>> ResultSet = new(new HashSetEqualityComparer<DfaDigraphNode>());
-            ResultSet.Union(P);
-            ResultSet.Union(W);
-
-            return ResultSet;
-        }
-
         /// <summary>
-        /// Hopcroft算法 分割多个子集
+        /// 按等效状态划分子集
         /// </summary>
-        static HashSet<HashSet<DfaDigraphNode>> HopcroftSplit(HashSet<HashSet<DfaDigraphNode>> set)
+        static HashSet<HashSet<DfaDigraphNode>> SplitByState(HashSet<HashSet<DfaDigraphNode>> set)
         {
-            bool haveSplited = false;
-            set = new(set);
+            var W = set.Select(s => s.ToHashSet()).ToHashSet(HashSetComparer<DfaDigraphNode>.Instance);
+            bool hasSplited = false;
             do
             {
-                haveSplited = false;
-                foreach (var subSet in set.ToArray())
+                hasSplited = false;
+                foreach (var A in W)
                 {
-                    set.Remove(subSet);
-                    var newSet = SingleSplit(subSet);
-                    if (newSet.Count > 1)
-                        haveSplited = true;
-                    set.UnionWith(newSet);
-                }
-            } while (haveSplited);
+                    if (A.Count == 1)
+                        continue;
 
-            return set;
-        }
+                    var superA = A.GroupBy(n => n.Edges, EdgesComparer.Instance).ToArray();
+                    if (superA.Length > 1) // 按转换条件分割
+                    {
+                        W.Remove(A);
+                        W.UnionWith(superA.Select(g => g.ToHashSet()));
+                        hasSplited = true;
+                        break;
+                    }
 
-        /// <summary>
-        /// 分割单个子集
-        /// </summary>
-        static HashSet<HashSet<DfaDigraphNode>> SingleSplit(HashSet<DfaDigraphNode> set)
-        {
-            HashSet<HashSet<DfaDigraphNode>> sets = new();
-            var chars = set.SelectMany(n => n.Edges).Select(p => p.Key).Distinct().ToArray();
-
-            for (int i = 0; i < chars.Length; i++)
-            {
-                if (set.Count <= 1)
-                    break;
-
-                char c = (char)chars[i];
-                //HashSet<DfaDigraphNode> newSet = new(set.Where(n
-                //    => n.Edges.Any(e
-                //         =>
-                //    {
-                //        return e.Value == c
-                //        && !set.Contains(e.Node);
-                //    })));
-                HashSet<DfaDigraphNode> newSet = new(set.Where(n => n.Edges.ContainsKey(c) && !set.Contains(n.Edges[c])));
-
-
-                if (newSet.Count > 0)
-                {
-                    set = new(set.Except(newSet));
-                    sets.Add(newSet);
+                    superA = A.GroupBy(n => n.Edges, new EdgesMoveComparer(W)).ToArray();
+                    if (superA.Count() > 1) // 按转换后状态的集合分割
+                    {
+                        W.Remove(A);
+                        W.UnionWith(superA.Select(g => g.ToHashSet()));
+                        hasSplited = true;
+                        break;
+                    }
                 }
             }
-            if (set.Count > 0)
-                sets.Add(new(set));
+            while (hasSplited);
 
-            return sets;
+            return W;
+        }
+
+        class HashSetComparer<T> : IEqualityComparer<HashSet<T>>
+        {
+            public static HashSetComparer<T> Instance { get; private set; } = new();
+
+            bool IEqualityComparer<HashSet<T>>.Equals(HashSet<T>? x, HashSet<T>? y)
+            {
+                return x.SetEquals(y);
+            }
+
+            int IEqualityComparer<HashSet<T>>.GetHashCode(HashSet<T> obj) => 0;
+        }
+
+        class EdgesMoveComparer : IEqualityComparer<Dictionary<int, DfaDigraphNode>>
+        {
+            HashSet<HashSet<DfaDigraphNode>> superSet;
+            public EdgesMoveComparer(HashSet<HashSet<DfaDigraphNode>> superSet) => this.superSet = superSet;
+
+            private HashSet<DfaDigraphNode> GetSet(DfaDigraphNode node)
+            {
+                return superSet.First(s => s.Contains(node));
+            }
+
+            bool IEqualityComparer<Dictionary<int, DfaDigraphNode>>.Equals(Dictionary<int, DfaDigraphNode>? x, Dictionary<int, DfaDigraphNode>? y)
+            {
+                var xSet = x.Values.Select(v => GetSet(v));
+                var ySet = y.Values.Select(v => GetSet(v));
+                return xSet.ToHashSet().SetEquals(ySet.ToHashSet());
+            }
+
+            int IEqualityComparer<Dictionary<int, DfaDigraphNode>>.GetHashCode(Dictionary<int, DfaDigraphNode> obj) => 0;
+        }
+
+        class EdgesComparer : IEqualityComparer<Dictionary<int, DfaDigraphNode>>
+        {
+            public static EdgesComparer Instance { get; private set; } = new();
+
+            bool IEqualityComparer<Dictionary<int, DfaDigraphNode>>.Equals(Dictionary<int, DfaDigraphNode>? x, Dictionary<int, DfaDigraphNode>? y)
+            {
+                return x.Keys.ToHashSet().SetEquals(y.Keys.ToHashSet());
+            }
+
+            int IEqualityComparer<Dictionary<int, DfaDigraphNode>>.GetHashCode(Dictionary<int, DfaDigraphNode> obj) => 0;
         }
 
         /// <summary>

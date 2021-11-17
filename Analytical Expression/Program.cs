@@ -72,23 +72,23 @@ namespace Analytical_Expression
             //   .Join(NfaDigraphCreater.CreateSingleCharacter('b'));
 
             // fee | fie
-            var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-                .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-                );
+            //var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+            //    .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+            //    );
 
-            ////ace | adf | bdf
-            //var nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('c')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    .Union(NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')))
-            //    .Union(NfaDigraphCreater.CreateSingleCharacter('b').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')));
+            //ace | adf | bdf
+            var nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('c')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
+                .Union(NfaDigraphCreater.CreateSingleCharacter('a').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')))
+                .Union(NfaDigraphCreater.CreateSingleCharacter('b').Join(NfaDigraphCreater.CreateSingleCharacter('d')).Join(NfaDigraphCreater.CreateSingleCharacter('f')));
 
-            //// [a-z]([a-z])*
+            // [a-z]([a-z])*
             //var nfa = NfaDigraphCreater.CreateCharacterRange('a', 'z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
 
             //var exp_a = NfaDigraphCreater.CreateSingleCharacter('a');
             //var exp_aa = exp_a.Join(exp_a);
             //var exp_aaa = exp_a.Join(exp_a).Join(exp_a);
 
-            //var nfa = exp_a.Union(exp_aa);//.Union(exp_aaa);
+            //var nfa = exp_a.Union(exp_aa).Union(exp_aaa);
 
             NfaDigraphCreater.PrintDigraph(nfa);
 
