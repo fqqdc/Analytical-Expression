@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using System.Threading;
+using System.Linq;
+
 
 namespace Analytical_Expression
 {
@@ -30,10 +31,7 @@ namespace Analytical_Expression
             if ((Type & DfaNodeType.Acceptable) == DfaNodeType.Acceptable) flagA = "[A]";
 
             builder.AppendLine($"\"{pre}{ID}\"  { (showNfa ? "{ " + JoinNfaElement(NfaElement) + " }" : string.Empty)} {flagS} {flagA}");
-            foreach (var (value, node) in Edges)
-            {
-                builder.AppendLine($"  --({value}[{ (value >= 0 && value <= 127 ? (char)value : "??") }])-->\"{pre}{node.ID}\"");
-            }
+            builder.AppendLine(JoinEdgeValue(Edges));
 
             return builder.ToString();
         }
@@ -51,14 +49,27 @@ namespace Analytical_Expression
 
             return builder.ToString();
         }
-        private string JoinEdgeValue((HashSet<int> Value, DfaDigraphNode Node) edge)
+        private string JoinEdgeValue(Dictionary<int, DfaDigraphNode> edge)
         {
             StringBuilder builder = new();
-            foreach (var v in edge.Value)
+
+            foreach (var g in edge.GroupBy(e => e.Value))
             {
-                if (builder.Length > 0)
-                    builder.Append(",");
-                builder.Append($"{v}[{ (v >= 0 && v <= 127 ? (char)v : "??") }]");
+                StringBuilder vbuilder = new();
+                StringBuilder cbuilder = new();
+                foreach (var v in g)
+                {
+                    if (vbuilder.Length > 0)
+                    {
+                        vbuilder.Append(",");
+                        cbuilder.Append(",");
+                    }
+                    vbuilder.Append(v.Key);
+                    char c = (char)v.Key;
+                    cbuilder.Append((char.IsControl(c) ? "??" : c));
+                }
+
+                builder.AppendLine($"--({{{vbuilder.ToString()}}}[{cbuilder.ToString()}])-->{g.Key}");
             }
 
             return builder.ToString();

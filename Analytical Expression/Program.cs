@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace Analytical_Expression
 {
@@ -19,19 +21,116 @@ namespace Analytical_Expression
             nfa = nfa.Union(exp_nns.Join(exp_dot));
             nfa = nfa.Union(exp_dot.Join(nfa));
             DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dmin = dfa.Minimize();
+            var dfaNumber = dfa.Minimize();
+            DfaDigraphCreater.PrintDigraph(dfaNumber, "dfa", false);
+            StateMachine smNumber = new(dfaNumber) { Name = "Number" };
 
-            StateMachine sm = new(dmin);
-            Console.WriteLine($"State:{sm.State} A:{sm.Acceptable}");
-            foreach (var c in "12.")
-            {                
-                bool isError = sm.Jump(c);
-                Console.WriteLine($"State:{sm.State} Act:{sm.Acceptable} JUMP:{isError}");
+            //n = [0-9]
+            //c = [a-z][A-Z]
+            //c(c|n)*
+            exp_n = NfaDigraphCreater.CreateCharacterRange('0', '9');
+            var exp_c = NfaDigraphCreater.CreateCharacterRange('a', 'z');
+            exp_c = exp_c.Union(NfaDigraphCreater.CreateCharacterRange('A', 'Z'));
+            nfa = exp_c.Union(exp_n).Closure();
+            nfa = exp_c.Join(nfa);
+            dfa = DfaDigraphCreater.CreateFrom(nfa);
+            var dfaId = dfa.Minimize();
+            DfaDigraphCreater.PrintDigraph(dfaId, "dfa", false);
+            StateMachine smId = new(dfaId) { Name = "ID" };
+
+
+            // +|-|*|/|<|<=|==|>=|>
+            nfa = NfaDigraphCreater.CreateSingleCharacter('+'); // +
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('-')); // -
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('*')); // *
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('/')); // /
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('<')); // <
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('>')); // >
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('>').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // >=
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('<').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // <=
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('=').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // ==
+            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('=')); // =
+            dfa = DfaDigraphCreater.CreateFrom(nfa);
+            var dfaSymbol = dfa.Minimize();
+            DfaDigraphCreater.PrintDigraph(dfaSymbol, "dfa", false);
+            StateMachine smSymbol = new(dfaSymbol) { Name = "Symbol" };
+
+            // (
+            nfa = NfaDigraphCreater.CreateSingleCharacter('('); // (
+            dfa = DfaDigraphCreater.CreateFrom(nfa);
+            var dfaLeft = dfa.Minimize();
+            StateMachine smLeft = new(dfaLeft) { Name = "L" };
+
+            // )
+            nfa = NfaDigraphCreater.CreateSingleCharacter(')'); // )
+            dfa = DfaDigraphCreater.CreateFrom(nfa);
+            var dfaRight = dfa.Minimize();
+            StateMachine smRight = new(dfaRight) { Name = "R" };
+
+            List<StateMachine> listSM = new() { smNumber, smId, smSymbol, smLeft, smRight };
+            HashSet<StateMachine> workSM = new();
+
+            string txt = " 2 *(  3+(4-5) ) / 666>= ccc233  \0";
+            Console.WriteLine(txt);
+
+            int basePos = 0;
+            int curPos = 0;
+
+            while (curPos < txt.Length)
+            {
+                char c = txt[curPos];
+
+                if (workSM.Count == 0)
+                {
+                    if (char.IsWhiteSpace(c))
+                    {
+                        basePos++;
+                        curPos++;
+                        continue;
+                    }
+                    else
+                    {
+                        listSM.ForEach(m => m.Reset());
+                        workSM = new(listSM);
+                    }
+                }
+
+                foreach (var sm in workSM)
+                {
+                    sm.Jump(c);
+                    if (!sm.IsWork)
+                        workSM.Remove(sm);
+                }
+                curPos += 1;
+
+
+                if (workSM.Count > 0) continue;
+
+
+                var machine = listSM.Max(new MachineComparer());
+                if (machine != null && machine.Count != 0)
+                {
+                    Console.WriteLine($"{machine.Name,-10}:{txt.Substring(basePos, machine.Count)}");
+                    basePos += machine.Count;
+                    curPos = basePos;
+                }
+                else
+                {
+                    if (c != '\0')
+                        throw new Exception("非法字符");
+                }
             }
-            
-
 
         }
+
+        class MachineComparer : IComparer<StateMachine>
+        {
+            int IComparer<StateMachine>.Compare(StateMachine? x, StateMachine? y)
+            {
+                return x.Count - y.Count;
+            }
+        }
+
 
         static void Main2(string[] args)
         {
@@ -67,13 +166,13 @@ namespace Analytical_Expression
 
             NfaDigraphCreater.PrintDigraph(nfa);
 
-            Console.WriteLine("=============");
-            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            DfaDigraphCreater.PrintDigraph(dfa, "dfa", false);
+            //Console.WriteLine("=============");
+            //DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
+            //DfaDigraphCreater.PrintDigraph(dfa, "dfa", false);
 
-            Console.WriteLine("=============");
-            var dmin = dfa.Minimize();
-            DfaDigraphCreater.PrintDigraph(dmin, "dmin", false);
+            //Console.WriteLine("=============");
+            //var dmin = dfa.Minimize();
+            //DfaDigraphCreater.PrintDigraph(dmin, "dmin", false);
         }
 
 

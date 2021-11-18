@@ -7,16 +7,22 @@ namespace Analytical_Expression
     {
         public int State { get; private set; } = 0;
 
-        public bool Acceptable
+        private bool IsAcceptable
         {
             get
             {
-                return (TypeTable[State] & DfaNodeType.Acceptable) == DfaNodeType.Acceptable;
+                return (typeTable[State] & DfaNodeType.Acceptable) == DfaNodeType.Acceptable;
             }
         }
 
-        List<Dictionary<int, int>> JumpTable = new();
-        List<DfaNodeType> TypeTable = new();
+        List<Dictionary<int, int>> jumpTable = new();
+        List<DfaNodeType> typeTable = new();
+        public int Count { get; private set; } = 0;
+        private int jumpCount = 0;
+
+        public bool IsWork { get; private set; } = true;
+
+        public string Name { get; set; }
 
         public StateMachine(DfaDigraphNode dfa)
         {
@@ -41,25 +47,52 @@ namespace Analytical_Expression
             for (int i = 0; i < lstNode.Count; i++)
             {
                 var node = lstNode[i];
-                TypeTable.Add(node.Type);
+                typeTable.Add(node.Type);
                 indexTable[node] = i;
             }
 
             for (int i = 0; i < lstNode.Count; i++)
             {
                 var node = lstNode[i];
-                JumpTable.Add(node.Edges.ToDictionary(e => e.Key, e => indexTable[e.Value]));
+                jumpTable.Add(node.Edges.ToDictionary(e => e.Key, e => indexTable[e.Value]));
             }
         }
 
         public bool Jump(int c)
         {
-            if (JumpTable[State].TryGetValue(c, out var state))
+            if (!IsWork)
+                return false;
+
+            if (jumpTable[State].TryGetValue(c, out var state))
             {
                 State = state;
+                jumpCount += 1;
+
+                if (IsAcceptable)
+                {
+                    Count += jumpCount;
+                    jumpCount = 0;
+                }
+
+                
+
                 return true;
             }
-            return false;
+            else {
+                IsWork = false;
+                jumpCount = 0;
+                return false; 
+            }
+        }
+
+        
+
+        public void Reset()
+        {
+            IsWork = true;
+            State = 0;
+            Count = 0;
+            jumpCount = 0;
         }
     }
 

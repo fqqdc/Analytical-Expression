@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Digraph.cs" />
     <Compile Remove="OldProgram.cs" />
   </ItemGroup>
 
