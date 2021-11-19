@@ -70,7 +70,7 @@ namespace Analytical_Expression
             List<StateMachine> listSM = new() { smNumber, smId, smSymbol, smLeft, smRight };
             HashSet<StateMachine> workSM = new();
 
-            string txt = " 2 *(  3+(4-5) ) / 666>= ccc233  \0";
+            string txt = " 2 *(  3+(4-5) ) / 666>= ccc233  ";
             Console.WriteLine(txt);
 
             int basePos = 0;
@@ -116,8 +116,7 @@ namespace Analytical_Expression
                 }
                 else
                 {
-                    if (c != '\0')
-                        throw new Exception("非法字符");
+                    throw new Exception("非法字符");
                 }
             }
 
