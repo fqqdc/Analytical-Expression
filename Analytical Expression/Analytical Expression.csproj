@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <Compile Remove="OldProgram.cs" />
+    <Compile Remove="StateMachine2.cs" />
   </ItemGroup>
 
   <ItemGroup>

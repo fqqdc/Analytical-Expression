@@ -39,12 +39,7 @@ namespace Analytical_Expression
                     DfaDigraphNode qNode;
                     if (!dict.TryGetValue(qSet, out qNode))
                     {
-                        DfaNodeType type = DfaNodeType.Unacceptable;
-                        if (qSet.Contains(nfa.Head))
-                            type = type | DfaNodeType.Start;
-                        if (qSet.Contains(nfa.Tail))
-                            type = type | DfaNodeType.Acceptable;
-                        qNode = new DfaDigraphNode(id++) { Type = type };
+                        qNode = new DfaDigraphNode(id++) { IsAcceptable = qSet.Contains(nfa.Tail) };
 
                         if (head == null) head = qNode;
                         dict[qSet] = qNode;
@@ -54,12 +49,7 @@ namespace Analytical_Expression
                     DfaDigraphNode tNode;
                     if (!dict.TryGetValue(tSet, out tNode))
                     {
-                        DfaNodeType type = DfaNodeType.Unacceptable;
-                        if (tSet.Contains(nfa.Head))
-                            type = type | DfaNodeType.Start;
-                        if (tSet.Contains(nfa.Tail))
-                            type = type | DfaNodeType.Acceptable;
-                        tNode = new DfaDigraphNode(id++) { Type = type };
+                        tNode = new DfaDigraphNode(id++) { IsAcceptable = tSet.Contains(nfa.Tail) };
 
                         dict[tSet] = tNode;
                     }
@@ -131,7 +121,7 @@ namespace Analytical_Expression
             return newSet;
         }
 
-        public static void PrintDigraph(DfaDigraphNode dig, string pre, bool showNfa)
+        public static void PrintDigraph(DfaDigraphNode dig, bool showNfa)
         {
             HashSet<DfaDigraphNode> setVisited = new();
             Queue<DfaDigraphNode> queue = new();
@@ -146,7 +136,7 @@ namespace Analytical_Expression
                 }
 
                 setVisited.Add(n);
-                Console.WriteLine(n.PrintString(pre, showNfa));
+                Console.WriteLine(n.PrintString(showNfa));
 
                 foreach (var e in n.Edges)
                 {
@@ -181,13 +171,7 @@ namespace Analytical_Expression
                 // 为每一个集合创建节点
 
                 //var nfaNodes = setQelem.SelectMany(n => n.NfaElement);
-                DfaNodeType type = DfaNodeType.Unacceptable;
-                if (setQelem.Any(n => n.Type == DfaNodeType.Start))
-                    type |= DfaNodeType.Start;
-                if (setQelem.Any(n => n.Type == DfaNodeType.Acceptable))
-                    type |= DfaNodeType.Acceptable;
-
-                DfaDigraphNode node = new(id++) { Type = type };
+                DfaDigraphNode node = new(id++) { IsAcceptable = setQelem.Any(n => n.IsAcceptable) };
 
                 tableSet2Dfa[setQelem] = node;
             }
@@ -213,7 +197,9 @@ namespace Analytical_Expression
             }
 
             //return tableSet2Dfa.Values.Single(n => n.NfaElement.Contains(head));
-            return tableSet2Dfa.Values.Single(n => (n.Type & DfaNodeType.Start) == DfaNodeType.Start);
+            var allNodes = tableSet2Dfa.Values.ToHashSet();
+            var shiftNodes = tableSet2Dfa.Values.SelectMany(n => n.Edges.Select(e => e.Value)).ToHashSet();
+            return allNodes.Except(shiftNodes).Single();
         }
 
         /// <summary>
@@ -313,7 +299,7 @@ namespace Analytical_Expression
                 node = queue.Dequeue();
 
                 visited.Add(node);
-                if ((node.Type & DfaNodeType.Acceptable) == DfaNodeType.Acceptable) A.Add(node);
+                if (node.IsAcceptable) A.Add(node);
                 else N.Add(node);
 
                 foreach (var edge in node.Edges)

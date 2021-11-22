@@ -5,57 +5,34 @@ namespace Analytical_Expression
 {
     public class StateMachine
     {
-        public int State { get; private set; } = 0;
-
         private bool IsAcceptable
         {
             get
             {
-                return (typeTable[State] & DfaNodeType.Acceptable) == DfaNodeType.Acceptable;
+                return current.IsAcceptable;
             }
         }
 
-        List<Dictionary<int, int>> jumpTable = new();
-        List<DfaNodeType> typeTable = new();
+        DfaDigraphNode head, current;
         public int Count { get; private set; } = 0;
         private int jumpCount = 0;
 
         public bool IsWork { get; private set; } = true;
 
+        public string StateName
+        {
+            get
+            {
+                return current.ToString();
+            }
+        }
+
         public string Name { get; set; }
 
         public StateMachine(DfaDigraphNode dfa)
         {
-            HashSet<DfaDigraphNode> visited = new();
-            Stack<DfaDigraphNode> queue = new();
-            List<DfaDigraphNode> lstNode = new();
-            Dictionary<DfaDigraphNode, int> indexTable = new();
-
-            queue.Push(dfa);
-            while (queue.Count > 0)
-            {
-                var n = queue.Pop();
-                visited.Add(n);
-                lstNode.Add(n);
-                n.Edges.Select(e => e.Value)
-                    .Distinct()
-                    .Where(e => !visited.Contains(e))
-                    .ToList()
-                    .ForEach(e => queue.Push(e));
-            }
-
-            for (int i = 0; i < lstNode.Count; i++)
-            {
-                var node = lstNode[i];
-                typeTable.Add(node.Type);
-                indexTable[node] = i;
-            }
-
-            for (int i = 0; i < lstNode.Count; i++)
-            {
-                var node = lstNode[i];
-                jumpTable.Add(node.Edges.ToDictionary(e => e.Key, e => indexTable[e.Value]));
-            }
+            this.head = dfa;
+            current = head;
         }
 
         public bool Jump(int c)
@@ -63,9 +40,9 @@ namespace Analytical_Expression
             if (!IsWork)
                 return false;
 
-            if (jumpTable[State].TryGetValue(c, out var state))
+            if (current.Edges.TryGetValue(c, out var shiftNode))
             {
-                State = state;
+                current = shiftNode;
                 jumpCount += 1;
 
                 if (IsAcceptable)
@@ -74,23 +51,24 @@ namespace Analytical_Expression
                     jumpCount = 0;
                 }
 
-                
+
 
                 return true;
             }
-            else {
+            else
+            {
                 IsWork = false;
                 jumpCount = 0;
-                return false; 
+                return false;
             }
         }
 
-        
+
 
         public void Reset()
         {
             IsWork = true;
-            State = 0;
+            current = head;
             Count = 0;
             jumpCount = 0;
         }
