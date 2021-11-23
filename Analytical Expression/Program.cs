@@ -122,150 +122,70 @@ namespace Analytical_Expression
         }
 
 
+        static List<Production> Productions = new();
         static void Main(string[] args)
         {
-            NonTerminal n_N = new("N");
-            NonTerminal o = new(n_N);
+            Productions.Add(new("S", new string[] { "N", "V", "N" }));
+            Productions.Add(new("N", new string[] { "s" }));
+            Productions.Add(new("N", new string[] { "t" }));
+            Productions.Add(new("N", new string[] { "g" }));
+            Productions.Add(new("N", new string[] { "w" }));
+            Productions.Add(new("V", new string[] { "e" }));
+            Productions.Add(new("V", new string[] { "d" }));
 
-            Console.WriteLine(Equals(o, n_N));
-            Console.WriteLine(ReferenceEquals(o, n_N));
+            string[] tokens = { "w", "d", "w" };
+            int indexTokens = 0;
+            if (TryMatch(tokens, ref indexTokens, "S"))
+                Console.WriteLine("ok");
+            else Console.WriteLine("error");
+        }
 
-            Console.WriteLine(ReferenceEquals(o.Productions, n_N.Productions));
-
-            return;
-
-
-            Terminal t_s = new("s");
-            Terminal t_t = new("t");
-            Terminal t_g = new("g");
-            Terminal t_w = new("w");
-            n_N.Productions.Add(new() { t_s });
-            n_N.Productions.Add(new() { t_t });
-            n_N.Productions.Add(new() { t_g });
-            n_N.Productions.Add(new() { t_w });
-
-            NonTerminal n_V = new("V");
-            Terminal t_e = new("e");
-            Terminal t_d = new("d");
-            n_V.Productions.Add(new() { t_e });
-            n_V.Productions.Add(new() { t_d });
-
-            NonTerminal n_S = new("S");
-            n_S.Productions.Add(new() { n_N, n_V, n_N });
-
-            Console.WriteLine(n_S);
-            Console.WriteLine(n_N);
-            Console.WriteLine(n_V);
-            Console.WriteLine(t_d);
-
-            Token[] tokens = { t_t, t_d, t_w };
-            int i = 0;
-            int right_i = 0;
-            Stack<Token> stack = new(new Token[] { n_S });
-            while (stack.Count > 0)
+        static bool TryMatch(string[] tokens, ref int indexTokens, string token)
+        {
+            if (!char.IsUpper(token[0]))
             {
-                if (stack.Peek() is Terminal t)
+                if (token == tokens[indexTokens])
                 {
-                    if (t == tokens[i++])
-                        stack.Pop();
-                    else
-                    {
-                        BackTrack();
-                    }
+                    indexTokens += 1;
+                    return true;
                 }
-                else if (stack.Peek() is NonTerminal T)
+                else return false;
+            }
+            else
+            {
+                var productions = Productions.Where(p => p.Left == token).ToList();
+                var r = false;
+                foreach (var production in productions)
                 {
-                    stack.Pop();
-                    var right = T.Productions[right_i++].AsEnumerable();
-                    foreach (var item in right.Reverse())
+                    foreach (var _token in production.Right)
                     {
-                        stack.Push(item);
+                        int oldIndexTokens = indexTokens;
+                        r = TryMatch(tokens, ref indexTokens, _token);
+                        if (!r)
+                        {
+                            indexTokens = oldIndexTokens;
+                            break;
+                        }
                     }
+                    if (r) return true;
                 }
             }
-        }
-
-        private static void BackTrack()
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    abstract class Token
-    {
-        public string Name { get; init; }
-        protected Token(string Name) => this.Name = Name;
-        protected Token(Token original) : this(original.Name) { }
-        public override string ToString()
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.Append(GetType().Name[0]);
-            stringBuilder.Append(" { ");
-            if (PrintMembers(stringBuilder))
-            {
-                stringBuilder.Append(" ");
-            }
-            stringBuilder.Append("}");
-            return stringBuilder.ToString();
-        }
-
-        protected virtual bool PrintMembers(StringBuilder builder)
-        {
             return false;
         }
     }
 
-    class Terminal : Token
+    record Production(string Left, string[] Right)
     {
-        public Terminal(string Name) : base(Name) { }
-
-        public override string ToString()
+        protected virtual bool PrintMembers(StringBuilder builder)
         {
-            return base.ToString();
-        }
+            builder.Append($"{Left} =>");
 
-        protected override bool PrintMembers(StringBuilder builder)
-        {
-            builder.Append($"{Name}");
-            return true;
-        }
-    }
-    class NonTerminal : Token
-    {
-        public NonTerminal(string Name) : base(Name) { }
-
-        public NonTerminal(NonTerminal other) : base(other) { this.Productions = other.Productions.Select(p => p.ToList()).ToList(); }
-
-        public List<List<Token>> Productions { get; init; } = new();
-
-        public override string ToString()
-        {
-            return base.ToString();
-        }
-
-        protected override bool PrintMembers(StringBuilder builder)
-        {
-            builder.Append($"{Name}");
-
-            for (int i = 0; i < Productions.Count; i++)
+            for (int i = 0; i < Right.Length; i++)
             {
-                var pChildren = Productions[i];
-                if (i == 0) builder.Append($", P = {{ ");
-
-                if (pChildren == null) continue;
-                for (int j = 0; j < pChildren.Count; j++)
-                {
-                    var child = pChildren[j];
-                    if (j == 0) builder.Append($" {Name} => ");
-                    builder.Append(child.Name);
-                    if (j < pChildren.Count - 1) builder.Append($" ");
-                }
-
-                if (i < Productions.Count - 1) builder.Append($",");
-                else builder.Append($" }}");
+                var rChild = Right[i];
+                builder.Append($" {rChild}");
             }
             return true;
         }
-
     }
 }
