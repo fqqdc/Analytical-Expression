@@ -135,9 +135,64 @@ namespace Analytical_Expression
 
             string[] tokens = { "w", "d", "w" };
             int indexTokens = 0;
-            if (TryMatch(tokens, ref indexTokens, "S"))
+            InitAnalysisTable(Productions);
+            if (LL_1_Match(tokens, ref indexTokens, "S"))
                 Console.WriteLine("ok");
             else Console.WriteLine("error");
+        }
+        static Dictionary<string, Dictionary<string, List<string>>> AnalysisTable;
+        static void InitAnalysisTable(List<Production> productions)
+        {
+            AnalysisTable = new();
+            foreach (var p in productions)
+            {
+                if (!AnalysisTable.TryGetValue(p.Left, out var list))
+                {
+                    list = new();
+                    AnalysisTable[p.Left] = list;
+                }
+                if(!list.TryGetValue(p.Right[0], out var subList))
+                {
+                    subList = new();
+                    list[p.Right[0]] = subList;
+                }
+                subList = new(p.Right);
+            }
+        }
+        static bool LL_1_Match(string[] tokens, ref int indexTokens, string token)
+        {
+            var i = 0;
+            var stack = new Stack<string>();
+            stack.Push(token);
+            while (stack.Count > 0)
+            {
+                if (!char.IsUpper(stack.Peek()[0]))
+                {
+                    if (stack.Peek() == tokens[indexTokens])
+                    {
+                        stack.Pop();
+                        indexTokens += 1;
+                    }
+                    else return false;
+                }
+                else
+                {
+                    if (AnalysisTable.TryGetValue(stack.Peek(), out var dict))
+                    {
+                        if (dict.TryGetValue(tokens[indexTokens], out var list))
+                        {
+                            stack.Pop();
+                            foreach (var item in list.AsEnumerable().Reverse())
+                            {
+                                stack.Push(item);
+                            }
+                        }
+                        else return false;
+                    }
+                    else return false;
+                }
+            }
+            return true;
         }
 
         static bool TryMatch(string[] tokens, ref int indexTokens, string token)
