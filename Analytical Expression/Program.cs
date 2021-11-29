@@ -157,7 +157,7 @@ namespace Analytical_Expression
             Stack<Symbol> workStack = new(new Symbol[] { CreateSymbol("E") });
             _count = 0;
             if (TryMatchByLL1(tokens, ref indexTokens, workStack, dict))
-            //if (TryMatch(tokens, ref indexTokens, workStack))
+                //if (TryMatch(tokens, ref indexTokens, workStack))
                 Console.WriteLine("ok");
             else Console.WriteLine("error");
             Console.WriteLine($"count:{_count}");
@@ -510,17 +510,18 @@ namespace Analytical_Expression
     }
 
 
-    record Production(NonTerminal Left, Symbol[] Right)
+    record Production(NonTerminal Left, Symbol[] Right, int Position = -1)
     {
         protected virtual bool PrintMembers(StringBuilder builder)
         {
             builder.Append($"{Left} =>");
-
             for (int i = 0; i < Right.Length; i++)
             {
                 var rChild = Right[i];
                 builder.Append($" {rChild}");
             }
+            if (Position >= 0)
+                builder.Append($" @{Position}");
             return true;
         }
     }
