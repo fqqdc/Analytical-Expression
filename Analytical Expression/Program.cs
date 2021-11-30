@@ -124,9 +124,9 @@ namespace Analytical_Expression
             DfaDigraphCreater.PrintDigraph(dmin, false);
         }
 
-        static List<Production> Productions = new();
+        static List<Production> AllProduction = new();
         static int _count = 0;
-        static void Main(string[] args)
+        static void MainLL1(string[] args)
         {
             //Productions.Add(CreateProduction("E", "E + T"));
             //Productions.Add(CreateProduction("E", "T"));
@@ -134,13 +134,13 @@ namespace Analytical_Expression
             //Productions.Add(CreateProduction("T", "F"));
             //Productions.Add(CreateProduction("F", "n"));
 
-            Productions.Add(CreateProduction("E", "T E'"));
-            Productions.Add(CreateProduction("E'", "+ T E'"));
-            Productions.Add(CreateProduction("E'", ""));
-            Productions.Add(CreateProduction("T", "F T'"));
-            Productions.Add(CreateProduction("T'", "* F T'"));
-            Productions.Add(CreateProduction("T'", ""));
-            Productions.Add(CreateProduction("F", "n"));
+            AllProduction.Add(CreateProduction("E", "T E'"));
+            AllProduction.Add(CreateProduction("E'", "+ T E'"));
+            AllProduction.Add(CreateProduction("E'", ""));
+            AllProduction.Add(CreateProduction("T", "F T'"));
+            AllProduction.Add(CreateProduction("T'", "* F T'"));
+            AllProduction.Add(CreateProduction("T'", ""));
+            AllProduction.Add(CreateProduction("F", "n"));
 
             //Productions.Add(CreateProduction("Z", "d"));
             //Productions.Add(CreateProduction("Z", "X Y Z"));
@@ -149,9 +149,9 @@ namespace Analytical_Expression
             //Productions.Add(CreateProduction("X", "Y"));
             //Productions.Add(CreateProduction("X", "a"));
 
-            var dict = GetLL1Table(Productions.Select(p => p.Left).Distinct(), Productions);
+            var dict = GetLL1Table(AllProduction.Select(p => p.Left).Distinct(), AllProduction);
 
-            Terminal[] tokens = CreateSymbols("n + n * n + n * n + n * n + n n").Cast<Terminal>().ToArray();
+            Terminal[] tokens = CreateSymbols("n + n * n + n * n + n * n + n").Cast<Terminal>().ToArray();
             int indexTokens = 0;
 
             Stack<Symbol> workStack = new(new Symbol[] { CreateSymbol("E") });
@@ -162,80 +162,131 @@ namespace Analytical_Expression
             else Console.WriteLine("error");
             Console.WriteLine($"count:{_count}");
 
-            static Production CreateProduction(string left, string right)
-            {
-                var sLeft = new NonTerminal(left);
-                var strRight = right.Split(' ', StringSplitOptions.TrimEntries);
-                var sRight = strRight.Select(str => str.Length > 0 && char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str)).ToArray();
-                return new Production(sLeft, sRight);
-            }
-            static Symbol[] CreateSymbols(string strInput)
-            {
-                return strInput.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(str => str.Trim())
-                    .Select(str => char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str))
-                    .ToArray();
-            }
-            static Symbol CreateSymbol(string strInput) => char.IsUpper(strInput[0]) ? (Symbol)new NonTerminal(strInput) : (Symbol)new Terminal(strInput);
-            static bool TryMatchByLL1(Terminal[] tokens, ref int indexTokens, Stack<Symbol> workStack, Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> lL1Table)
-            {
-                _count += 1;
-                Console.WriteLine("===========");
-
-                while (workStack.Count > 0)
-                {
-                    Console.WriteLine(string.Join(",", workStack.Select(s => s.Name)));
-                    Console.WriteLine("tokens: " + String.Join("", tokens.Take(indexTokens + 1).Select(t => t.Name).ToArray()));
-
-                    var symbol = workStack.Pop();
-
-                    Console.WriteLine(symbol);
-                    if (symbol is Terminal terminal)
-                    {
-                        if (terminal.Name == string.Empty)
-                            continue;
-
-                        var token = new Terminal(string.Empty);
-                        if (indexTokens < tokens.Length)
-                            token = tokens[indexTokens];
-
-                        if (terminal == token)
-                        {
-                            indexTokens += 1;
-                        }
-                        else return false;
-                    }
-                    else
-                    {
-                        var token = new Terminal(string.Empty);
-                        if (indexTokens < tokens.Length)
-                            token = tokens[indexTokens];
-
-                        if (!lL1Table.TryGetValue(((NonTerminal)symbol, token), out var productions))
-                            productions = new Production[0];
-                        var r = false;
-                        foreach (var subProduction in productions)
-                        {
-                            Stack<Symbol> subWorkStack = new(workStack.Reverse());
-                            foreach (var subRightSymbol in subProduction.Right.Reverse())
-                            {
-                                subWorkStack.Push(subRightSymbol);
-                            }
-                            int oldIndexTokens = indexTokens;
-
-                            r = TryMatchByLL1(tokens, ref indexTokens, subWorkStack, lL1Table);
-                            if (r) return true;
-
-                            indexTokens = oldIndexTokens;
-                        }
-                        return false;
-                    }
-                }
-                return true;
-            }
 
         }
 
+        static void Main(string[] args)
+        {
+            AllProduction.Add(CreateProduction("S'", "S"));
+            AllProduction.Add(CreateProduction("S", "x x T x T"));
+            AllProduction.Add(CreateProduction("T", "y"));
+
+            Terminal[] tokens = CreateSymbols("x x y x y").Cast<Terminal>().ToArray();
+            if (TryMatchByLR0(tokens, new NonTerminal("S'")))
+                Console.WriteLine("ok");
+            else Console.WriteLine("error");
+        }
+
+        static bool TryMatchByLR0(Terminal[] tokens, NonTerminal start)
+        {
+            int indexTokens = 0;
+            var state = GetLR0Table(AllProduction, AllProduction.Single(p => p.Left == start), out var actionTable, out var gotoTable);
+            Stack<HashSet<Production>> stack = new();
+            stack.Push(state);
+            do
+            {
+                var token = tokens[indexTokens];
+                indexTokens += 1;
+                state = stack.Peek();
+                if (actionTable.TryGetValue((state, token), out var nextState))
+                {
+                    if (nextState.All(p => p.Position < p.Right.Length))
+                    {
+                        stack.Push(nextState);
+                    }
+                    else
+                    {
+                        stack.Push(nextState);
+                        bool needReduce = true;
+                        while (needReduce)
+                        {
+                            needReduce = false;
+                            nextState.Single().Right.ToList().ForEach(s => stack.Pop());
+                            var nonTerminal = nextState.Single().Left;
+                            if (nonTerminal == start)
+                                return true;
+                            if (gotoTable.TryGetValue((stack.Peek(), nonTerminal), out nextState))
+                            {
+                                needReduce = !nextState.All(p => p.Position < p.Right.Length);
+                                stack.Push(nextState);
+                            }
+                            else return false;
+                        }
+                    }
+                }
+                else return false;
+            }
+            while (tokens.Length > indexTokens);
+            return false;
+        }
+
+        static HashSet<Production> GetLR0Table(IEnumerable<Production> allProduction, Production firstProduction,
+            out Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> actionTable,
+            out Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> gotoTable)
+        {
+            actionTable = new();
+            gotoTable = new();
+            Symbol[] symbols = allProduction.SelectMany(p => p.Right.Append(p.Left)).Distinct().ToArray();
+            var state_0 = Closure(new Production[] { firstProduction with { Position = 0 } }, allProduction);
+            var set = new HashSet<HashSet<Production>>(HashSetEqualityComparer<Production>.Default);
+            set.Add(state_0);
+            var workQueue = new Queue<HashSet<Production>>();
+            workQueue.Enqueue(state_0);
+            while (workQueue.Count > 0)
+            {
+                var state = workQueue.Dequeue();
+                foreach (var symbol in symbols)
+                {
+                    var newState = Goto(state, symbol, allProduction);
+                    if (newState.Count == 0) continue;
+                    if (symbol is Terminal terminal)
+                        actionTable[(state, symbol)] = newState;
+                    else gotoTable[(state, symbol)] = newState;
+                    if (!set.Contains(newState))
+                    {
+                        set.Add(newState);
+                        workQueue.Enqueue(newState);
+                    }
+                }
+            }
+
+            return state_0;
+
+            static HashSet<Production> Goto(IEnumerable<Production> c, Symbol symbol, IEnumerable<Production> allProduction)
+            {
+                HashSet<Production> temp = new();
+                foreach (Production item1 in
+                    c.Where(p => p.Position < p.Right.Length && p.Right[p.Position] == symbol))
+                {
+                    temp.Add(item1 with { Position = item1.Position + 1 });
+                }
+                return Closure(temp, allProduction);
+            }
+            static HashSet<Production> Closure(IEnumerable<Production> c, IEnumerable<Production> allProduction)
+            {
+                HashSet<Production> set = new(c);
+                bool isChanged = true;
+                while (isChanged)
+                {
+                    isChanged = false;
+                    HashSet<Production> newSet = new(set);
+                    foreach (var itemP in set.Where(p => p.Position < p.Right.Length))
+                    {
+                        if (itemP.Right[itemP.Position] is NonTerminal nonT)
+                        {
+                            foreach (var production in allProduction.Where(p => p.Left == nonT))
+                            {
+                                newSet.Add(production with { Position = 0 });
+                            }
+                        }
+                    }
+                    isChanged = !set.SetEquals(newSet);
+                    set = newSet;
+                }
+
+                return set;
+            }
+        }
 
 
         static Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> GetLL1Table(IEnumerable<NonTerminal> nonTerminals, IEnumerable<Production> productions)
@@ -316,7 +367,7 @@ namespace Analytical_Expression
             static Dictionary<NonTerminal, HashSet<Terminal>> GetFollowSets(IEnumerable<Production> productions,
                 HashSet<NonTerminal> nullableSet, Dictionary<NonTerminal, HashSet<Terminal>> firstSetsNonTerminal)
             {
-                var nonTerminals = Productions.Select(p => p.Left).Distinct();
+                var nonTerminals = AllProduction.Select(p => p.Left).Distinct();
                 Dictionary<NonTerminal, HashSet<Terminal>> followSets = new();
 
                 foreach (var nonTerminal in nonTerminals)
@@ -358,7 +409,7 @@ namespace Analytical_Expression
             static Dictionary<NonTerminal, HashSet<Terminal>> GetFirstSetsByNonTerminal(IEnumerable<Production> productions,
                 HashSet<NonTerminal> nullableSet)
             {
-                var nonTerminals = Productions.Select(p => p.Left).Distinct();
+                var nonTerminals = AllProduction.Select(p => p.Left).Distinct();
                 Dictionary<NonTerminal, HashSet<Terminal>> firstSets = new();
                 foreach (var nonTerminal in nonTerminals)
                 {
@@ -458,7 +509,7 @@ namespace Analytical_Expression
                 }
                 else
                 {
-                    var productions = Productions.Where(p => p.Left == symbol).ToList();
+                    var productions = AllProduction.Where(p => p.Left == symbol).ToList();
                     var r = false;
                     foreach (var subProduction in productions)
                     {
@@ -479,6 +530,77 @@ namespace Analytical_Expression
             }
             return indexTokens >= tokens.Length;
         }
+        static bool TryMatchByLL1(Terminal[] tokens, ref int indexTokens, Stack<Symbol> workStack, Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> lL1Table)
+        {
+            _count += 1;
+            Console.WriteLine("===========");
+
+            while (workStack.Count > 0)
+            {
+                Console.WriteLine(string.Join(",", workStack.Select(s => s.Name)));
+                Console.WriteLine("tokens: " + String.Join("", tokens.Take(indexTokens + 1).Select(t => t.Name).ToArray()));
+
+                var symbol = workStack.Pop();
+
+                Console.WriteLine(symbol);
+                if (symbol is Terminal terminal)
+                {
+                    if (terminal.Name == string.Empty)
+                        continue;
+
+                    var token = new Terminal(string.Empty);
+                    if (indexTokens < tokens.Length)
+                        token = tokens[indexTokens];
+
+                    if (terminal == token)
+                    {
+                        indexTokens += 1;
+                    }
+                    else return false;
+                }
+                else
+                {
+                    var token = new Terminal(string.Empty);
+                    if (indexTokens < tokens.Length)
+                        token = tokens[indexTokens];
+
+                    if (!lL1Table.TryGetValue(((NonTerminal)symbol, token), out var productions))
+                        productions = new Production[0];
+                    var r = false;
+                    foreach (var subProduction in productions)
+                    {
+                        Stack<Symbol> subWorkStack = new(workStack.Reverse());
+                        foreach (var subRightSymbol in subProduction.Right.Reverse())
+                        {
+                            subWorkStack.Push(subRightSymbol);
+                        }
+                        int oldIndexTokens = indexTokens;
+
+                        r = TryMatchByLL1(tokens, ref indexTokens, subWorkStack, lL1Table);
+                        if (r) return true;
+
+                        indexTokens = oldIndexTokens;
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+        static Production CreateProduction(string left, string right)
+        {
+            var sLeft = new NonTerminal(left);
+            var strRight = right.Split(' ', StringSplitOptions.TrimEntries);
+            var sRight = strRight.Select(str => str.Length > 0 && char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str)).ToArray();
+            return new Production(sLeft, sRight);
+        }
+        static Symbol[] CreateSymbols(string strInput)
+        {
+            return strInput.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(str => str.Trim())
+                .Select(str => char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str))
+                .ToArray();
+        }
+        static Symbol CreateSymbol(string strInput) => char.IsUpper(strInput[0]) ? (Symbol)new NonTerminal(strInput) : (Symbol)new Terminal(strInput);
 
         [Conditional("DEBUG_PRINT")]
         static void Print<T1, T2>(Dictionary<T1, T2> sets, string name = "") where T2 : IEnumerable
@@ -518,10 +640,17 @@ namespace Analytical_Expression
             for (int i = 0; i < Right.Length; i++)
             {
                 var rChild = Right[i];
-                builder.Append($" {rChild}");
+                builder.Append(" ");
+                if (Position == i)
+                    builder.Append($"@");
+                builder.Append($"{rChild}");
             }
-            if (Position >= 0)
-                builder.Append($" @{Position}");
+
+            if (Position == Right.Length)
+            {
+                builder.Append($" @");
+            }
+
             return true;
         }
     }
