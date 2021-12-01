@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections;
@@ -167,136 +166,27 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            AllProduction.Add(CreateProduction("S'", "S"));
-            AllProduction.Add(CreateProduction("S", "x x T x T"));
+            AllProduction.Add(CreateProduction("S'", "S $"));
+            AllProduction.Add(CreateProduction("S", "x x T T"));
             AllProduction.Add(CreateProduction("T", "y"));
 
-            Terminal[] tokens = CreateSymbols("x x y x y").Cast<Terminal>().ToArray();
-            if (TryMatchByLR0(tokens, new NonTerminal("S'")))
+            Terminal[] tokens = CreateSymbols("x x x y y$").Cast<Terminal>().ToArray();
+
+            SLRyntaxAnalyzer parser = new(AllProduction, AllProduction.Single(p => p.Left == new NonTerminal("S'")));
+
+            if (parser.TryMatch(tokens))
                 Console.WriteLine("ok");
             else Console.WriteLine("error");
         }
 
-        static bool TryMatchByLR0(Terminal[] tokens, NonTerminal start)
+        static Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> GetLL1Table(IEnumerable<NonTerminal> nonTerminals, IEnumerable<Production> allProduction)
         {
-            int indexTokens = 0;
-            var state = GetLR0Table(AllProduction, AllProduction.Single(p => p.Left == start), out var actionTable, out var gotoTable);
-            Stack<HashSet<Production>> stack = new();
-            stack.Push(state);
-            do
-            {
-                var token = tokens[indexTokens];
-                indexTokens += 1;
-                state = stack.Peek();
-                if (actionTable.TryGetValue((state, token), out var nextState))
-                {
-                    if (nextState.All(p => p.Position < p.Right.Length))
-                    {
-                        stack.Push(nextState);
-                    }
-                    else
-                    {
-                        stack.Push(nextState);
-                        bool needReduce = true;
-                        while (needReduce)
-                        {
-                            needReduce = false;
-                            nextState.Single().Right.ToList().ForEach(s => stack.Pop());
-                            var nonTerminal = nextState.Single().Left;
-                            if (nonTerminal == start)
-                                return true;
-                            if (gotoTable.TryGetValue((stack.Peek(), nonTerminal), out nextState))
-                            {
-                                needReduce = !nextState.All(p => p.Position < p.Right.Length);
-                                stack.Push(nextState);
-                            }
-                            else return false;
-                        }
-                    }
-                }
-                else return false;
-            }
-            while (tokens.Length > indexTokens);
-            return false;
-        }
+            var nullableSet = GetNullableSet(allProduction);
+            var firstSetsByNonTerminal = GetFirstSetsByNonTerminal(allProduction, nullableSet);
+            var followSets = GetFollowSets(allProduction, nullableSet, firstSetsByNonTerminal);
+            var firstSetsByProduction = CreateFirstSetsByProduction(allProduction, nullableSet, firstSetsByNonTerminal, followSets);
 
-        static HashSet<Production> GetLR0Table(IEnumerable<Production> allProduction, Production firstProduction,
-            out Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> actionTable,
-            out Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> gotoTable)
-        {
-            actionTable = new();
-            gotoTable = new();
-            Symbol[] symbols = allProduction.SelectMany(p => p.Right.Append(p.Left)).Distinct().ToArray();
-            var state_0 = Closure(new Production[] { firstProduction with { Position = 0 } }, allProduction);
-            var set = new HashSet<HashSet<Production>>(HashSetEqualityComparer<Production>.Default);
-            set.Add(state_0);
-            var workQueue = new Queue<HashSet<Production>>();
-            workQueue.Enqueue(state_0);
-            while (workQueue.Count > 0)
-            {
-                var state = workQueue.Dequeue();
-                foreach (var symbol in symbols)
-                {
-                    var newState = Goto(state, symbol, allProduction);
-                    if (newState.Count == 0) continue;
-                    if (symbol is Terminal terminal)
-                        actionTable[(state, symbol)] = newState;
-                    else gotoTable[(state, symbol)] = newState;
-                    if (!set.Contains(newState))
-                    {
-                        set.Add(newState);
-                        workQueue.Enqueue(newState);
-                    }
-                }
-            }
-
-            return state_0;
-
-            static HashSet<Production> Goto(IEnumerable<Production> c, Symbol symbol, IEnumerable<Production> allProduction)
-            {
-                HashSet<Production> temp = new();
-                foreach (Production item1 in
-                    c.Where(p => p.Position < p.Right.Length && p.Right[p.Position] == symbol))
-                {
-                    temp.Add(item1 with { Position = item1.Position + 1 });
-                }
-                return Closure(temp, allProduction);
-            }
-            static HashSet<Production> Closure(IEnumerable<Production> c, IEnumerable<Production> allProduction)
-            {
-                HashSet<Production> set = new(c);
-                bool isChanged = true;
-                while (isChanged)
-                {
-                    isChanged = false;
-                    HashSet<Production> newSet = new(set);
-                    foreach (var itemP in set.Where(p => p.Position < p.Right.Length))
-                    {
-                        if (itemP.Right[itemP.Position] is NonTerminal nonT)
-                        {
-                            foreach (var production in allProduction.Where(p => p.Left == nonT))
-                            {
-                                newSet.Add(production with { Position = 0 });
-                            }
-                        }
-                    }
-                    isChanged = !set.SetEquals(newSet);
-                    set = newSet;
-                }
-
-                return set;
-            }
-        }
-
-
-        static Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> GetLL1Table(IEnumerable<NonTerminal> nonTerminals, IEnumerable<Production> productions)
-        {
-            var nullableSet = GetNullableSet(productions);
-            var firstSetsByNonTerminal = GetFirstSetsByNonTerminal(productions, nullableSet);
-            var followSets = GetFollowSets(productions, nullableSet, firstSetsByNonTerminal);
-            var firstSetsByProduction = CreateFirstSetsByProduction(productions, nullableSet, firstSetsByNonTerminal, followSets);
-
-            return BuildLL1Table(productions, firstSetsByProduction);
+            return BuildLL1Table(allProduction, firstSetsByProduction);
 
             static Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> BuildLL1Table(IEnumerable<Production> productions,
                 Dictionary<Production, HashSet<Terminal>> firstSetsByProduction)
@@ -364,10 +254,10 @@ namespace Analytical_Expression
                 Print(pFirstSets, "FIRST_S");
                 return pFirstSets;
             }
-            static Dictionary<NonTerminal, HashSet<Terminal>> GetFollowSets(IEnumerable<Production> productions,
+            static Dictionary<NonTerminal, HashSet<Terminal>> GetFollowSets(IEnumerable<Production> allProduction,
                 HashSet<NonTerminal> nullableSet, Dictionary<NonTerminal, HashSet<Terminal>> firstSetsNonTerminal)
             {
-                var nonTerminals = AllProduction.Select(p => p.Left).Distinct();
+                var nonTerminals = allProduction.Select(p => p.Left).Distinct();
                 Dictionary<NonTerminal, HashSet<Terminal>> followSets = new();
 
                 foreach (var nonTerminal in nonTerminals)
@@ -379,7 +269,7 @@ namespace Analytical_Expression
                 while (isChanged)
                 {
                     isChanged = false;
-                    foreach (var production in productions)
+                    foreach (var production in allProduction)
                     {
                         var tempSet = new HashSet<Terminal>(followSets[production.Left]);
                         foreach (Symbol symbol in production.Right.Reverse())
@@ -406,7 +296,7 @@ namespace Analytical_Expression
                 Print(followSets, "FOLLOW");
                 return followSets;
             }
-            static Dictionary<NonTerminal, HashSet<Terminal>> GetFirstSetsByNonTerminal(IEnumerable<Production> productions,
+            static Dictionary<NonTerminal, HashSet<Terminal>> GetFirstSetsByNonTerminal(IEnumerable<Production> allProduction,
                 HashSet<NonTerminal> nullableSet)
             {
                 var nonTerminals = AllProduction.Select(p => p.Left).Distinct();
@@ -419,7 +309,7 @@ namespace Analytical_Expression
                 while (isChanged)
                 {
                     isChanged = false;
-                    foreach (var production in productions)
+                    foreach (var production in allProduction)
                     {
                         if (production.Right[0] is Terminal terminal)
                         {
@@ -444,14 +334,14 @@ namespace Analytical_Expression
                 Print(firstSets, "FIRST");
                 return firstSets;
             }
-            static HashSet<NonTerminal> GetNullableSet(IEnumerable<Production> productions)
+            static HashSet<NonTerminal> GetNullableSet(IEnumerable<Production> allProduction)
             {
                 HashSet<NonTerminal> nullableSet = new();
                 bool isChanged = true;
                 while (isChanged)
                 {
                     isChanged = false;
-                    foreach (var production in productions)
+                    foreach (var production in allProduction)
                     {
                         if (production.Right[0] is Terminal terminal)
                         {
@@ -602,6 +492,7 @@ namespace Analytical_Expression
         }
         static Symbol CreateSymbol(string strInput) => char.IsUpper(strInput[0]) ? (Symbol)new NonTerminal(strInput) : (Symbol)new Terminal(strInput);
 
+        
         [Conditional("DEBUG_PRINT")]
         static void Print<T1, T2>(Dictionary<T1, T2> sets, string name = "") where T2 : IEnumerable
         {
@@ -631,31 +522,4 @@ namespace Analytical_Expression
 
     }
 
-
-    record Production(NonTerminal Left, Symbol[] Right, int Position = -1)
-    {
-        protected virtual bool PrintMembers(StringBuilder builder)
-        {
-            builder.Append($"{Left} =>");
-            for (int i = 0; i < Right.Length; i++)
-            {
-                var rChild = Right[i];
-                builder.Append(" ");
-                if (Position == i)
-                    builder.Append($"@");
-                builder.Append($"{rChild}");
-            }
-
-            if (Position == Right.Length)
-            {
-                builder.Append($" @");
-            }
-
-            return true;
-        }
-    }
-
-    abstract record Symbol(string Name);
-    record Terminal(string Name) : Symbol(Name);
-    record NonTerminal(string Name) : Symbol(Name);
 }
