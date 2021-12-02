@@ -164,19 +164,22 @@ namespace Analytical_Expression
 
         }
 
-        static void Main(string[] args)
+        static void MainSLR(string[] args)
         {
             AllProduction.Add(CreateProduction("S'", "S $"));
-            AllProduction.Add(CreateProduction("S", "x x T T"));
-            AllProduction.Add(CreateProduction("T", "y"));
+            AllProduction.Add(CreateProduction("S", "L = R"));
+            AllProduction.Add(CreateProduction("S", "R"));
+            AllProduction.Add(CreateProduction("L", "* R"));
+            AllProduction.Add(CreateProduction("L", "id"));
+            AllProduction.Add(CreateProduction("R", "L"));
 
             Terminal[] tokens = CreateSymbols("x x x y y$").Cast<Terminal>().ToArray();
 
             SLRyntaxAnalyzer parser = new(AllProduction, AllProduction.Single(p => p.Left == new NonTerminal("S'")));
 
-            if (parser.TryMatch(tokens))
-                Console.WriteLine("ok");
-            else Console.WriteLine("error");
+            //if (parser.TryMatch(tokens))
+            //    Console.WriteLine("ok");
+            //else Console.WriteLine("error");
         }
 
         static Dictionary<(NonTerminal, Terminal), IEnumerable<Production>> GetLL1Table(IEnumerable<NonTerminal> nonTerminals, IEnumerable<Production> allProduction)
@@ -492,7 +495,7 @@ namespace Analytical_Expression
         }
         static Symbol CreateSymbol(string strInput) => char.IsUpper(strInput[0]) ? (Symbol)new NonTerminal(strInput) : (Symbol)new Terminal(strInput);
 
-        
+
         [Conditional("DEBUG_PRINT")]
         static void Print<T1, T2>(Dictionary<T1, T2> sets, string name = "") where T2 : IEnumerable
         {
@@ -519,6 +522,60 @@ namespace Analytical_Expression
                 Console.WriteLine(t1);
             }
         }
+
+        static void Main(string[] args)
+        {
+            var listProduction = new List<Production>();
+            listProduction.Add(CreateProduction("S'", "S"));
+            listProduction.Add(CreateProduction("S", "L = R"));
+            listProduction.Add(CreateProduction("S", "R"));
+            listProduction.Add(CreateProduction("L", "* F"));
+            listProduction.Add(CreateProduction("L", "i"));
+            listProduction.Add(CreateProduction("R", "L"));
+
+            //listProduction.Add(CreateProduction("E", "a B c"));
+            //listProduction.Add(CreateProduction("B", "a c"));
+
+            var nfaNodeList = new List<DigraphNode<Production, Symbol>>();
+            var epsSymbol = new Terminal("eps");
+            foreach (var production in listProduction)
+            {
+                DigraphNode<Production, Symbol>? lastNode = null;
+                for (int i = 0; i <= production.Right.Length; i++)
+                {
+                    var subProduction = production with { Position = i };
+                    var newNode = new DigraphNode<Production, Symbol>() { Content = subProduction };
+                    nfaNodeList.Add(newNode);
+                    if (lastNode != null)
+                        lastNode.Edges.Add((production.Right[i - 1], newNode));
+                    lastNode = newNode;
+                }
+            }
+
+            foreach (var node in nfaNodeList)
+            {
+                var production = node.Content;
+                if (production.Right.Length > production.Position)
+                {
+                    if (production.Right[production.Position] is NonTerminal nonTerminal)
+                    {
+                        foreach (var node2 in nfaNodeList.Where(n => n.Content.Left == nonTerminal && n.Content.Position == 0))
+                        {
+                            node.Edges.Add((epsSymbol, node2));
+                        }
+                    }
+                }
+            }
+
+            var n0 = nfaNodeList[0];
+            Console.WriteLine(n0.GetDigraphString());
+
+            Console.WriteLine("=========");
+            var dfa_0 = n0.CreateDFA(epsSymbol, listProduction.SelectMany(p => p.Right.Append(p.Left)));
+            Console.WriteLine(dfa_0.GetDigraphString());
+        }
+
+        
 
     }
 

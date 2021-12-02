@@ -99,8 +99,7 @@ namespace Analytical_Expression
                 }
                 else return false;
             }
-            while (tokens.Length > indexTokens);
-            return false;
+            while (true);
         }
 
         Dictionary<NonTerminal, HashSet<Terminal>> GetFollowSets(IEnumerable<Production> allProduction,

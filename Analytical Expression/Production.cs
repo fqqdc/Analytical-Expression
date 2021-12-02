@@ -14,13 +14,13 @@ namespace Analytical_Expression
                 var rChild = Right[i];
                 builder.Append(" ");
                 if (Position == i)
-                    builder.Append($"@");
-                builder.Append($"{rChild}");
+                    builder.Append($"[{rChild}]");
+                else builder.Append($"{rChild}");
             }
 
             if (Position == Right.Length)
             {
-                builder.Append($" @");
+                builder.Append($" []");
             }
 
             return true;
