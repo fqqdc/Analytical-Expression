@@ -577,16 +577,18 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            var listProduction = new List<Production>();
-            listProduction.Add(CreateProduction("S'", "S"));
-            listProduction.Add(CreateProduction("S", "L = R"));
-            listProduction.Add(CreateProduction("S", "R"));
-            listProduction.Add(CreateProduction("L", "* F"));
-            listProduction.Add(CreateProduction("L", "i"));
-            listProduction.Add(CreateProduction("R", "L"));
+            NFA a = NFA.NFACreateFrom(new("a"));
+            NFA b = NFA.NFACreateFrom(new("b"));
+            Console.WriteLine(a);
+            Console.WriteLine(b);
+            NFA nfaJoin = a.Join(b);
+            Console.WriteLine(nfaJoin);
 
-            Grammar grammar = new(listProduction, new("S'"));
-            Console.WriteLine(grammar);
+            NFA nfaUnion = a.Union(b);
+            Console.WriteLine(nfaUnion);
+
+            var nfa = nfaUnion.Union(nfaUnion);
+            Console.WriteLine(nfa);
         }
 
     }
