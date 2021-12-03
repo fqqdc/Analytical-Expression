@@ -527,14 +527,14 @@ namespace Analytical_Expression
         {
             var listProduction = new List<Production>();
             listProduction.Add(CreateProduction("S'", "S"));
-            listProduction.Add(CreateProduction("S", "L = R"));
-            listProduction.Add(CreateProduction("S", "R"));
-            listProduction.Add(CreateProduction("L", "* F"));
-            listProduction.Add(CreateProduction("L", "i"));
-            listProduction.Add(CreateProduction("R", "L"));
+            //listProduction.Add(CreateProduction("S", "L = R"));
+            //listProduction.Add(CreateProduction("S", "R"));
+            //listProduction.Add(CreateProduction("L", "* F"));
+            //listProduction.Add(CreateProduction("L", "i"));
+            //listProduction.Add(CreateProduction("R", "L"));
 
-            //listProduction.Add(CreateProduction("E", "a B c"));
-            //listProduction.Add(CreateProduction("B", "a c"));
+            listProduction.Add(CreateProduction("S", "a S b"));
+            listProduction.Add(CreateProduction("S", "a b"));
 
             var nfaNodeList = new List<DigraphNode<Production, Symbol>>();
             var epsSymbol = new Terminal("eps");
