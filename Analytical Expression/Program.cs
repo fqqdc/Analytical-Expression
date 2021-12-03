@@ -584,8 +584,14 @@ namespace Analytical_Expression
             var nfa = f.Join(e).Join(e).Union(f.Join(i).Join(e));
             Console.WriteLine(nfa);
 
-            DFA dfa = DFA.CreateFrom(nfa);
+            DFA dfa = DFA.CreateFrom(nfa, out var table);
             Console.WriteLine(dfa);
+            
+            Console.Write("(NFA DFA) :");
+            foreach (var item in table)
+                Console.Write($" {item}");
+            Console.WriteLine();
+            Console.WriteLine();
 
             DFA dfaMin = dfa.Minimize();
             Console.WriteLine(dfaMin);

@@ -61,9 +61,10 @@ namespace Analytical_Expression
                 .Select(i => i.s2).ToHashSet();
         }
 
-        public static DFA CreateFrom(FA nfa)
+        public static DFA CreateFrom(FA nfa, out HashSet<(int nfa, int dfa)> zTable)
         {
             Dictionary<HashSet<int>, int> IToID = new(HashSetComparer<int>.Default);
+            zTable = new();
             //Mapping
             var MappingTable = new HashSet<(int s1, Terminal t, int s2)>();
             //Z
@@ -91,7 +92,11 @@ namespace Analytical_Expression
                         workQueue.Enqueue(I_t);
                         IToID[I_t] = IToID.Count;
                         if (I_t.Intersect(nfa.Z).Count() != 0)
+                        {
                             Z.Add(IToID[I_t]);
+                            foreach (var nfa_z in I_t.Intersect(nfa.Z))
+                                zTable.Add((nfa_z, IToID[I_t]));
+                        }
                     }
                     MappingTable.Add((IToID[I], t, IToID[I_t]));
                 }
@@ -109,6 +114,11 @@ namespace Analytical_Expression
             int S_0 = IToID[I_0];
 
             return new(S, Sigma, MappingTable, S_0, Z);
+        }
+
+        public static DFA CreateFrom(FA nfa)
+        {
+            return CreateFrom(nfa, out _);
         }
     }
 
