@@ -61,21 +61,21 @@ namespace Analytical_Expression
                     id = idTable.Count;
                     idTable[n] = id;
                 }
-                builder.Append($"Object{id}").AppendLine();
+                builder.Append($"Node_{id}").AppendLine();
                 if (n.Content is IEnumerable eContent)
                 {
                     foreach (var itemContent in eContent)
                     {
-                        builder.Append(" ").Append(itemContent).AppendLine();
+                        builder.Append("    ").Append(itemContent).AppendLine();
                     }
                 }
                 else
                 {
-                    builder.Append(n.Content).AppendLine();
+                    builder.Append("    ").Append(n.Content).AppendLine();
                 }
                 foreach (var eGroup in n.Edges.GroupBy(e => e.Value))
                 {
-                    builder.Append("    @ ").Append(eGroup.Key).Append(" :").AppendLine();
+                    builder.Append("@ ").Append(eGroup.Key).Append(" ---> ");
                     foreach (var e in eGroup)
                     {
                         queue.Enqueue(e.Node);
@@ -84,12 +84,12 @@ namespace Analytical_Expression
                             id = idTable.Count;
                             idTable[e.Node] = id;
                         }
-                        builder.Append("        ").Append($"Object{id}").AppendLine();
+                        builder.Append($"Node_{id}, ");
                     }
+                    builder.AppendLine();
                 }
                 builder.AppendLine();
-            }
-
+            }            
             return builder.ToString();
         }
 
