@@ -97,10 +97,10 @@ namespace Analytical_Expression
             CreateDFA<TContent, TEdgeValue>(this DigraphNode<TContent, TEdgeValue> node,
             TEdgeValue epsilonValue, IEnumerable<TEdgeValue> allEdgeValue)
         {   // 子集构造算法
-            Dictionary<HashSet<DigraphNode<TContent, TEdgeValue>>, DigraphNode<HashSet<TContent>, TEdgeValue>> dict = new(HashSetEqualityComparer<DigraphNode<TContent, TEdgeValue>>.Default);
+            Dictionary<HashSet<DigraphNode<TContent, TEdgeValue>>, DigraphNode<HashSet<TContent>, TEdgeValue>> dict = new(HashSetComparer<DigraphNode<TContent, TEdgeValue>>.Default);
             Dictionary<DigraphNode<TContent, TEdgeValue>, HashSet<DigraphNode<TContent, TEdgeValue>>> ecSetCache = new();
 
-            HashSet<HashSet<DigraphNode<TContent, TEdgeValue>>> setQ = new(HashSetEqualityComparer<DigraphNode<TContent, TEdgeValue>>.Default);
+            HashSet<HashSet<DigraphNode<TContent, TEdgeValue>>> setQ = new(HashSetComparer<DigraphNode<TContent, TEdgeValue>>.Default);
             DigraphNode<HashSet<TContent>, TEdgeValue>? head = null;
 
             var n0 = node;

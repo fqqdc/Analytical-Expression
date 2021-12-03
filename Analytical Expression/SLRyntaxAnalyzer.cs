@@ -28,7 +28,7 @@ namespace Analytical_Expression
             Symbol[] symbols = allProduction.SelectMany(p => p.Right.Append(p.Left)).Distinct().ToArray();
             startSymbol = firstProduction.Left;
             state_0 = Closure(new Production[] { firstProduction with { Position = 0 } }, allProduction);
-            var set = new HashSet<HashSet<Production>>(HashSetEqualityComparer<Production>.Default);
+            var set = new HashSet<HashSet<Production>>(HashSetComparer<Production>.Default);
             set.Add(state_0);
             var workQueue = new Queue<HashSet<Production>>();
             workQueue.Enqueue(state_0);

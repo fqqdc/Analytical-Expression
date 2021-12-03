@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Analytical_Expression
 {
-    public class HashSetEqualityComparer<T> : IEqualityComparer<HashSet<T>>
+    public class HashSetComparer<T> : IEqualityComparer<HashSet<T>>
     {
-        static HashSetEqualityComparer() => Default = new();
-        public static HashSetEqualityComparer<T> Default { get; private set; }
+        static HashSetComparer() => Default = new();
+        public static HashSetComparer<T> Default { get; private set; }
         bool IEqualityComparer<HashSet<T>>.Equals(HashSet<T>? x, HashSet<T>? y)
         {
             if (x == null || y == null)
@@ -19,10 +19,10 @@ namespace Analytical_Expression
         int IEqualityComparer<HashSet<T>>.GetHashCode(HashSet<T> obj) => 0;
     }
 
-    public class EnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>
+    public class EnumerableComparer<T> : IEqualityComparer<IEnumerable<T>>
     {
-        static EnumerableEqualityComparer() => Default = new();
-        public static HashSetEqualityComparer<T> Default { get; private set; }
+        static EnumerableComparer() => Default = new();
+        public static HashSetComparer<T> Default { get; private set; }
         bool IEqualityComparer<IEnumerable<T>>.Equals(IEnumerable<T>? x, IEnumerable<T>? y)
         {
             return x.Except(y).Count() == 0 && y.Except(x).Count() == 0;

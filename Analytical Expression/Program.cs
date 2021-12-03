@@ -71,7 +71,7 @@ namespace Analytical_Expression
 
             List<StateMachine> listSM = new() { smNumber, smId, smSymbol, smLeft, smRight };
 
-            LexicalAnalyzer analyzer = new(listSM);
+            LexicalAnalyzer_Old analyzer = new(listSM);
             string txt = " 2 *(  3+(4-5) ) / 666>= ccc233  ";
             analyzer.Analyze(txt); ;
 
@@ -577,17 +577,20 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            NFA a = NFA.NFACreateFrom(new("a"));
-            NFA b = NFA.NFACreateFrom(new("b"));
-            Console.WriteLine(a);
-            Console.WriteLine(b);
-            NFA nfaJoin = a.Join(b);
-            Console.WriteLine(nfaJoin);
+            NFA f = NFA.CreateFrom(new("f"));
+            NFA e = NFA.CreateFrom(new("e"));
+            NFA i = NFA.CreateFrom(new("i"));
 
-            NFA nfaUnion = a.Union(b);
-            Console.WriteLine(nfaUnion);
+            var nfa = f.Join(e).Join(e).Union(f.Join(i).Join(e));
+            Console.WriteLine(nfa);
 
-            var nfa = nfaUnion.Union(nfaUnion);
+            DFA dfa = DFA.CreateFrom(nfa);
+            Console.WriteLine(dfa);
+
+            DFA dfaMin = dfa.Minimize();
+            Console.WriteLine(dfaMin);
+
+            nfa = dfaMin.ToNFA();
             Console.WriteLine(nfa);
         }
 
