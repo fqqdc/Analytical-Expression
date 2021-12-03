@@ -6,6 +6,17 @@ namespace Analytical_Expression
 {
     public record Production(NonTerminal Left, Symbol[] Right, int Position = -1)
     {
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append("{ ");
+            if (PrintMembers(builder))
+            {
+                builder.Append(" ");
+            }
+            builder.Append("}");
+            return builder.ToString();
+        }
         protected virtual bool PrintMembers(StringBuilder builder)
         {
             builder.Append($"{Left} =>");

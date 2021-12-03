@@ -523,7 +523,7 @@ namespace Analytical_Expression
             }
         }
 
-        static void Main(string[] args)
+        static void MainDigraph(string[] args)
         {
             var listProduction = new List<Production>();
             listProduction.Add(CreateProduction("S'", "S"));
@@ -575,7 +575,19 @@ namespace Analytical_Expression
             Console.WriteLine(dfa_0.GetDigraphString());
         }
 
-        
+        static void Main(string[] args)
+        {
+            var listProduction = new List<Production>();
+            listProduction.Add(CreateProduction("S'", "S"));
+            listProduction.Add(CreateProduction("S", "L = R"));
+            listProduction.Add(CreateProduction("S", "R"));
+            listProduction.Add(CreateProduction("L", "* F"));
+            listProduction.Add(CreateProduction("L", "i"));
+            listProduction.Add(CreateProduction("R", "L"));
+
+            Grammar grammar = new(listProduction, new("S'"));
+            Console.WriteLine(grammar);
+        }
 
     }
 
