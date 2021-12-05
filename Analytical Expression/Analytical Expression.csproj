@@ -9,7 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DfaDigraphCreater.cs" />
+    <Compile Remove="DfaDigraphNode.cs" />
+    <Compile Remove="DfaNodeType.cs" />
+    <Compile Remove="DigraphNode.cs" />
+    <Compile Remove="DigraphNodeHelper.cs" />
+    <Compile Remove="LexicalAnalyzer_Old.cs" />
+    <Compile Remove="NfaDigraph.cs" />
+    <Compile Remove="NfaDigraphCreater.cs" />
+    <Compile Remove="NfaDigraphNode.cs" />
     <Compile Remove="OldProgram.cs" />
+    <Compile Remove="StateMachine.cs" />
     <Compile Remove="StateMachine2.cs" />
   </ItemGroup>
 

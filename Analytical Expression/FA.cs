@@ -19,11 +19,11 @@ namespace Analytical_Expression
             _Z = Z.ToHashSet();
         }
 
-        private HashSet<int> _S = new();
-        private HashSet<Terminal> _Sigma = new();
-        private HashSet<(int s1, Terminal t, int s2)> _MappingTable = new();
-        private HashSet<int> _Z = new();
-        public int S_0 { get; private set; }
+        protected HashSet<int> _S = new();
+        protected HashSet<Terminal> _Sigma = new();
+        protected HashSet<(int s1, Terminal t, int s2)> _MappingTable = new();
+        protected HashSet<int> _Z = new();
+        public int S_0 { get; protected set; }
 
         public IEnumerable<int> S { get => _S.AsEnumerable(); }
         public IEnumerable<Terminal> Sigma { get => _Sigma.AsEnumerable(); }

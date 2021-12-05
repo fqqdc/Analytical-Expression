@@ -5,81 +5,13 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections;
-
+using System.IO;
+using System.Text;
 
 namespace Analytical_Expression
 {
     public class Program
     {
-        static void LexicalAnalyzer_Analyze()
-        {
-            //n = [0-9]
-            //nn *| nn *.|.nn *| nn *.nn *
-            var exp_n = NfaDigraphCreater.CreateCharacterRange('0', '9');
-            var exp_dot = NfaDigraphCreater.CreateSingleCharacter('.');
-            var exp_nns = exp_n.Join(exp_n.Closure());
-            var nfa = exp_nns.Join(exp_dot).Join(exp_nns);
-            nfa = nfa.Union(exp_nns);
-            nfa = nfa.Union(exp_nns.Join(exp_dot));
-            nfa = nfa.Union(exp_dot.Join(nfa));
-            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dfaNumber = dfa.Minimize();
-            DfaDigraphCreater.PrintDigraph(dfaNumber, false);
-            StateMachine smNumber = new(dfaNumber) { Name = "Number" };
-
-            //n = [0-9]
-            //c = [a-z][A-Z]
-            //c(c|n)*
-            exp_n = NfaDigraphCreater.CreateCharacterRange('0', '9');
-            var exp_c = NfaDigraphCreater.CreateCharacterRange('a', 'z');
-            exp_c = exp_c.Union(NfaDigraphCreater.CreateCharacterRange('A', 'Z'));
-            nfa = exp_c.Union(exp_n).Closure();
-            nfa = exp_c.Join(nfa);
-            dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dfaId = dfa.Minimize();
-            DfaDigraphCreater.PrintDigraph(dfaId, false);
-            StateMachine smId = new(dfaId) { Name = "ID" };
-
-
-            // +|-|*|/|<|<=|==|>=|>
-            nfa = NfaDigraphCreater.CreateSingleCharacter('+'); // +
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('-')); // -
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('*')); // *
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('/')); // /
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('<')); // <
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('>')); // >
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('>').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // >=
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('<').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // <=
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('=').Join(NfaDigraphCreater.CreateSingleCharacter('='))); // ==
-            nfa = nfa.Union(NfaDigraphCreater.CreateSingleCharacter('=')); // =
-            dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dfaSymbol = dfa.Minimize();
-            DfaDigraphCreater.PrintDigraph(dfaSymbol, false);
-            StateMachine smSymbol = new(dfaSymbol) { Name = "Symbol" };
-
-            // (
-            nfa = NfaDigraphCreater.CreateSingleCharacter('('); // (
-            dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dfaLeft = dfa.Minimize();
-            StateMachine smLeft = new(dfaLeft) { Name = "L" };
-
-            // )
-            nfa = NfaDigraphCreater.CreateSingleCharacter(')'); // )
-            dfa = DfaDigraphCreater.CreateFrom(nfa);
-            var dfaRight = dfa.Minimize();
-            StateMachine smRight = new(dfaRight) { Name = "R" };
-
-            List<StateMachine> listSM = new() { smNumber, smId, smSymbol, smLeft, smRight };
-
-            LexicalAnalyzer_Old analyzer = new(listSM);
-            string txt = " 2 *(  3+(4-5) ) / 666>= ccc233  ";
-            analyzer.Analyze(txt); ;
-
-
-
-
-        }
-
         static List<Production> AllProduction = new();
         static int _count = 0;
         static void MainLL1(string[] args)
@@ -493,15 +425,28 @@ namespace Analytical_Expression
             var NOT = N.Join(O).Join(T);
             var ON = O.Join(N);
 
-            var nfa = IN.Or(INTO).Or(TO).Or(NO).Or(NOT).Or(ON);
-
+            var nfa = IN.Or(INTO).Or(TO);
             Console.WriteLine(nfa);
+            var nfa2 = NO.Or(NOT).Or(ON);
+            Console.WriteLine(nfa);
+            Console.WriteLine(nfa2);
 
             var dfa = DFA.CreateFrom(nfa);
             Console.WriteLine(dfa);
-
-            var dfa2 = dfa.Minimize();
+            var dfa2 = DFA.CreateFrom(nfa2);
             Console.WriteLine(dfa2);
+
+            var dfa_min = dfa.Minimize();
+            Console.WriteLine(dfa_min);
+            var dfa_min2 = dfa2.Minimize();
+            Console.WriteLine(dfa_min2);
+
+            var tfa = new TreeFA();
+            tfa.Union(dfa_min);
+            tfa.Union(dfa_min2);
+            Console.WriteLine(tfa);
+
+            Console.WriteLine(DFA.CreateFrom(tfa.ToNFA()));
         }
 
         static void Test()
@@ -530,7 +475,30 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            NFa_Dfa();
+            string str = "go h892cn goh892cn HHA 123 466a 7a0z go go  00123";          
+            LexicalAnalyzer analyzer = new(str);
+
+            var nfa_c = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
+            var nfa_d = NFA.CreateRange('0', '9');
+
+            var cc = nfa_c.Join(nfa_c.Closure());
+            var dd = nfa_d.Join(nfa_d.Closure());
+            var id = nfa_c.Join(nfa_d.Or(nfa_c).Closure());
+            var go = NFA.CreateFromString("go");
+
+
+            analyzer.Register(go, t => (0, t));
+            analyzer.Register(id, t => (1, t));
+            analyzer.Register(dd, t => (2, t));
+
+            var s = analyzer.NextToken();
+            while (s != null)
+            {
+                Console.WriteLine(s);
+                s = analyzer.NextToken();
+            }
+
+            analyzer.PrintTable();
         }
 
     }
