@@ -80,49 +80,6 @@ namespace Analytical_Expression
 
         }
 
-        static void NFa_Dfa()
-        {
-            // a(b|c) *
-            var nfa = NfaDigraphCreater.CreateSingleCharacter('b') // b
-                .Union(NfaDigraphCreater.CreateSingleCharacter('c')) // b|c
-                .Closure(); // (b|c)*
-            nfa = NfaDigraphCreater.CreateSingleCharacter('a').Join(nfa); // a(b|c) *
-
-            // fee | fie
-            //var nfa = NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('e')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    .Union(NfaDigraphCreater.CreateSingleCharacter('f').Join(NfaDigraphCreater.CreateSingleCharacter('i')).Join(NfaDigraphCreater.CreateSingleCharacter('e'))
-            //    );
-
-            // [a-z]([a-z])*
-            //var nfa = NfaDigraphCreater.CreateCharacterRange('a', 'z').Join(NfaDigraphCreater.CreateCharacterRange('a', 'z').Closure());
-
-            // a|aa|aaa
-            //var exp_a = NfaDigraphCreater.CreateSingleCharacter('a');
-            //var exp_aa = exp_a.Join(exp_a);
-            //var exp_aaa = exp_a.Join(exp_a).Join(exp_a);
-            //var nfa = exp_a.Union(exp_aa).Union(exp_aaa);
-
-            //n = [0-9]
-            //nn*|nn*.|.nn*|nn*.nn*
-            //var exp_n = nfadigraphcreater.createcharacterrange('0', '9');
-            //var exp_dot = nfadigraphcreater.createsinglecharacter('.');
-            //var exp_nns = exp_n.join(exp_n.closure());
-            //var nfa = exp_nns.join(exp_dot).join(exp_nns);
-            //nfa = nfa.union(exp_nns);
-            //nfa = nfa.union(exp_nns.join(exp_dot));
-            //nfa = nfa.union(exp_dot.join(nfa));
-
-            NfaDigraphCreater.PrintDigraph(nfa);
-
-            Console.WriteLine("=============");
-            DfaDigraphNode dfa = DfaDigraphCreater.CreateFrom(nfa);
-            DfaDigraphCreater.PrintDigraph(dfa, false);
-
-            Console.WriteLine("=============");
-            var dmin = dfa.Minimize();
-            DfaDigraphCreater.PrintDigraph(dmin, false);
-        }
-
         static List<Production> AllProduction = new();
         static int _count = 0;
         static void MainLL1(string[] args)
@@ -523,81 +480,57 @@ namespace Analytical_Expression
             }
         }
 
-        static void MainDigraph(string[] args)
+        static void NFa_Dfa()
         {
-            var listProduction = new List<Production>();
-            listProduction.Add(CreateProduction("S'", "S"));
-            //listProduction.Add(CreateProduction("S", "L = R"));
-            //listProduction.Add(CreateProduction("S", "R"));
-            //listProduction.Add(CreateProduction("L", "* F"));
-            //listProduction.Add(CreateProduction("L", "i"));
-            //listProduction.Add(CreateProduction("R", "L"));
+            var I = NFA.CreateFrom("I");
+            var N = NFA.CreateFrom("N");
+            var T = NFA.CreateFrom("T");
+            var O = NFA.CreateFrom("O");
+            var IN = I.Join(N);
+            var INTO = IN.Join(T).Join(O);
+            var TO = T.Join(O);
+            var NO = N.Join(O);
+            var NOT = N.Join(O).Join(T);
+            var ON = O.Join(N);
 
-            listProduction.Add(CreateProduction("S", "a S b"));
-            listProduction.Add(CreateProduction("S", "a b"));
+            var nfa = IN.Or(INTO).Or(TO).Or(NO).Or(NOT).Or(ON);
 
-            var nfaNodeList = new List<DigraphNode<Production, Symbol>>();
-            var epsSymbol = new Terminal("eps");
-            foreach (var production in listProduction)
-            {
-                DigraphNode<Production, Symbol>? lastNode = null;
-                for (int i = 0; i <= production.Right.Length; i++)
-                {
-                    var subProduction = production with { Position = i };
-                    var newNode = new DigraphNode<Production, Symbol>() { Content = subProduction };
-                    nfaNodeList.Add(newNode);
-                    if (lastNode != null)
-                        lastNode.Edges.Add((production.Right[i - 1], newNode));
-                    lastNode = newNode;
-                }
-            }
+            Console.WriteLine(nfa);
 
-            foreach (var node in nfaNodeList)
-            {
-                var production = node.Content;
-                if (production.Right.Length > production.Position)
-                {
-                    if (production.Right[production.Position] is NonTerminal nonTerminal)
-                    {
-                        foreach (var node2 in nfaNodeList.Where(n => n.Content.Left == nonTerminal && n.Content.Position == 0))
-                        {
-                            node.Edges.Add((epsSymbol, node2));
-                        }
-                    }
-                }
-            }
+            var dfa = DFA.CreateFrom(nfa);
+            Console.WriteLine(dfa);
 
-            var n0 = nfaNodeList[0];
-            Console.WriteLine(n0.GetDigraphString());
+            var dfa2 = dfa.Minimize();
+            Console.WriteLine(dfa2);
+        }
 
-            Console.WriteLine("=========");
-            var dfa_0 = n0.CreateDFA(epsSymbol, listProduction.SelectMany(p => p.Right.Append(p.Left)));
-            Console.WriteLine(dfa_0.GetDigraphString());
+        static void Test()
+        {
+            int[] S = Enumerable.Range(0, 8).ToArray();
+            Terminal[] sigma = { "a", "b", "c", "d" };
+            List<(int s1, Terminal t, int s2)> map = new();
+            var s = 0;
+            int[] Z = { 0, 3, 5, 7 };
+            map.Add((0, "a", 1));
+            map.Add((1, "b", 2));
+            map.Add((1, "b", 4));
+            map.Add((1, "b", 6));
+            map.Add((2, "c", 1));
+            map.Add((2, "c", 3));
+            map.Add((4, "c", 1));
+            map.Add((4, "c", 5));
+            map.Add((6, "d", 7));
+
+            var nfa = new NFA(S, sigma, map, s, Z);
+            Console.WriteLine(nfa);
+            var dfa = DFA.CreateFrom(nfa);
+            Console.WriteLine(dfa);
+
         }
 
         static void Main(string[] args)
         {
-            NFA f = NFA.CreateFrom(new("f"));
-            NFA e = NFA.CreateFrom(new("e"));
-            NFA i = NFA.CreateFrom(new("i"));
-
-            var nfa = f.Join(e).Join(e).Union(f.Join(i).Join(e));
-            Console.WriteLine(nfa);
-
-            DFA dfa = DFA.CreateFrom(nfa, out var table);
-            Console.WriteLine(dfa);
-            
-            Console.Write("(NFA DFA) :");
-            foreach (var item in table)
-                Console.Write($" {item}");
-            Console.WriteLine();
-            Console.WriteLine();
-
-            DFA dfaMin = dfa.Minimize();
-            Console.WriteLine(dfaMin);
-
-            nfa = dfaMin.ToNFA();
-            Console.WriteLine(nfa);
+            NFa_Dfa();
         }
 
     }

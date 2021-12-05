@@ -13,6 +13,11 @@ namespace Analytical_Expression
             stringBuilder.Append($"{Name}");
             return stringBuilder.ToString();
         }
+
+        public static implicit operator Terminal(string Name)
+        {
+            return new(Name);
+        }
     }
     public record NonTerminal(string Name) : Symbol(Name)
     {

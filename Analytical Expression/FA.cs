@@ -8,7 +8,7 @@ namespace Analytical_Expression
 {
     public abstract class FA
     {
-        public static Terminal EPSILON = new Terminal("eps");
+        public static Terminal EPSILON = new Terminal("ε");
 
         public FA(IEnumerable<int> S, IEnumerable<Terminal> Sigma, IEnumerable<(int s1, Terminal t, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
         {
@@ -76,7 +76,7 @@ namespace Analytical_Expression
             foreach (var pGroup in MappingTable.GroupBy(i => (i.s1)).OrderBy(g => g.Key))
             {
                 builder.Append(PRE).Append(PRE);
-                foreach (var p in pGroup.OrderBy(p => p.t, TerminalComparer.Default))
+                foreach (var p in pGroup.OrderBy(p => p.t.Name).ThenBy(p => p.s2))
                 {
                     builder.Append($"({p.s1}, {p.t}) = {p.s2}, ");
                 }
@@ -101,15 +101,5 @@ namespace Analytical_Expression
             builder.Append(" }").AppendLine();
         }
         #endregion ToString
-    }
-
-    class TerminalComparer : IComparer<Terminal>
-    {
-        public static IComparer<Terminal> Default { get; private set; }
-        static TerminalComparer() { Default = new TerminalComparer(); }
-        int IComparer<Terminal>.Compare(Terminal? x, Terminal? y)
-        {
-            return x.GetHashCode() - y.GetHashCode();
-        }
     }
 }

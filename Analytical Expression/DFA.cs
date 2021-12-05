@@ -11,6 +11,8 @@ namespace Analytical_Expression
         public DFA(IEnumerable<int> S, IEnumerable<Terminal> Sigma, IEnumerable<(int s1, Terminal t, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
             : base(S, Sigma, MappingTable, S_0, Z) { }
 
+        private HashSet<(int nfa, int dfa)> _ZTable = new();
+
         public Dictionary<(int s, Terminal t), int> MappingDictionary
         {
             get
@@ -19,6 +21,40 @@ namespace Analytical_Expression
             }
         }
 
+        public IEnumerable<(int nfa, int dfa)> ZTable
+        {
+            get => _ZTable.AsEnumerable();
+            set => _ZTable = value.ToHashSet();
+        }
+
+        protected override void ZToString(StringBuilder builder)
+        {
+            if (_ZTable.Count == 0)
+                base.ZToString(builder);
+            else
+            {
+                builder.Append(PRE).Append($"Z : {{");
+                foreach (var s in Z)
+                {
+                    builder.Append($" {s}");
+                    var nfaZ = _ZTable.Where(i => i.dfa == s);
+                    var count = nfaZ.Count();
+                    if (count == 0)
+                        continue;
+                    builder.Append("(");
+                    foreach (var s_nfa in nfaZ.OrderBy(i => i.nfa).Select(i => i.nfa))
+                    {
+                        builder.Append($"{s_nfa}, ");
+                    }
+                    if (count > 0)
+                        builder.Length -= 2;
+                    builder.Append("),");
+                }
+                if (Z.Count() > 0)
+                    builder.Length -= 1;
+                builder.Append(" }").AppendLine();
+            }
+        }
         private static HashSet<int> EpsilonClosure(IEnumerable<(int s1, Terminal t, int s2)> nfaMappingTable, int s)
         {
             HashSet<int> visited = new();
@@ -61,10 +97,10 @@ namespace Analytical_Expression
                 .Select(i => i.s2).ToHashSet();
         }
 
-        public static DFA CreateFrom(FA nfa, out HashSet<(int nfa, int dfa)> zTable)
+        public static DFA CreateFrom(FA nfa)
         {
             Dictionary<HashSet<int>, int> IToID = new(HashSetComparer<int>.Default);
-            zTable = new();
+            HashSet<(int nfa, int dfa)> zTable = new();
             //Mapping
             var MappingTable = new HashSet<(int s1, Terminal t, int s2)>();
             //Z
@@ -113,12 +149,7 @@ namespace Analytical_Expression
             //S_0
             int S_0 = IToID[I_0];
 
-            return new(S, Sigma, MappingTable, S_0, Z);
-        }
-
-        public static DFA CreateFrom(FA nfa)
-        {
-            return CreateFrom(nfa, out _);
+            return new(S, Sigma, MappingTable, S_0, Z) { ZTable = zTable}; 
         }
     }
 
@@ -127,6 +158,8 @@ namespace Analytical_Expression
         public static DFA Minimize(this DFA dfa)
         {
             var dict = dfa.MappingDictionary;
+            HashSet<(int nfa, int dfa)> oldZTable = dfa.ZTable.ToHashSet(), zTable = new();
+
             var Q = dfa.S.GroupBy(s => dfa.Z.Contains(s)).Select(g => g.ToHashSet())
                 .ToHashSet(HashSetComparer<int>.Default);
 
@@ -165,7 +198,7 @@ namespace Analytical_Expression
             //Mapping
             var MappingTable = new HashSet<(int s1, Terminal t, int s2)>();
             //Z
-            var Z = new HashSet<int>();
+            var Z = new HashSet<int>();            
 
             var I_0 = Q.Single(I => I.Contains(dfa.S_0));
             IToID[I_0] = IToID.Count;
@@ -183,6 +216,13 @@ namespace Analytical_Expression
                 if (I.Intersect(dfa.Z).Count() > 0)
                 {
                     Z.Add(IToID[I]);
+                    if (oldZTable.Count > 0)
+                    {
+                        foreach (var i in oldZTable.Where(i => I.Contains(i.dfa)))
+                        {
+                            zTable.Add((i.nfa, IToID[I]));
+                        }
+                    }
                 }
 
                 foreach (var s1 in I)
@@ -215,7 +255,7 @@ namespace Analytical_Expression
             //S_0
             var S_0 = IToID[I_0];
 
-            return new(S, Sigma, MappingTable, S_0, Z);
+            return new(S, Sigma, MappingTable, S_0, Z) { ZTable = zTable };
         }
 
         public static NFA ToNFA(this DFA dfa)
