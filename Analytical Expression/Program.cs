@@ -451,36 +451,159 @@ namespace Analytical_Expression
 
         static void Test()
         {
-            int[] S = Enumerable.Range(0, 8).ToArray();
-            Terminal[] sigma = { "a", "b", "c", "d" };
-            List<(int s1, Terminal t, int s2)> map = new();
-            var s = 0;
-            int[] Z = { 0, 3, 5, 7 };
-            map.Add((0, "a", 1));
-            map.Add((1, "b", 2));
-            map.Add((1, "b", 4));
-            map.Add((1, "b", 6));
-            map.Add((2, "c", 1));
-            map.Add((2, "c", 3));
-            map.Add((4, "c", 1));
-            map.Add((4, "c", 5));
-            map.Add((6, "d", 7));
+            List<Production> lstProduction = new();
+            lstProduction.Add(("E", "E + T"));
+            lstProduction.Add(("E", "T"));
+            lstProduction.Add(("T", "T * F"));
+            lstProduction.Add(("T", "F"));
+            lstProduction.Add(("F", "( E )"));
+            lstProduction.Add(("F", "i"));
+            //lstProduction.Add(("S", "Q c"));
+            //lstProduction.Add(("S", "c"));
+            //lstProduction.Add(("Q", "R b"));
+            //lstProduction.Add(("Q", "b"));
+            //lstProduction.Add(("R", "S a"));
+            //lstProduction.Add(("R", "a"));
 
-            var nfa = new NFA(S, sigma, map, s, Z);
-            Console.WriteLine(nfa);
-            var dfa = DFA.CreateFrom(nfa);
-            Console.WriteLine(dfa);
+            var g = new Grammar(lstProduction, new("E"));
+            Console.WriteLine(g);
 
+            g = EliminateLeftRecursion2(g);
+
+            Console.WriteLine(g);
+        }
+
+        static Grammar EliminateLeftRecursion2(Grammar grammar)
+        {
+            var comparer = new ProductionComparer();
+            var newSet = grammar.P.ToHashSet(comparer);
+            var oldSet = newSet.ToHashSet();
+            do
+            {
+                oldSet = newSet.ToHashSet();
+                Queue<NonTerminal> queue = new();
+                HashSet<NonTerminal> visited = new();
+                queue.Enqueue(grammar.S);
+                visited.Add(grammar.S);
+                List<Production> list = new();
+                while (queue.Count > 0)
+                {
+                    var nLeft = queue.Dequeue();
+                    foreach (var p in oldSet.Where(p => p.Left == nLeft))
+                    {
+                        list.Add(p);
+                        foreach (var n in p.Right.Where(n => n is NonTerminal).Cast<NonTerminal>())
+                        {
+                            if (!visited.Contains(n))
+                            {
+                                visited.Add(n);
+                                queue.Enqueue(n);
+                            }
+                        }
+                    }
+                }
+                list.Reverse();
+
+                HashSet<Production> exceptSet = new();
+                HashSet<Production> unionSet = new();
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var p1 = list[i];
+                    if (p1.Right[0] is NonTerminal nonTerminal
+                        && p1.Left != nonTerminal)
+                    {
+                        for (int j = 0; j < i; j++)
+                        {
+                            var p2 = list[j];
+                            if (p2.Left == nonTerminal)
+                            {
+                                exceptSet.Add(p1);
+                                var newRight = p2.Right.Union(p1.Right.Skip(1)).ToArray();
+                                unionSet.Add(new(p1.Left, newRight));
+                            }
+                        }
+                    }
+                }
+
+                newSet = new(list, comparer);
+                newSet.ExceptWith(exceptSet);
+                newSet.UnionWith(unionSet);
+                Print(newSet);
+
+            } while (!newSet.SetEquals(oldSet));
+
+            return EliminateLeftRecursion(newSet, grammar.S);
+        }
+
+        static Grammar EliminateLeftRecursion(HashSet<Production> set, NonTerminal S)
+        {
+            var newP = set.ToHashSet();
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+                var p1 = newP.Where(p => p.Right.Length > 0)
+                    .Where(p => p.Left == p.Right[0]).FirstOrDefault();
+                if (p1 != null)
+                {
+                    hasChanged = true;
+
+                    HashSet<Production> exceptSet = new();
+                    HashSet<Production> unionSet = new();
+                    foreach (var p2 in newP.Where(p => p.Left == p1.Left))
+                    {
+                        var newLeft = new NonTerminal(p1.Left.Name + "'");
+                        exceptSet.Add(p2);
+                        if (p2.Right[0].Name == String.Empty)
+                            continue;
+
+                        if (p2.Left == p2.Right[0])
+                        {
+                            var newRight = p2.Right.Skip(1).Append(newLeft).ToArray();
+                            unionSet.Add(new(newLeft, newRight));
+                            unionSet.Add(new(newLeft, new Symbol[0]));
+                        }
+                        else
+                        {
+                            var newRight = p2.Right.Append(newLeft).ToArray();
+                            unionSet.Add(new(p1.Left, newRight));
+                        }
+                    }
+                    newP.ExceptWith(exceptSet);
+                    newP.UnionWith(unionSet);
+                }
+            }
+
+            return new(newP, S);
         }
 
         static void Main(string[] args)
         {
-            Symbol[] arrSymbol = new Symbol[] { new Terminal("a"), new NonTerminal("B"), new NonTerminal("C"), new Terminal("d") };
-
-            Console.WriteLine(arrSymbol);
-            Console.WriteLine(string.Concat(arrSymbol.AsEnumerable()));
+            Test();
         }
 
     }
 
+    class ProductionComparer : IEqualityComparer<Production>
+    {
+        bool IEqualityComparer<Production>.Equals(Production? x, Production? y)
+        {
+            var b = x.Left == y.Left && x.Right.Length == y.Right.Length;
+            if (b)
+            {
+                for (int i = 0; i < x.Right.Length; i++)
+                {
+                    if (x.Right[i] != y.Right[i])
+                        return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        int IEqualityComparer<Production>.GetHashCode(Production obj)
+        {
+            return 0;
+        }
+    }
 }

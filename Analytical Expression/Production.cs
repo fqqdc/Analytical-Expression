@@ -1,4 +1,5 @@
-﻿#define DEBUG_PRINT
+﻿using System;
+using System.Linq;
 using System.Text;
 
 
@@ -35,6 +36,19 @@ namespace Analytical_Expression
             }
 
             return true;
+        }
+
+        public static implicit operator Production((string left, string right) r)
+        {
+            return Production.Create(r.left, r.right);
+        }
+
+        public static Production Create(string left, string right)
+        {
+            var sLeft = new NonTerminal(left);
+            var strRight = right.Split(' ', StringSplitOptions.TrimEntries);
+            var sRight = strRight.Select(str => str.Length > 0 && char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str)).ToArray();
+            return new Production(sLeft, sRight);
         }
     }
 }

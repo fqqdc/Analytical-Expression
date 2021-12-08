@@ -10,8 +10,6 @@ namespace Analytical_Expression
     {
         public record PDAMapping(int q1, Terminal a, Terminal z, int q2, IEnumerable<Symbol> gamma);
 
-        public static Terminal EPSILON = new Terminal("ε");
-
         public PDA()
         {
             throw new NotImplementedException();

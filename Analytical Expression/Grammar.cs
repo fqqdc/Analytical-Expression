@@ -11,7 +11,7 @@ namespace Analytical_Expression
         public Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal)
         {
             var symbols = allProduction.SelectMany(p => p.Right.Append(p.Left)).Distinct();
-            _Vn.UnionWith(symbols.Where(s=>s is NonTerminal).Cast<NonTerminal>());
+            _Vn.UnionWith(symbols.Where(s => s is NonTerminal).Cast<NonTerminal>());
             _Vt.UnionWith(symbols.Where(s => s is Terminal).Cast<Terminal>());
             _P.UnionWith(allProduction);
             S = startNonTerminal;
@@ -25,6 +25,49 @@ namespace Analytical_Expression
         public IEnumerable<Production> P { get => _P.AsEnumerable(); }
         public NonTerminal S { get; private set; }
 
+        public Grammar EliminateLeftRecursion()
+        {
+            var newP = P.ToHashSet();
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+                var p1 = newP.Where(p => p.Right.Length > 0)
+                    .Where(p => p.Left == p.Right[0]).FirstOrDefault();
+                if (p1 != null)
+                {
+                    hasChanged = true;
+                    
+                    HashSet<Production> exceptSet = new();
+                    HashSet<Production> unionSet = new();
+                    foreach (var p2 in newP.Where(p => p.Left == p1.Left))
+                    {
+                        var newLeft = new NonTerminal(p1.Left.Name + "'");
+                        exceptSet.Add(p2);
+                        if (p2.Right[0].Name == String.Empty)
+                            continue;
+
+                        if (p2.Left == p2.Right[0])
+                        {
+                            var newRight = p2.Right.Skip(1).Append(newLeft).ToArray();
+                            unionSet.Add(new(newLeft, newRight));
+                            unionSet.Add(new(newLeft, new Symbol[0]));
+                        }
+                        else
+                        {                            
+                            var newRight = p2.Right.Append(newLeft).ToArray();
+                            unionSet.Add(new(p1.Left, newRight));
+                        }
+                    }
+                    newP.ExceptWith(exceptSet);
+                    newP.UnionWith(unionSet);
+                }
+            }
+
+            return new(newP, S);
+        }
+
+        #region ToString()
         const string PRE = "    ";
         public override string ToString()
         {
@@ -76,5 +119,6 @@ namespace Analytical_Expression
         {
             builder.Append(PRE).Append($"START : {S}").AppendLine();
         }
+        #endregion
     }
 }
