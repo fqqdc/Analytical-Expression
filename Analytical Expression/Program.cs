@@ -475,30 +475,10 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            string str = "go h892cn goh892cn HHA 123 466a 7a0z go go  00123";          
-            LexicalAnalyzer analyzer = new(str);
+            Symbol[] arrSymbol = new Symbol[] { new Terminal("a"), new NonTerminal("B"), new NonTerminal("C"), new Terminal("d") };
 
-            var nfa_c = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
-            var nfa_d = NFA.CreateRange('0', '9');
-
-            var cc = nfa_c.Join(nfa_c.Closure());
-            var dd = nfa_d.Join(nfa_d.Closure());
-            var id = nfa_c.Join(nfa_d.Or(nfa_c).Closure());
-            var go = NFA.CreateFromString("go");
-
-
-            analyzer.Register(go, t => (0, t));
-            analyzer.Register(id, t => (1, t));
-            analyzer.Register(dd, t => (2, t));
-
-            var s = analyzer.NextToken();
-            while (s != null)
-            {
-                Console.WriteLine(s);
-                s = analyzer.NextToken();
-            }
-
-            analyzer.PrintTable();
+            Console.WriteLine(arrSymbol);
+            Console.WriteLine(string.Concat(arrSymbol.AsEnumerable()));
         }
 
     }
