@@ -470,48 +470,10 @@ namespace Analytical_Expression
             var g = new Grammar(lstProduction, new("S"));
             Console.WriteLine(g);
 
-            g = ExtractLeftCommonfactor(g);
+            g = g.EliminateLeftRecursion();
+            g = g.ExtractLeftCommonfactor();
 
             Console.WriteLine(g);
-        }
-
-        static Grammar ExtractLeftCommonfactor(Grammar grammar)
-        {
-            HashSet<Production> oldSet;
-            var newSet = grammar.P.ToHashSet(); ;
-            do
-            {
-                oldSet = newSet;
-                HashSet<Production> exceptSet = new();
-                HashSet<Production> unionSet = new();
-                var groups1 = oldSet.Where(p => p.Right.Length > 0).GroupBy(p => p.Left);
-                foreach (var g1 in groups1)
-                {
-                    if (g1.Count() == 1)
-                        continue;
-
-                    var groups2 = g1.GroupBy(p => p.Right[0]);
-                    foreach (var g2 in groups2)
-                    {
-                        if (g2.Count() == 1)
-                            continue;
-                        exceptSet.UnionWith(g2);
-                        NonTerminal newLeft = new(g1.Key.Name + "'");
-                        unionSet.Add(new(g1.Key, new Symbol[] { g2.Key, newLeft }));
-                        foreach (var p in g2)
-                        {
-                            unionSet.Add(new(newLeft, p.Right.Skip(1).ToArray()));
-                        }
-                    }
-                }
-
-                newSet = oldSet.ToHashSet();
-                newSet.ExceptWith(exceptSet);
-                newSet.UnionWith(unionSet);
-
-            } while (!newSet.SetEquals(oldSet));
-
-            return new(newSet, grammar.S);
         }
 
         static void Main(string[] args)

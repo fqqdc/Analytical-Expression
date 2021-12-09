@@ -25,6 +25,9 @@ namespace Analytical_Expression
         public IEnumerable<Production> P { get => _P.AsEnumerable(); }
         public NonTerminal S { get; private set; }
 
+        /// <summary>
+        /// 消除左递归
+        /// </summary>
         public Grammar EliminateLeftRecursion()
         {
             var set = P.ToHashSet();
@@ -142,6 +145,86 @@ namespace Analytical_Expression
                 return newSet;
             }
         }
+
+        /// <summary>
+        /// 提取左公因子
+        /// </summary>
+        public Grammar ExtractLeftCommonfactor()
+        {
+            HashSet<Production> oldSet;
+            var newSet = P.ToHashSet();
+            do
+            {
+                oldSet = newSet;
+                HashSet<Production> exceptSet = new();
+                HashSet<Production> unionSet = new();
+                var groups1 = oldSet.Where(p => p.Right.Length > 0).GroupBy(p => p.Left);
+                foreach (var g1 in groups1)
+                {
+                    if (g1.Count() == 1)
+                        continue;
+
+                    var groups2 = g1.GroupBy(p => p.Right[0]);
+                    foreach (var g2 in groups2)
+                    {
+                        if (g2.Count() == 1)
+                            continue;
+                        exceptSet.UnionWith(g2);
+                        NonTerminal newLeft = new(g1.Key.Name + "'");
+                        unionSet.Add(new(g1.Key, new Symbol[] { g2.Key, newLeft }));
+                        foreach (var p in g2)
+                        {
+                            unionSet.Add(new(newLeft, p.Right.Skip(1).ToArray()));
+                        }
+                    }
+                }
+
+                newSet = oldSet.ToHashSet();
+                newSet.ExceptWith(exceptSet);
+                newSet.UnionWith(unionSet);
+
+            } while (!newSet.SetEquals(oldSet));
+
+            CombineSingleProduction(newSet);
+
+            return new(newSet, S);
+
+            static void CombineSingleProduction(HashSet<Production> set)
+            {
+                bool hasChanged = true;
+                while (hasChanged)
+                {
+                    hasChanged = false;
+                    foreach (var p in set)
+                    {
+                        for (int i = 0; i < p.Right.Length; i++)
+                        {
+                            var n = p.Right[i] as NonTerminal;
+                            if (n == null)
+                                continue;
+                            var count = set.Count(p => p.Left == n);
+                            if (count != 1)
+                                continue;
+                            var p1 = set.First(p => p.Left == n);
+
+                            var newRight = p.Right.Take(i).Union(p1.Right).Union(p.Right.Skip(i + 1));
+                            Production p2 = new(p.Left, newRight.ToArray());
+                            set.Remove(p);
+                            set.Remove(p1);
+                            set.Add(p2);
+                            hasChanged = true;
+                            break;
+                        }
+                        if (hasChanged)
+                            break;
+                    }
+                }
+
+            }
+        }
+
+
+
 
         #region ToString()
         const string PRE = "    ";
