@@ -48,6 +48,8 @@ namespace Analytical_Expression
             var sLeft = new NonTerminal(left);
             var strRight = right.Split(' ', StringSplitOptions.TrimEntries);
             var sRight = strRight.Select(str => str.Length > 0 && char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str)).ToArray();
+            if (sRight.Length == 1 && sRight[0].Name == String.Empty)
+                sRight = new Symbol[0];
             return new Production(sLeft, sRight);
         }
     }
