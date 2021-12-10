@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Analytical_Expression
 {
-    public class SLRyntaxAnalyzer
+    public class SLRSyntaxAnalyzer
     {
         Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> actionTable;
         Dictionary<(HashSet<Production>, Symbol), HashSet<Production>> gotoTable;
@@ -16,7 +16,7 @@ namespace Analytical_Expression
         HashSet<Production> state_0;
         NonTerminal startSymbol;
 
-        public SLRyntaxAnalyzer(IEnumerable<Production> allProduction, Production firstProduction)
+        public SLRSyntaxAnalyzer(IEnumerable<Production> allProduction, Production firstProduction)
         {
             var nullableSet = GetNullableSet(allProduction);
             var firstSetsByNonTerminal = GetFirstSetsByNonTerminal(allProduction, nullableSet);
