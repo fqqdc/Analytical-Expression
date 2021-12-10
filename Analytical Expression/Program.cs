@@ -451,11 +451,17 @@ namespace Analytical_Expression
 
         static void Test()
         {
-            var e = Enumerable.Range(0, 10);
-            foreach (var i in e)
-            {
-                Console.WriteLine(i);
-            }
+            List<Production> all = new();
+            all.Add(("E", "T E'"));
+            all.Add(("E'", "+ T E'"));
+            all.Add(("E'", ""));
+            all.Add(("T", "F T'"));
+            all.Add(("T'", "* F T'"));
+            all.Add(("T'", ""));
+            all.Add(("F", "i"));
+            all.Add(("F", "( E )"));
+            var g = new Grammar(all, new("E"));
+            Console.WriteLine(g.ToFullString());
         }
 
         static Dictionary<NonTerminal, HashSet<Symbol>> mapFirst = new();
@@ -496,10 +502,10 @@ namespace Analytical_Expression
                         hasChanged = hasChanged || true;
                     }
 
+                    var old_leftFirst = leftFirst.ToHashSet();
                     if (p.Right.Length == 0)
                     {
                         leftFirst.Add(Grammar.Epsilon);
-                        hasChanged = hasChanged || true;
                     }
                     else
                     {
@@ -508,7 +514,6 @@ namespace Analytical_Expression
                             if (s is Terminal terminal)
                             {
                                 leftFirst.Add(terminal);
-                                hasChanged = hasChanged || true;
                             }
 
                             else if (s is NonTerminal nonTerminal)
@@ -519,16 +524,13 @@ namespace Analytical_Expression
                                     mapFirst[nonTerminal] = rightFirst;
                                     hasChanged = hasChanged || true;
                                 }
-
-                                var oldLeftFirst = leftFirst.ToHashSet();
                                 leftFirst.UnionWith(rightFirst.Where(s => s != Grammar.Epsilon));
-                                hasChanged = hasChanged || !leftFirst.SetEquals(oldLeftFirst);
                             }
-
                             if (!nullableSet.Contains(s))
                                 break;
                         }
                     }
+                    hasChanged = hasChanged || !leftFirst.SetEquals(old_leftFirst);
                 }
             }
         }
@@ -592,9 +594,48 @@ namespace Analytical_Expression
             return new();
         }
 
-        static HashSet<Symbol> Select(Symbol[] symbols)
+        static HashSet<Symbol> Follow(NonTerminal nonTerminal)
         {
-            throw new NotImplementedException();
+            if (mapFollow.TryGetValue(nonTerminal, out var set))
+            {
+                return set.ToHashSet();
+            }
+            return new();
+        }
+
+        static HashSet<Symbol> First(Symbol[] symbols)
+        {
+            var set = new HashSet<Symbol>();
+            set.Add(Grammar.Epsilon);
+            foreach (var s in symbols)
+            {
+                if (s is Terminal terminal)
+                {
+                    set.Add(s);
+                    set.Remove(Grammar.Epsilon);
+                    return set;
+                }
+                else if (s is NonTerminal nonTerminal)
+                {
+                    set.UnionWith(First(nonTerminal));
+                    if (!nullableSet.Contains(nonTerminal))
+                    {
+                        set.Remove(Grammar.Epsilon);
+                        return set;
+                    }
+                }
+            }
+            return set;
+        }
+
+        static HashSet<Symbol> Select(Production p)
+        {
+            var set = First(p.Right);
+            if (set.Contains(Grammar.Epsilon))
+            {
+                set.UnionWith(Follow(p.Left));
+            }
+            return set;
         }
 
         static void Main(string[] args)

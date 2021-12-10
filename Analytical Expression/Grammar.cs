@@ -17,15 +17,188 @@ namespace Analytical_Expression
             _Vt.UnionWith(symbols.Where(s => s is Terminal).Cast<Terminal>());
             _P.UnionWith(allProduction);
             S = startNonTerminal;
-        }
-        private HashSet<Terminal> _Vt = new();
-        public IEnumerable<Terminal> Vt { get => _Vt.AsEnumerable(); }
 
+            CalculateFollowSet();
+
+            SortNonTerminal();
+        }
+
+        private Dictionary<NonTerminal, HashSet<Symbol>> mapFirst = new();
+        private Dictionary<NonTerminal, HashSet<Symbol>> mapFollow = new();
+        private HashSet<NonTerminal> nullableSet = new();
+        private HashSet<Terminal> _Vt = new();
         private HashSet<NonTerminal> _Vn = new();
-        public IEnumerable<NonTerminal> Vn { get => _Vn.AsEnumerable(); }
         private HashSet<Production> _P = new();
+
+        public IEnumerable<Terminal> Vt { get => _Vt.AsEnumerable(); }
+        public IEnumerable<NonTerminal> Vn { get => _Vn.AsEnumerable(); }
         public IEnumerable<Production> P { get => _P.AsEnumerable(); }
         public NonTerminal S { get; private set; }
+
+        public HashSet<Symbol> GetFirstSet(NonTerminal nonTerminal)
+        {
+            if (mapFirst.TryGetValue(nonTerminal, out var set))
+            {
+                return set.ToHashSet();
+            }
+            return new();
+        }
+        public HashSet<Symbol> GetFollowSet(NonTerminal nonTerminal)
+        {
+            if (mapFollow.TryGetValue(nonTerminal, out var set))
+            {
+                return set.ToHashSet();
+            }
+            return new();
+        }
+        public HashSet<Symbol> GetFirstSet(Symbol[] symbols)
+        {
+            var set = new HashSet<Symbol>();
+            set.Add(Grammar.Epsilon);
+            foreach (var s in symbols)
+            {
+                if (s is Terminal terminal)
+                {
+                    set.Add(s);
+                    set.Remove(Grammar.Epsilon);
+                    return set;
+                }
+                else if (s is NonTerminal nonTerminal)
+                {
+                    set.UnionWith(GetFirstSet(nonTerminal));
+                    if (!nullableSet.Contains(nonTerminal))
+                    {
+                        set.Remove(Grammar.Epsilon);
+                        return set;
+                    }
+                }
+            }
+            return set;
+        }
+        public HashSet<Symbol> GetSelectSet(Production p)
+        {
+            var set = GetFirstSet(p.Right);
+            if (set.Contains(Grammar.Epsilon))
+            {
+                set.UnionWith(GetFollowSet(p.Left));
+            }
+            return set;
+        }
+
+        private void CalculateNullableSet()
+        {
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+                var oldNullableSet = nullableSet.ToHashSet();
+                foreach (var p in P)
+                {
+                    if (p.Right.Length == 0)
+                        nullableSet.Add(p.Left);
+                    else if (p.Right.All(s => nullableSet.Contains(s)))
+                        nullableSet.Add(p.Left);
+                }
+                hasChanged = !oldNullableSet.SetEquals(nullableSet);
+            }
+        }
+        private void CalculateFirstSet()
+        {
+            CalculateNullableSet();
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+                foreach (var p in P)
+                {
+                    if (!mapFirst.TryGetValue(p.Left, out var leftFirst))
+                    {
+                        leftFirst = new();
+                        mapFirst[p.Left] = leftFirst;
+                        hasChanged = hasChanged || true;
+                    }
+
+                    var old_leftFirst = leftFirst.ToHashSet();
+                    if (p.Right.Length == 0)
+                    {
+                        leftFirst.Add(Grammar.Epsilon);
+                    }
+                    else
+                    {
+                        foreach (var s in p.Right)
+                        {
+                            if (s is Terminal terminal)
+                            {
+                                leftFirst.Add(terminal);
+                            }
+
+                            else if (s is NonTerminal nonTerminal)
+                            {
+                                if (!mapFirst.TryGetValue(nonTerminal, out var rightFirst))
+                                {
+                                    rightFirst = new();
+                                    mapFirst[nonTerminal] = rightFirst;
+                                    hasChanged = hasChanged || true;
+                                }
+                                leftFirst.UnionWith(rightFirst.Where(s => s != Grammar.Epsilon));
+                            }
+                            if (!nullableSet.Contains(s))
+                                break;
+                        }
+                    }
+                    hasChanged = hasChanged || !leftFirst.SetEquals(old_leftFirst);
+                }
+            }
+        }
+        private void CalculateFollowSet()
+        {
+            CalculateFirstSet();
+            mapFollow[S] = new();
+            mapFollow[S].Add(Grammar.EndToken);
+
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+                foreach (var p in P)
+                {
+                    if (!mapFollow.TryGetValue(p.Left, out var leftFollow))
+                    {
+                        leftFollow = new();
+                        mapFollow[p.Left] = leftFollow;
+                        hasChanged = hasChanged || true;
+                    }
+
+                    HashSet<Symbol> set = leftFollow.ToHashSet();
+                    foreach (var s in p.Right.Reverse())
+                    {
+                        if (s is Terminal terminal)
+                        {
+                            set = new();
+                            set.Add(s);
+                        }
+                        else if (s is NonTerminal nonTerminal)
+                        {
+                            if (!mapFollow.TryGetValue(nonTerminal, out var sFollow))
+                            {
+                                sFollow = new();
+                                mapFollow[nonTerminal] = sFollow;
+                                hasChanged = hasChanged || true;
+                            }
+
+                            var old_sFollow = sFollow.ToHashSet();
+                            sFollow.UnionWith(set);
+                            hasChanged = hasChanged || !old_sFollow.SetEquals(sFollow);
+
+                            if (nullableSet.Contains(nonTerminal))
+                                set.UnionWith(mapFirst[nonTerminal].Where(s => s != Grammar.Epsilon));
+                            else
+                                set = mapFirst[nonTerminal].ToHashSet();
+                        }
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// 消除左递归
@@ -230,6 +403,29 @@ namespace Analytical_Expression
 
         #region ToString()
         const string PRE = "    ";
+        private List<NonTerminal> sortedList;
+        private void SortNonTerminal()
+        {
+            HashSet<NonTerminal> visited = new();
+            Queue<NonTerminal> queue = new();
+            queue.Enqueue(S);
+            while (queue.Count > 0)
+            {
+                var n = queue.Dequeue();
+                if (visited.Contains(n))
+                    continue;
+                visited.Add(n);
+                foreach (var p in P.Where(p => p.Left == n))
+                {
+                    foreach (var s in p.Right)
+                    {
+                        if (s is NonTerminal nonTerminal)
+                            queue.Enqueue(nonTerminal);
+                    }
+                }
+            }
+            sortedList = visited.ToList();
+        }
         public override string ToString()
         {
             StringBuilder builder = new StringBuilder();
@@ -238,6 +434,17 @@ namespace Analytical_Expression
             VnToString(builder);
             PToString(builder);
             SToString(builder);
+            return builder.ToString();
+        }
+
+        public string ToFullString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append(ToString());
+            NullableSetToString(builder);
+            FirstSetToString(builder);
+            FollowSetToString(builder);
+            SelectSetToString(builder);
             return builder.ToString();
         }
 
@@ -267,29 +474,9 @@ namespace Analytical_Expression
 
         private void PToString(StringBuilder builder)
         {
-            HashSet<NonTerminal> visited = new();
-            Queue<NonTerminal> queue = new();
-            queue.Enqueue(S);
-            while (queue.Count > 0)
-            {
-                var n = queue.Dequeue();
-                if (visited.Contains(n))
-                    continue;
-                visited.Add(n);
-                foreach (var p in P.Where(p => p.Left == n))
-                {
-                    foreach (var s in p.Right)
-                    {
-                        if (s is NonTerminal nonTerminal)
-                            queue.Enqueue(nonTerminal);
-                    }
-                }
-            }
-            var list = visited.ToList();
-
             builder.Append(PRE).Append("Productions :").AppendLine();
             builder.Append(PRE).Append("{").AppendLine();
-            foreach (var p in P.OrderBy(p => list.IndexOf(p.Left))
+            foreach (var p in P.OrderBy(p => sortedList.IndexOf(p.Left))
                 .ThenByDescending(p => p.Right.Length))
             {
                 builder.Append(PRE).Append(PRE).Append(p).AppendLine();
@@ -297,9 +484,78 @@ namespace Analytical_Expression
             builder.Append(PRE).Append("}").AppendLine();
         }
 
+
+
         private void SToString(StringBuilder builder)
         {
             builder.Append(PRE).Append($"START : {S}").AppendLine();
+        }
+
+        private void NullableSetToString(StringBuilder builder)
+        {
+            builder.Append(PRE).Append("Nullable Set: {");
+            foreach (var n in nullableSet)
+            {
+                builder.Append($" {n},");
+            }
+            builder.Length -= 1;
+            builder.Append(" }");
+            builder.AppendLine();
+        }
+
+        private void FirstSetToString(StringBuilder builder)
+        {
+            builder.Append(PRE).Append("First Set:").AppendLine();
+            builder.Append(PRE).Append("{").AppendLine();
+            foreach (var n in Vn.OrderBy(n => sortedList.IndexOf(n)))
+            {
+                builder.Append(PRE).Append(PRE).Append($"{n} : {{");
+                foreach (var s in GetFirstSet(n))
+                {
+                    builder.Append($" {s},");
+                }
+                builder.Length -= 1;
+                builder.Append(" }");
+                builder.AppendLine();
+            }
+            builder.Append(PRE).Append("}").AppendLine();
+        }
+
+        private void FollowSetToString(StringBuilder builder)
+        {
+            builder.Append(PRE).Append("Follow Set:").AppendLine();
+            builder.Append(PRE).Append("{").AppendLine();
+            foreach (var n in Vn.OrderBy(n => sortedList.IndexOf(n)))
+            {
+                builder.Append(PRE).Append(PRE).Append($"{n} : {{");
+                foreach (var s in GetFollowSet(n))
+                {
+                    builder.Append($" {s},");
+                }
+                builder.Length -= 1;
+                builder.Append(" }");
+                builder.AppendLine();
+            }
+            builder.Append(PRE).Append("}").AppendLine();
+        }
+
+        private void SelectSetToString(StringBuilder builder)
+        {
+            builder.Append(PRE).Append("Select Set:").AppendLine();
+            builder.Append(PRE).Append("{").AppendLine();
+            foreach (var p in P.OrderBy(p => sortedList.IndexOf(p.Left))
+                .ThenByDescending(p => p.Right.Length))
+            {
+                builder.Append(PRE).Append(PRE).Append($"{p} : {{");
+                foreach (var s in GetSelectSet(p))
+                {
+                    builder.Append($" {s},");
+                }
+                builder.Length -= 1;
+                builder.Append(" }");
+                builder.AppendLine();
+            }
+            builder.Append(PRE).Append("}").AppendLine();
         }
         #endregion
     }
