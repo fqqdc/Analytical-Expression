@@ -1,5 +1,4 @@
-﻿#define DEBUG_PRINT
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -385,7 +384,6 @@ namespace Analytical_Expression
         static Symbol CreateSymbol(string strInput) => char.IsUpper(strInput[0]) ? (Symbol)new NonTerminal(strInput) : (Symbol)new Terminal(strInput);
 
 
-        [Conditional("DEBUG_PRINT")]
         static void Print<T1, T2>(Dictionary<T1, T2> sets, string name = "") where T2 : IEnumerable
         {
             Console.WriteLine();
@@ -400,7 +398,6 @@ namespace Analytical_Expression
                 }
             }
         }
-        [Conditional("DEBUG_PRINT")]
         static void Print<T1>(IEnumerable<T1> set, string name = "")
         {
             Console.WriteLine();
@@ -452,218 +449,28 @@ namespace Analytical_Expression
         static void Test()
         {
             List<Production> all = new();
-            all.Add(("E", "T E'"));
-            all.Add(("E'", "+ T E'"));
-            all.Add(("E'", ""));
-            all.Add(("T", "F T'"));
-            all.Add(("T'", "* F T'"));
-            all.Add(("T'", ""));
-            all.Add(("F", "i"));
-            all.Add(("F", "( E )"));
-            var g = new Grammar(all, new("E"));
+            all.Add(("N程序", "program id N变量说明 N复合语句"));
+            all.Add(("N变量说明", "var N标识符表 : integer"));
+            all.Add(("N标识符表", "id N标识符表1"));
+            all.Add(("N标识符表1", ", id N标识符表"));
+            all.Add(("N标识符表1", ""));
+            all.Add(("N复合语句", "begin N语句表 end"));
+            all.Add(("N语句表", "s N语句表1"));
+            all.Add(("N语句表1", "; s N语句表1"));
+            all.Add(("N语句表1", ""));
+            var g = new Grammar(all, new("N程序"));
             Console.WriteLine(g.ToFullString());
-        }
 
-        static Dictionary<NonTerminal, HashSet<Symbol>> mapFirst = new();
-        static Dictionary<NonTerminal, HashSet<Symbol>> mapFollow = new();
-        static HashSet<NonTerminal> nullableSet = new();
-        static Grammar grammar;
-
-        static void CalculateNullableSet()
-        {
-            bool hasChanged = true;
-            while (hasChanged)
+            var mapping = LL1StateTable.CreateFrom(g);
+            foreach (var key in mapping.Keys)
             {
-                hasChanged = false;
-                var oldNullableSet = nullableSet.ToHashSet();
-                foreach (var p in grammar.P)
-                {
-                    if (p.Right.Length == 0)
-                        nullableSet.Add(p.Left);
-                    else if (p.Right.All(s => nullableSet.Contains(s)))
-                        nullableSet.Add(p.Left);
-                }
-                hasChanged = !oldNullableSet.SetEquals(nullableSet);
+                Console.WriteLine($"{key} : {{ {String.Join(" ", mapping[key])} }}");
             }
-        }
-        static void CalculateFirstSet()
-        {
-            CalculateNullableSet();
-            bool hasChanged = true;
-            while (hasChanged)
-            {
-                hasChanged = false;
-                foreach (var p in grammar.P)
-                {
-                    if (!mapFirst.TryGetValue(p.Left, out var leftFirst))
-                    {
-                        leftFirst = new();
-                        mapFirst[p.Left] = leftFirst;
-                        hasChanged = hasChanged || true;
-                    }
-
-                    var old_leftFirst = leftFirst.ToHashSet();
-                    if (p.Right.Length == 0)
-                    {
-                        leftFirst.Add(Grammar.Epsilon);
-                    }
-                    else
-                    {
-                        foreach (var s in p.Right)
-                        {
-                            if (s is Terminal terminal)
-                            {
-                                leftFirst.Add(terminal);
-                            }
-
-                            else if (s is NonTerminal nonTerminal)
-                            {
-                                if (!mapFirst.TryGetValue(nonTerminal, out var rightFirst))
-                                {
-                                    rightFirst = new();
-                                    mapFirst[nonTerminal] = rightFirst;
-                                    hasChanged = hasChanged || true;
-                                }
-                                leftFirst.UnionWith(rightFirst.Where(s => s != Grammar.Epsilon));
-                            }
-                            if (!nullableSet.Contains(s))
-                                break;
-                        }
-                    }
-                    hasChanged = hasChanged || !leftFirst.SetEquals(old_leftFirst);
-                }
-            }
-        }
-        static void CalculateFollowSet()
-        {
-            CalculateFirstSet();
-            mapFollow[grammar.S] = new();
-            mapFollow[grammar.S].Add(Grammar.EndToken);
-
-            bool hasChanged = true;
-            while (hasChanged)
-            {
-                hasChanged = false;
-                foreach (var p in grammar.P)
-                {
-                    if (!mapFollow.TryGetValue(p.Left, out var leftFollow))
-                    {
-                        leftFollow = new();
-                        mapFollow[p.Left] = leftFollow;
-                        hasChanged = hasChanged || true;
-                    }
-
-                    HashSet<Symbol> set = leftFollow.ToHashSet();
-                    foreach (var s in p.Right.Reverse())
-                    {
-                        if (s is Terminal terminal)
-                        {
-                            set = new();
-                            set.Add(s);
-                        }
-                        else if (s is NonTerminal nonTerminal)
-                        {
-                            if (!mapFollow.TryGetValue(nonTerminal, out var sFollow))
-                            {
-                                sFollow = new();
-                                mapFollow[nonTerminal] = sFollow;
-                                hasChanged = hasChanged || true;
-                            }
-
-                            var old_sFollow = sFollow.ToHashSet();
-                            sFollow.UnionWith(set);
-                            hasChanged = hasChanged || !old_sFollow.SetEquals(sFollow);
-
-                            if (nullableSet.Contains(nonTerminal))
-                                set.UnionWith(mapFirst[nonTerminal].Where(s => s != Grammar.Epsilon));
-                            else
-                                set = mapFirst[nonTerminal].ToHashSet();
-                        }
-                    }
-                }
-            }
-        }
-
-
-        static HashSet<Symbol> First(NonTerminal nonTerminal)
-        {
-            if (mapFirst.TryGetValue(nonTerminal, out var set))
-            {
-                return set.ToHashSet();
-            }
-            return new();
-        }
-
-        static HashSet<Symbol> Follow(NonTerminal nonTerminal)
-        {
-            if (mapFollow.TryGetValue(nonTerminal, out var set))
-            {
-                return set.ToHashSet();
-            }
-            return new();
-        }
-
-        static HashSet<Symbol> First(Symbol[] symbols)
-        {
-            var set = new HashSet<Symbol>();
-            set.Add(Grammar.Epsilon);
-            foreach (var s in symbols)
-            {
-                if (s is Terminal terminal)
-                {
-                    set.Add(s);
-                    set.Remove(Grammar.Epsilon);
-                    return set;
-                }
-                else if (s is NonTerminal nonTerminal)
-                {
-                    set.UnionWith(First(nonTerminal));
-                    if (!nullableSet.Contains(nonTerminal))
-                    {
-                        set.Remove(Grammar.Epsilon);
-                        return set;
-                    }
-                }
-            }
-            return set;
-        }
-
-        static HashSet<Symbol> Select(Production p)
-        {
-            var set = First(p.Right);
-            if (set.Contains(Grammar.Epsilon))
-            {
-                set.UnionWith(Follow(p.Left));
-            }
-            return set;
         }
 
         static void Main(string[] args)
         {
             Test();
-        }
-    }
-
-    class ProductionComparer : IEqualityComparer<Production>
-    {
-        bool IEqualityComparer<Production>.Equals(Production? x, Production? y)
-        {
-            var b = x.Left == y.Left && x.Right.Length == y.Right.Length;
-            if (b)
-            {
-                for (int i = 0; i < x.Right.Length; i++)
-                {
-                    if (x.Right[i] != y.Right[i])
-                        return false;
-                }
-                return true;
-            }
-            return false;
-        }
-
-        int IEqualityComparer<Production>.GetHashCode(Production obj)
-        {
-            return 0;
         }
     }
 }

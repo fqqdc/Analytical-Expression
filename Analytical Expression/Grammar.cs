@@ -23,8 +23,8 @@ namespace Analytical_Expression
             SortNonTerminal();
         }
 
-        private Dictionary<NonTerminal, HashSet<Symbol>> mapFirst = new();
-        private Dictionary<NonTerminal, HashSet<Symbol>> mapFollow = new();
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
         private HashSet<NonTerminal> nullableSet = new();
         private HashSet<Terminal> _Vt = new();
         private HashSet<NonTerminal> _Vn = new();
@@ -35,7 +35,7 @@ namespace Analytical_Expression
         public IEnumerable<Production> P { get => _P.AsEnumerable(); }
         public NonTerminal S { get; private set; }
 
-        public HashSet<Symbol> GetFirstSet(NonTerminal nonTerminal)
+        public HashSet<Terminal> GetFirstSet(NonTerminal nonTerminal)
         {
             if (mapFirst.TryGetValue(nonTerminal, out var set))
             {
@@ -43,7 +43,7 @@ namespace Analytical_Expression
             }
             return new();
         }
-        public HashSet<Symbol> GetFollowSet(NonTerminal nonTerminal)
+        public HashSet<Terminal> GetFollowSet(NonTerminal nonTerminal)
         {
             if (mapFollow.TryGetValue(nonTerminal, out var set))
             {
@@ -51,15 +51,15 @@ namespace Analytical_Expression
             }
             return new();
         }
-        public HashSet<Symbol> GetFirstSet(Symbol[] symbols)
+        public HashSet<Terminal> GetFirstSet(Symbol[] symbols)
         {
-            var set = new HashSet<Symbol>();
+            var set = new HashSet<Terminal>();
             set.Add(Grammar.Epsilon);
             foreach (var s in symbols)
             {
                 if (s is Terminal terminal)
                 {
-                    set.Add(s);
+                    set.Add(terminal);
                     set.Remove(Grammar.Epsilon);
                     return set;
                 }
@@ -75,7 +75,7 @@ namespace Analytical_Expression
             }
             return set;
         }
-        public HashSet<Symbol> GetSelectSet(Production p)
+        public HashSet<Terminal> GetSelectSet(Production p)
         {
             var set = GetFirstSet(p.Right);
             if (set.Contains(Grammar.Epsilon))
@@ -169,13 +169,13 @@ namespace Analytical_Expression
                         hasChanged = hasChanged || true;
                     }
 
-                    HashSet<Symbol> set = leftFollow.ToHashSet();
+                    HashSet<Terminal> set = leftFollow.ToHashSet();
                     foreach (var s in p.Right.Reverse())
                     {
                         if (s is Terminal terminal)
                         {
                             set = new();
-                            set.Add(s);
+                            set.Add(terminal);
                         }
                         else if (s is NonTerminal nonTerminal)
                         {
