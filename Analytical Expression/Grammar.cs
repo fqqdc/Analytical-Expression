@@ -223,9 +223,13 @@ namespace Analytical_Expression
                 foreach (var p1 in recursions)
                 {
                     var group = set.Where(p => p.Left == p1.Left);
+
+                    var newLeft = new NonTerminal(p1.Left.Name + "'");
+                    while (set.Union(unionSet).Select(p => p.Left).Contains(newLeft))
+                        newLeft = new NonTerminal(newLeft.Name + "'");
+
                     foreach (var p2 in group)
                     {
-                        var newLeft = new NonTerminal(p1.Left.Name + "'");
                         exceptSet.Add(p2);
                         if (p2.Right[0].Name == String.Empty)
                             continue;
@@ -257,12 +261,18 @@ namespace Analytical_Expression
                 foreach (var p in pending)
                 {
                     HashSet<Production> derivative = new();
+                    HashSet<NonTerminal> loopVisited = new();
                     derivative.Add(p);
                     var group1 = derivative.ToArray();
                     bool needContinue = true;
                     while (needContinue)
                     {
                         needContinue = false;
+
+                        if (group1.All(p => loopVisited.Contains(p.Right[0])))
+                            continue;
+                        loopVisited.UnionWith(group1.Select(p=>(NonTerminal)p.Right[0]));
+
                         foreach (var p1 in group1)
                         {
                             derivative.Remove(p1);
@@ -334,18 +344,23 @@ namespace Analytical_Expression
                 HashSet<Production> exceptSet = new();
                 HashSet<Production> unionSet = new();
                 var groups1 = oldSet.Where(p => p.Right.Length > 0).GroupBy(p => p.Left);
+
                 foreach (var g1 in groups1)
                 {
                     if (g1.Count() == 1)
                         continue;
+
+                    NonTerminal newLeft = new(g1.Key.Name + "'");
+                    while (this.P.Union(unionSet).Select(p => p.Left).Contains(newLeft))
+                        newLeft = new NonTerminal(newLeft.Name + "'");
 
                     var groups2 = g1.GroupBy(p => p.Right[0]);
                     foreach (var g2 in groups2)
                     {
                         if (g2.Count() == 1)
                             continue;
-                        exceptSet.UnionWith(g2);
-                        NonTerminal newLeft = new(g1.Key.Name + "'");
+                        exceptSet.UnionWith(g2);                        
+
                         unionSet.Add(new(g1.Key, new Symbol[] { g2.Key, newLeft }));
                         foreach (var p in g2)
                         {

@@ -449,20 +449,18 @@ namespace Analytical_Expression
         static void Test()
         {
             List<Production> all = new();
-            all.Add(("N程序", "program id N变量说明 N复合语句"));
-            all.Add(("N变量说明", "var N标识符表 : integer"));
-            all.Add(("N标识符表", "id N标识符表1"));
-            all.Add(("N标识符表1", ", id N标识符表"));
-            all.Add(("N标识符表1", ""));
-            all.Add(("N复合语句", "begin N语句表 end"));
-            all.Add(("N语句表", "s N语句表1"));
-            all.Add(("N语句表1", "; s N语句表1"));
-            all.Add(("N语句表1", ""));
-            var g = new Grammar(all, new("N程序"));
-            Console.WriteLine(g.ToFullString());
-
-            var ll1 = LL1.CreateFrom(g);
-            Console.WriteLine(ll1); 
+            all.Add(("E", "E T +"));
+            all.Add(("E", "T"));
+            all.Add(("T", "T F *"));
+            all.Add(("T", "F"));
+            all.Add(("F", "E"));
+            all.Add(("F", "i"));
+            var g = new Grammar(all, new("E"));
+            Console.WriteLine(g);
+            g = g.EliminateLeftRecursion();
+            Console.WriteLine(g);
+            g = g.ExtractLeftCommonfactor();
+            Console.WriteLine(g);
         }
 
         static void Main(string[] args)
