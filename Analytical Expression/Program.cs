@@ -461,11 +461,8 @@ namespace Analytical_Expression
             var g = new Grammar(all, new("N程序"));
             Console.WriteLine(g.ToFullString());
 
-            var mapping = LL1StateTable.CreateFrom(g);
-            foreach (var key in mapping.Keys)
-            {
-                Console.WriteLine($"{key} : {{ {String.Join(" ", mapping[key])} }}");
-            }
+            var ll1 = LL1.CreateFrom(g);
+            Console.WriteLine(ll1); 
         }
 
         static void Main(string[] args)

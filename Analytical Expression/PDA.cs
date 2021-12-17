@@ -8,16 +8,50 @@ namespace Analytical_Expression
 {
     public abstract class PDA
     {
-        public record PDAMapping(int q1, Terminal a, Terminal z, int q2, IEnumerable<Symbol> gamma);
-
-        public PDA()
+        public record Mapping(int q1, Symbol z, Terminal a,  int q2, IEnumerable<Symbol> gamma);
+        class MappingComparer : IEqualityComparer<Mapping>
         {
-            throw new NotImplementedException();
+            public static IEqualityComparer<Mapping> Default { get; private set; }
+            static MappingComparer()
+            {
+                Default = new MappingComparer();
+            }
+
+            bool IEqualityComparer<Mapping>.Equals(Mapping? x, Mapping? y)
+            {
+                if (x.q1 != y.q1) return false;
+                if (x.a != y.a) return false;
+                if (x.z != y.z) return false;
+                if (x.q2 != y.q2) return false;
+                var x_gamma = x.gamma.ToArray();
+                var y_gamma = y.gamma.ToArray();
+                if (x_gamma.Length != y_gamma.Length) return false;
+                for (int i = 0; i < x_gamma.Length; i++)
+                {
+                    if (x_gamma[i] != y_gamma[i]) return false;
+                }
+                return true;
+            }
+
+            int IEqualityComparer<Mapping>.GetHashCode(Mapping obj)
+            {
+                return 0;
+            }
+        }
+
+        public PDA(IEnumerable<int> Q, IEnumerable<Terminal> Sigma, IEnumerable<Mapping> Delta, int q_0, Symbol z_0, IEnumerable<int> F)
+        {
+            this._Q.UnionWith(Q);
+            this._Sigma.UnionWith(Sigma);
+            this._Delta.UnionWith(Delta);
+            this.Q_0 = q_0;
+            this.Z_0 = z_0;
+            this._F.UnionWith(F);
         }
 
         protected HashSet<int> _Q = new();
         protected HashSet<Terminal> _Sigma = new();
-        protected HashSet<PDAMapping> _MappingTable = new();
+        protected HashSet<Mapping> _Delta = new(MappingComparer.Default);
         protected HashSet<int> _F = new();
 
 
@@ -32,7 +66,7 @@ namespace Analytical_Expression
         /// <summary>
         /// 有限子集映射
         /// </summary>
-        public IEnumerable<PDAMapping> MappingTable { get => _MappingTable.AsEnumerable(); }
+        public IEnumerable<Mapping> Delta { get => _Delta.AsEnumerable(); }
         /// <summary>
         /// 控制器的初始状态
         /// </summary>
@@ -40,7 +74,7 @@ namespace Analytical_Expression
         /// <summary>
         /// 下推栈的栈初始符
         /// </summary>
-        public Terminal Z_0 { get; protected set; }
+        public Symbol Z_0 { get; protected set; }
         /// <summary>
         /// 控制器的终态集
         /// </summary>
@@ -90,12 +124,12 @@ namespace Analytical_Expression
         {
             builder.Append(PRE).Append("Mapping :").AppendLine();
             builder.Append(PRE).Append("{").AppendLine();
-            foreach (var pGroup in MappingTable.GroupBy(i => (i.q1)).OrderBy(g => g.Key))
+            foreach (var pGroup in Delta.GroupBy(i => (i.q1)).OrderBy(g => g.Key))
             {
                 builder.Append(PRE).Append(PRE);
                 foreach (var p in pGroup.OrderBy(p => p.a.Name).ThenBy(p => p.z.Name).ThenBy(p => p.q2))
                 {
-                    builder.Append($"({p.q1}, {p.a}, {p.z}) = ({p.q2}, {string.Concat(p.gamma)}), ");
+                    builder.Append($"({p.q1}, {p.z}, {p.a}) = ({p.q2}, {string.Concat(p.gamma)}), ");
                 }
                 builder.Length -= 2;
                 builder.AppendLine();
