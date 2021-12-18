@@ -105,19 +105,19 @@ namespace Analytical_Expression
         private void CalculateFirstSet()
         {
             CalculateNullableSet();
+            foreach (var s in P.Select(p=>p.Left).Union(P.SelectMany(p=>p.Right)).Distinct())
+            {
+                if(s is NonTerminal nonTerminal)
+                    mapFirst[nonTerminal] = new();
+            }
+
             bool hasChanged = true;
             while (hasChanged)
             {
                 hasChanged = false;
                 foreach (var p in P)
                 {
-                    if (!mapFirst.TryGetValue(p.Left, out var leftFirst))
-                    {
-                        leftFirst = new();
-                        mapFirst[p.Left] = leftFirst;
-                        hasChanged = hasChanged || true;
-                    }
-
+                    var leftFirst = mapFirst[p.Left];
                     var old_leftFirst = leftFirst.ToHashSet();
                     if (p.Right.Length == 0)
                     {
@@ -134,12 +134,7 @@ namespace Analytical_Expression
 
                             else if (s is NonTerminal nonTerminal)
                             {
-                                if (!mapFirst.TryGetValue(nonTerminal, out var rightFirst))
-                                {
-                                    rightFirst = new();
-                                    mapFirst[nonTerminal] = rightFirst;
-                                    hasChanged = hasChanged || true;
-                                }
+                                var rightFirst = mapFirst[nonTerminal];
                                 leftFirst.UnionWith(rightFirst.Where(s => s != Grammar.Epsilon));
                             }
                             if (!nullableSet.Contains(s))
@@ -199,7 +194,34 @@ namespace Analytical_Expression
                 }
             }
         }
-
+        /// <summary>
+        /// 移除不能抵达的生成式
+        /// </summary>
+        private static HashSet<Production> FilterUnreachable(HashSet<Production> set, NonTerminal S)
+        {
+            Queue<NonTerminal> queue = new();
+            HashSet<NonTerminal> visited = new();
+            queue.Enqueue(S);
+            visited.Add(S);
+            HashSet<Production> newSet = new();
+            while (queue.Count > 0)
+            {
+                var nLeft = queue.Dequeue();
+                foreach (var p in set.Where(p => p.Left == nLeft))
+                {
+                    newSet.Add(p);
+                    foreach (var n in p.Right.Where(n => n is NonTerminal).Cast<NonTerminal>())
+                    {
+                        if (!visited.Contains(n))
+                        {
+                            visited.Add(n);
+                            queue.Enqueue(n);
+                        }
+                    }
+                }
+            }
+            return newSet;
+        }
         /// <summary>
         /// 消除左递归
         /// </summary>
@@ -304,33 +326,7 @@ namespace Analytical_Expression
                 set.ExceptWith(exceptSet);
                 set.UnionWith(unionSet);
             }
-            static HashSet<Production> FilterUnreachable(HashSet<Production> set, NonTerminal S)
-            {
-                Queue<NonTerminal> queue = new();
-                HashSet<NonTerminal> visited = new();
-                queue.Enqueue(S);
-                visited.Add(S);
-                HashSet<Production> newSet = new();
-                while (queue.Count > 0)
-                {
-                    var nLeft = queue.Dequeue();
-                    foreach (var p in set.Where(p => p.Left == nLeft))
-                    {
-                        newSet.Add(p);
-                        foreach (var n in p.Right.Where(n => n is NonTerminal).Cast<NonTerminal>())
-                        {
-                            if (!visited.Contains(n))
-                            {
-                                visited.Add(n);
-                                queue.Enqueue(n);
-                            }
-                        }
-                    }
-                }
-                return newSet;
-            }
         }
-
         /// <summary>
         /// 提取左公因子
         /// </summary>
@@ -376,8 +372,9 @@ namespace Analytical_Expression
             } while (!newSet.SetEquals(oldSet));
 
             CombineSingleProduction(newSet);
+            var set = FilterUnreachable(newSet, S);
 
-            return new(newSet, S);
+            return new(set, S);
 
             static void CombineSingleProduction(HashSet<Production> set)
             {
@@ -395,12 +392,12 @@ namespace Analytical_Expression
                             var count = set.Count(p => p.Left == n);
                             if (count != 1)
                                 continue;
-                            var p1 = set.First(p => p.Left == n);
+                            var p1 = set.Single(p => p.Left == n);
 
                             var newRight = p.Right.Take(i).Union(p1.Right).Union(p.Right.Skip(i + 1));
                             Production p2 = new(p.Left, newRight.ToArray());
                             set.Remove(p);
-                            set.Remove(p1);
+                            //set.Remove(p1);
                             set.Add(p2);
                             hasChanged = true;
                             break;

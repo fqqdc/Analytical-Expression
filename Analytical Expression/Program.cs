@@ -449,18 +449,19 @@ namespace Analytical_Expression
         static void Test()
         {
             List<Production> all = new();
-            all.Add(("E", "E T +"));
-            all.Add(("E", "T"));
-            all.Add(("T", "T F *"));
-            all.Add(("T", "F"));
-            all.Add(("F", "E"));
-            all.Add(("F", "i"));
-            var g = new Grammar(all, new("E"));
-            Console.WriteLine(g);
+            all.Add(("S", "S * a P"));
+            all.Add(("S", "a P"));
+            all.Add(("S", "* a P"));
+            all.Add(("P", "+ a P"));
+            all.Add(("P", "+ a"));
+
+            var g = new Grammar(all, new("S"));
             g = g.EliminateLeftRecursion();
             Console.WriteLine(g);
             g = g.ExtractLeftCommonfactor();
-            Console.WriteLine(g);
+            Console.WriteLine(g.ToFullString());
+            var ll = LL1.CreateFrom(g);
+            Console.WriteLine(ll);
         }
 
         static void Main(string[] args)

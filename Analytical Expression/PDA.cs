@@ -126,13 +126,11 @@ namespace Analytical_Expression
             builder.Append(PRE).Append("{").AppendLine();
             foreach (var pGroup in Delta.GroupBy(i => (i.q1)).OrderBy(g => g.Key))
             {
-                builder.Append(PRE).Append(PRE);
-                foreach (var p in pGroup.OrderBy(p => p.a.Name).ThenBy(p => p.z.Name).ThenBy(p => p.q2))
+                foreach (var p in pGroup.OrderBy(p => p.z.Name).ThenBy(p => p.a.Name).ThenBy(p => p.q2))
                 {
-                    builder.Append($"({p.q1}, {p.z}, {p.a}) = ({p.q2}, {string.Concat(p.gamma)}), ");
+                    builder.Append(PRE).Append(PRE)
+                        .AppendLine($"( {p.q1}, {p.z}, {p.a} ) = ( {p.q2}, {string.Concat(p.gamma)} )");
                 }
-                builder.Length -= 2;
-                builder.AppendLine();
             }
             builder.Append(PRE).Append("}").AppendLine();
         }
