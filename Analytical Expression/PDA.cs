@@ -129,7 +129,7 @@ namespace Analytical_Expression
                 foreach (var p in pGroup.OrderBy(p => p.z.Name).ThenBy(p => p.a.Name).ThenBy(p => p.q2))
                 {
                     builder.Append(PRE).Append(PRE)
-                        .AppendLine($"( {p.q1}, {p.z}, {p.a} ) = ( {p.q2}, {string.Concat(p.gamma)} )");
+                        .AppendLine($"( {p.q1}, {p.z}, {p.a} ) = ( {p.q2}, {string.Join(" ", p.gamma)} )");
                 }
             }
             builder.Append(PRE).Append("}").AppendLine();
