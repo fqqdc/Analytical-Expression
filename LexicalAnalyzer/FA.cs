@@ -87,7 +87,7 @@ namespace LexicalAnalyzer
             builder.Append(PRE).Append($"Z : {{");
             foreach (var s in Z)
             {
-                builder.Append($" {s},");
+                builder.Append($" {s}({s.InterId}),");
             }
             if (Z.Any())
                 builder.Length -= 1;

@@ -12,13 +12,19 @@ namespace LexicalAnalyzer
         {
             var a = NFA.CreateFrom('a');
             Console.WriteLine(a);
-            var b = NFA.CreateFrom('B');
+            var b = NFA.CreateFrom('b');
             Console.WriteLine(b);
-            var nfa = a.Join(b);
+            var c = NFA.CreateFrom('c');
+            Console.WriteLine(b);
+            var ab = a.Join(b);
+            Console.WriteLine(ab);
+            var ab2 = a.Or(b);
+            Console.WriteLine(ab2);
+            var c3 = c.Closure();
+            Console.WriteLine(c3);
+            var nfa = ab.Or(ab2).Or(c3);
             Console.WriteLine(nfa);
-            nfa = a.Or(b);
-            Console.WriteLine(nfa);
-            nfa = nfa.Closure();
+            nfa = ab.Union(ab2).Union(c3);
             Console.WriteLine(nfa);
         }
     }

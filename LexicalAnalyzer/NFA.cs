@@ -121,11 +121,11 @@ namespace LexicalAnalyzer
         {
             //S
             var S = new HashSet<State>();
-            S.UnionWith(fst.S);
+            S.UnionWith(fst.S.Select(s => new State(s.Id)));
             var mid = new State(S.Count);
             S.Add(mid);
             int snd_base_id = S.Count;
-            S.UnionWith(snd.S.Select(i => new State(i, snd_base_id + i.Id)));
+            S.UnionWith(snd.S.Select(s => new State(snd_base_id + s.Id)));
 
             //Sigma
             var Sigma = new HashSet<Symbol>();
@@ -133,11 +133,17 @@ namespace LexicalAnalyzer
             Sigma.UnionWith(snd.Sigma);
 
             //Mapping
-            var MappingTable = fst.MappingTable.Select(i => (i.s1, i.symbol, i.s2)).ToHashSet();
+            var MappingTable = new HashSet<(State s1, Symbol symbol, State s2)>();
+            foreach (var item in fst.MappingTable)
+            {
+                var s1 = S.Single(s => s.Id == item.s1.Id);
+                var s2 = S.Single(s => s.Id == item.s2.Id);
+                MappingTable.Add((s1, item.symbol, s2));
+            }
             foreach (var item in snd.MappingTable)
             {
-                var s1 = S.Single(s => s.Guid == item.s1.Guid);
-                var s2 = S.Single(s => s.Guid == item.s2.Guid);
+                var s1 = S.Single(s => s.Id == snd_base_id + item.s1.Id);
+                var s2 = S.Single(s => s.Id == snd_base_id + item.s2.Id);
                 MappingTable.Add((s1, item.symbol, s2));
             }
 
@@ -145,21 +151,27 @@ namespace LexicalAnalyzer
             var Z = new HashSet<State>();
             foreach (var snd_z in snd.Z)
             {
-                var z = S.Single(s => s.Guid == snd_z.Guid);
+                var z = S.Single(s => s.Id == snd_base_id + snd_z.Id);
                 Z.Add(z);
             }
 
             //S_0
-            var S_0 = fst.S_0;
+            var S_0 = new HashSet<State>();
+            foreach (var item in fst.S_0)
+            {
+                var s = S.Single(s=>s.Id == item.Id);
+                S_0.Add(s);
+            }
 
             //Join
-            foreach (var s1 in fst.Z)
+            foreach (var fst_s1 in fst.Z)
             {
+                var s1 = S.Single(s => s.Id == fst_s1.Id);
                 MappingTable.Add((s1, Symbol.Epsilon, mid));
             }
             foreach (var snd_s2 in snd.S_0)
             {
-                var s2 = S.Single(s => s.Guid == snd_s2.Guid);
+                var s2 = S.Single(s => s.Id == snd_base_id + snd_s2.Id);
                 MappingTable.Add((mid, Symbol.Epsilon, s2));
             }
 
@@ -174,9 +186,9 @@ namespace LexicalAnalyzer
             State head = new(0);
             S.Add(head);
             int fst_base_id = S.Count;
-            S.UnionWith(fst.S.Select(s => new State(s, fst_base_id + s.Id)));
+            S.UnionWith(fst.S.Select(s => new State(fst_base_id + s.Id)));
             int snd_base_id = S.Count;
-            S.UnionWith(snd.S.Select(s => new State(s, snd_base_id + s.Id)));
+            S.UnionWith(snd.S.Select(s => new State(snd_base_id + s.Id)));
             State tail = new(S.Count);
             S.Add(tail);
 
@@ -189,14 +201,14 @@ namespace LexicalAnalyzer
             var MappingTable = new HashSet<(State s1, Symbol symbol, State s2)>();
             foreach (var item in fst.MappingTable)
             {
-                var s1 = S.Single(s => s.Guid == item.s1.Guid);
-                var s2 = S.Single(s => s.Guid == item.s2.Guid);
+                var s1 = S.Single(s => s.Id == fst_base_id + item.s1.Id);
+                var s2 = S.Single(s => s.Id == fst_base_id + item.s2.Id);
                 MappingTable.Add((s1, item.symbol, s2));
             }
             foreach (var item in snd.MappingTable)
             {
-                var s1 = S.Single(s => s.Guid == item.s1.Guid);
-                var s2 = S.Single(s => s.Guid == item.s2.Guid);
+                var s1 = S.Single(s => s.Id == snd_base_id + item.s1.Id);
+                var s2 = S.Single(s => s.Id == snd_base_id + item.s2.Id);
                 MappingTable.Add((s1, item.symbol, s2));
             }
 
@@ -211,22 +223,22 @@ namespace LexicalAnalyzer
             //Or
             foreach (var item in fst.S_0)
             {
-                var s2 = S.Single(s => s.Guid == item.Guid);
+                var s2 = S.Single(s => s.Id == fst_base_id + item.Id);
                 MappingTable.Add((head, Symbol.Epsilon, s2));
             }
             foreach (var item in snd.S_0)
             {
-                var s2 = S.Single(s => s.Guid == item.Guid);
+                var s2 = S.Single(s => s.Id == snd_base_id + item.Id);
                 MappingTable.Add((head, Symbol.Epsilon, s2));
             }
             foreach (var item in fst.Z)
             {
-                var s1 = S.Single(s => s.Guid == item.Guid);
+                var s1 = S.Single(s => s.Id == fst_base_id + item.Id);
                 MappingTable.Add((s1, Symbol.Epsilon, tail));
             }
             foreach (var item in snd.Z)
             {
-                var s1 = S.Single(s => s.Guid == item.Guid);
+                var s1 = S.Single(s => s.Id == snd_base_id + item.Id);
                 MappingTable.Add((s1, Symbol.Epsilon, tail));
             }
 
@@ -253,8 +265,8 @@ namespace LexicalAnalyzer
             var MappingTable = new HashSet<(State s1, Symbol symbol, State s2)>();
             foreach (var item in dig.MappingTable)
             {
-                var s1 = S.Single(s => s.Guid == item.s1.Guid);
-                var s2 = S.Single(s => s.Guid == item.s2.Guid);
+                var s1 = S.Single(s => s.Id == dig_base_id + item.s1.Id);
+                var s2 = S.Single(s => s.Id == dig_base_id + item.s2.Id);
                 MappingTable.Add((s1, item.symbol, s2));
             }
 
@@ -270,18 +282,71 @@ namespace LexicalAnalyzer
             MappingTable.Add((head, Symbol.Epsilon, tail));
             foreach (var item in dig.S_0)
             {
-                var s2 = S.Single(s => s.Guid == item.Guid);
+                var s2 = S.Single(s => s.Id == dig_base_id + item.Id);
                 MappingTable.Add((head, Symbol.Epsilon, s2));
             }
             foreach (var item in dig.Z)
             {
-                var s1 = S.Single(s => s.Guid == item.Guid);
+                var s1 = S.Single(s => s.Id == dig_base_id + item.Id);
                 foreach (var item2 in dig.S_0)
                 {
-                    var s2 = S.Single(s => s.Guid == item2.Guid);
+                    var s2 = S.Single(s => s.Id == dig_base_id + item2.Id);
                     MappingTable.Add((s1, Symbol.Epsilon, s2));
                 }
                 MappingTable.Add((s1, Symbol.Epsilon, tail));
+            }
+
+            return new(S, Sigma, MappingTable, S_0, Z);
+        }
+
+        public static NFA Union(this NFA fst, NFA snd)
+        {
+            //S
+            var S = new HashSet<State>();
+            State head = new(0);
+            S.Add(head);
+            int fst_base_id = S.Count;
+            S.UnionWith(fst.S.Select(s => new State(s, fst_base_id + s.Id)));
+            int snd_base_id = S.Count;
+            S.UnionWith(snd.S.Select(s => new State(s, snd_base_id + s.Id)));
+
+            //Sigma
+            var Sigma = new HashSet<Symbol>();
+            Sigma.UnionWith(fst.Sigma);
+            Sigma.UnionWith(snd.Sigma);
+
+            //Mapping
+            var MappingTable = new HashSet<(State s1, Symbol symbol, State s2)>();
+            foreach (var item in fst.MappingTable)
+            {
+                var s1 = S.Single(s => s.InterId == item.s1.InterId);
+                var s2 = S.Single(s => s.InterId == item.s2.InterId);
+                MappingTable.Add((s1, item.symbol, s2));
+            }
+            foreach (var item in snd.MappingTable)
+            {
+                var s1 = S.Single(s => s.InterId == item.s1.InterId);
+                var s2 = S.Single(s => s.InterId == item.s2.InterId);
+                MappingTable.Add((s1, item.symbol, s2));
+            }
+
+            //Z
+            var Z = new HashSet<State>();
+            foreach (var item in fst.Z.Union(snd.Z))
+            {
+                var z = S.Single(s => s.InterId == item.InterId);
+                Z.Add(z);
+            }
+
+            //S_0
+            var S_0 = new HashSet<State>();
+            S_0.Add(head);
+
+            //Union
+            foreach (var item in fst.S_0.Union(snd.S_0))
+            {
+                var s2 = S.Single(s => s.InterId == item.InterId);
+                MappingTable.Add((head, Symbol.Epsilon, s2));
             }
 
             return new(S, Sigma, MappingTable, S_0, Z);

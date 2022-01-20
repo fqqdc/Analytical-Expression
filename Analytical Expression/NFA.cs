@@ -172,8 +172,7 @@ namespace Analytical_Expression
             //Or
             MappingTable.Add((head, FA.EPSILON, fst_base_id + fst.S_0));
             MappingTable.Add((head, FA.EPSILON, snd_base_id + snd.S_0));
-            foreach (var s in fst.Z
-                .Select(s => fst_base_id + s)
+            foreach (var s in fst.Z.Select(s => fst_base_id + s)
                 .Union(snd.Z.Select(s => snd_base_id + s)))
             {
                 MappingTable.Add((s, FA.EPSILON, tail));
@@ -217,6 +216,41 @@ namespace Analytical_Expression
                 MappingTable.Add((dig_base_id + s, FA.EPSILON, tail));
                 MappingTable.Add((dig_base_id + s, FA.EPSILON, dig_base_id + dig.S_0));
             }
+
+            return new(S, Sigma, MappingTable, S_0, Z);
+        }
+
+        public static NFA Union(this NFA fst, NFA snd)
+        {
+            //S
+            var S = new HashSet<int>();
+            int head = S.Count;
+            S.Add(head);
+            int fst_base_id = S.Count;
+            S.UnionWith(fst.S.Select(s => fst_base_id + s));
+            int snd_base_id = S.Count;
+            S.UnionWith(snd.S.Select(s => snd_base_id + s));
+
+            //Sigma
+            var Sigma = new HashSet<Terminal>();
+            Sigma.UnionWith(fst.Sigma);
+            Sigma.UnionWith(snd.Sigma);
+
+            //Mapping
+            var MappingTable = fst.MappingTable.Select(i => (fst_base_id + i.s1, i.t, fst_base_id + i.s2))
+                .Union(snd.MappingTable.Select(i => (snd_base_id + i.s1, i.t, snd_base_id + i.s2)))
+                .ToHashSet();
+
+            //Z
+            var Z = new HashSet<int>();
+            Z.UnionWith(fst.Z.Select(s => fst_base_id + s).Union(snd.Z.Select(s => snd_base_id + s)));
+
+            //S_0
+            var S_0 = head;
+
+            //Or
+            MappingTable.Add((head, FA.EPSILON, fst_base_id + fst.S_0));
+            MappingTable.Add((head, FA.EPSILON, snd_base_id + snd.S_0));
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
