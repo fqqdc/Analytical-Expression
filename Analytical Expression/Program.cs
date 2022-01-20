@@ -411,39 +411,12 @@ namespace Analytical_Expression
 
         static void NFa_Dfa()
         {
-            var I = NFA.CreateFrom("I");
-            var N = NFA.CreateFrom("N");
-            var T = NFA.CreateFrom("T");
-            var O = NFA.CreateFrom("O");
-            var IN = I.Join(N);
-            var INTO = IN.Join(T).Join(O);
-            var TO = T.Join(O);
-            var NO = N.Join(O);
-            var NOT = N.Join(O).Join(T);
-            var ON = O.Join(N);
-
-            var nfa = IN.Or(INTO).Or(TO);
+            var a = NFA.CreateFrom("a");
+            var b = NFA.CreateFrom("b");
+            var nfa = a.Union(a.Closure());
             Console.WriteLine(nfa);
-            var nfa2 = NO.Or(NOT).Or(ON);
-            Console.WriteLine(nfa);
-            Console.WriteLine(nfa2);
-
             var dfa = DFA.CreateFrom(nfa);
             Console.WriteLine(dfa);
-            var dfa2 = DFA.CreateFrom(nfa2);
-            Console.WriteLine(dfa2);
-
-            var dfa_min = dfa.Minimize();
-            Console.WriteLine(dfa_min);
-            var dfa_min2 = dfa2.Minimize();
-            Console.WriteLine(dfa_min2);
-
-            var tfa = new TreeFA();
-            tfa.Union(dfa_min);
-            tfa.Union(dfa_min2);
-            Console.WriteLine(tfa);
-
-            Console.WriteLine(DFA.CreateFrom(tfa.ToNFA()));
         }
 
         static void Test()
@@ -466,7 +439,7 @@ namespace Analytical_Expression
 
         static void Main(string[] args)
         {
-            Test();
+            NFa_Dfa();
         }
     }
 }
