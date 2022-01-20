@@ -8,23 +8,26 @@ namespace LexicalAnalyzer
 {
     public abstract class FA
     {
-        public FA(IEnumerable<State> S, IEnumerable<Symbol> Sigma, IEnumerable<(State s1, Symbol symbol, State s2)> MappingTable, IEnumerable<State> F)
+        public FA(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, IEnumerable<int> Z)
         {
             _S = S.ToHashSet();
             _Sigma = Sigma.ToHashSet();
             _MappingTable = MappingTable.ToHashSet();
-            _F = F.ToHashSet();
+            _Z = Z.ToHashSet();
         }
 
-        protected HashSet<State> _S = new();
-        protected HashSet<Symbol> _Sigma = new();
-        protected HashSet<(State s1, Symbol symbol, State s2)> _MappingTable = new();
-        protected HashSet<State> _F = new();
+        public const char CHAR_Epsilon = char.MaxValue;
+        private const string STRING_Epsilon = "eps";
 
-        public IEnumerable<State> S { get => _S.AsEnumerable(); }
-        public IEnumerable<Symbol> Sigma { get => _Sigma.AsEnumerable(); }
-        public IEnumerable<(State s1, Symbol symbol, State s2)> MappingTable { get => _MappingTable.AsEnumerable(); }
-        public IEnumerable<State> Z { get => _F.AsEnumerable(); }
+        protected HashSet<int> _S = new();
+        protected HashSet<char> _Sigma = new();
+        protected HashSet<(int s1, char c, int s2)> _MappingTable = new();
+        protected HashSet<int> _Z = new();
+
+        public IEnumerable<int> S { get => _S.AsEnumerable(); }
+        public IEnumerable<char> Sigma { get => _Sigma.AsEnumerable(); }
+        public IEnumerable<(int s1, char c, int s2)> MappingTable { get => _MappingTable.AsEnumerable(); }
+        public IEnumerable<int> Z { get => _Z.AsEnumerable(); }
 
         #region ToString
         protected const string PRE = "    ";
@@ -69,12 +72,16 @@ namespace LexicalAnalyzer
         {
             builder.Append(PRE).Append("Mapping :").AppendLine();
             builder.Append(PRE).Append("{").AppendLine();
-            foreach (var pGroup in MappingTable.GroupBy(i => (i.s1.Id)).OrderBy(g => g.Key))
+            foreach (var pGroup in MappingTable.GroupBy(i => (i.s1)).OrderBy(g => g.Key))
             {
                 builder.Append(PRE).Append(PRE);
-                foreach (var p in pGroup.OrderBy(p => p.symbol.Name).ThenBy(p => p.s2.Id))
+                foreach (var p in pGroup.OrderBy(p => p.c).ThenBy(p => p.s2))
                 {
-                    builder.Append($"({p.s1}, {p.symbol.Name}) = {p.s2}, ");
+                    string strChar = p.c.ToString();
+                    if (p.c == CHAR_Epsilon)
+                        strChar = STRING_Epsilon;
+
+                    builder.Append($"({p.s1}, {strChar}) = {p.s2}, ");
                 }
                 builder.Length -= 2;
                 builder.AppendLine();
@@ -87,7 +94,7 @@ namespace LexicalAnalyzer
             builder.Append(PRE).Append($"Z : {{");
             foreach (var s in Z)
             {
-                builder.Append($" {s}({s.InterId}),");
+                builder.Append($" {s},");
             }
             if (Z.Any())
                 builder.Length -= 1;

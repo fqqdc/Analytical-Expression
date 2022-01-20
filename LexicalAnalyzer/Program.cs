@@ -15,16 +15,15 @@ namespace LexicalAnalyzer
             var b = NFA.CreateFrom('b');
             Console.WriteLine(b);
             var c = NFA.CreateFrom('c');
-            Console.WriteLine(b);
+            Console.WriteLine(c);
             var ab = a.Join(b);
             Console.WriteLine(ab);
             var ab2 = a.Or(b);
             Console.WriteLine(ab2);
             var c3 = c.Closure();
             Console.WriteLine(c3);
-            var nfa = ab.Or(ab2).Or(c3);
-            Console.WriteLine(nfa);
-            nfa = ab.Union(ab2).Union(c3);
+
+            var nfa = ab.Join(ab);
             Console.WriteLine(nfa);
         }
     }
