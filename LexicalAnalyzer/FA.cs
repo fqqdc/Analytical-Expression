@@ -8,7 +8,7 @@ namespace LexicalAnalyzer
 {
     public abstract class FA
     {
-        public FA(IEnumerable<State> S, IEnumerable<char> Sigma, IEnumerable<(State s1, Edge e, State s2)> MappingTable, IEnumerable<State> F)
+        public FA(IEnumerable<State> S, IEnumerable<Symbol> Sigma, IEnumerable<(State s1, Symbol symbol, State s2)> MappingTable, IEnumerable<State> F)
         {
             _S = S.ToHashSet();
             _Sigma = Sigma.ToHashSet();
@@ -17,13 +17,13 @@ namespace LexicalAnalyzer
         }
 
         protected HashSet<State> _S = new();
-        protected HashSet<char> _Sigma = new();
-        protected HashSet<(State s1, Edge e, State s2)> _MappingTable = new();
+        protected HashSet<Symbol> _Sigma = new();
+        protected HashSet<(State s1, Symbol symbol, State s2)> _MappingTable = new();
         protected HashSet<State> _F = new();
 
         public IEnumerable<State> S { get => _S.AsEnumerable(); }
-        public IEnumerable<char> Sigma { get => _Sigma.AsEnumerable(); }
-        public IEnumerable<(State s1, Edge e, State s2)> MappingTable { get => _MappingTable.AsEnumerable(); }
+        public IEnumerable<Symbol> Sigma { get => _Sigma.AsEnumerable(); }
+        public IEnumerable<(State s1, Symbol symbol, State s2)> MappingTable { get => _MappingTable.AsEnumerable(); }
         public IEnumerable<State> Z { get => _F.AsEnumerable(); }
 
         #region ToString
@@ -72,9 +72,9 @@ namespace LexicalAnalyzer
             foreach (var pGroup in MappingTable.GroupBy(i => (i.s1.Id)).OrderBy(g => g.Key))
             {
                 builder.Append(PRE).Append(PRE);
-                foreach (var p in pGroup.OrderBy(p => p.e.Name).ThenBy(p => p.s2))
+                foreach (var p in pGroup.OrderBy(p => p.symbol.Name).ThenBy(p => p.s2.Id))
                 {
-                    builder.Append($"({p.s1}, {p.e.Name}) = {p.s2}, ");
+                    builder.Append($"({p.s1}, {p.symbol.Name}) = {p.s2}, ");
                 }
                 builder.Length -= 2;
                 builder.AppendLine();
@@ -89,7 +89,7 @@ namespace LexicalAnalyzer
             {
                 builder.Append($" {s},");
             }
-            if (Z.Count() > 0)
+            if (Z.Any())
                 builder.Length -= 1;
             builder.Append(" }").AppendLine();
         }
