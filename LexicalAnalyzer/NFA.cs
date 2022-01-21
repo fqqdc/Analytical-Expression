@@ -90,28 +90,28 @@ namespace LexicalAnalyzer
             builder.Append(" }").AppendLine();
         }
 
-        ////[{from}-{to}]
-        //public static NFA CreateRange(char from, char to)
-        //{
-        //    Debug.Assert(from <= to);
-        //    NFA dig = CreateFrom(from);
-        //    for (char c = (char)(from + 1); c <= to; c++)
-        //    {
-        //        var newDig = CreateFrom(c);
-        //        dig = dig.Or(newDig);
-        //    }
-        //    return dig;
-        //}
+        //[{from}-{to}]
+        public static NFA CreateRange(char from, char to)
+        {
+            Debug.Assert(from <= to);
+            NFA dig = CreateFrom(from);
+            for (char c = (char)(from + 1); c <= to; c++)
+            {
+                var newDig = CreateFrom(c);
+                dig = dig.Or(newDig);
+            }
+            return dig;
+        }
 
-        //public static NFA CreateFromString(string str)
-        //{
-        //    NFA dig = CreateEpsilon();
-        //    foreach (var c in str)
-        //    {
-        //        dig = dig.Join(CreateFrom(c.ToString()));
-        //    }
-        //    return dig;
-        //}
+        public static NFA CreateFromString(string str)
+        {
+            NFA dig = CreateEpsilon();
+            foreach (var c in str)
+            {
+                dig = dig.Join(CreateFrom(c));
+            }
+            return dig;
+        }
     }
 
     public static class NFAHelper
@@ -147,7 +147,7 @@ namespace LexicalAnalyzer
 
             //Join
             MappingTable.UnionWith(fst.Z.Select(z => (z, FA.CHAR_Epsilon, mid)));
-            MappingTable.UnionWith(snd.S_0.Select(s => (mid, FA.CHAR_Epsilon, s)));
+            MappingTable.UnionWith(snd.S_0.Select(s => (mid, FA.CHAR_Epsilon, snd_base_id + s)));
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
@@ -225,7 +225,8 @@ namespace LexicalAnalyzer
             MappingTable.Add((head, FA.CHAR_Epsilon, tail));
             MappingTable.UnionWith(dig.S_0.Select(s => (head, FA.CHAR_Epsilon, dig_base_id + s))); // head --eps-> dig.S_0
             MappingTable.UnionWith(dig.Z.Select(z => (dig_base_id + z, FA.CHAR_Epsilon, tail))); // dig.Z --eps-> tail
-            MappingTable.UnionWith(dig.Z.SelectMany(z => dig.S_0.Select(s => (dig_base_id + z, FA.CHAR_Epsilon, dig_base_id + s)))); // dig.Z --eps-> dig.S_0
+            MappingTable.UnionWith(dig.Z.Select(z => (tail, FA.CHAR_Epsilon, head))); // tail --eps-> head
+            //MappingTable.UnionWith(dig.Z.SelectMany(z => dig.S_0.Select(s => (dig_base_id + z, FA.CHAR_Epsilon, dig_base_id + s)))); // dig.Z --eps-> dig.S_0
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
