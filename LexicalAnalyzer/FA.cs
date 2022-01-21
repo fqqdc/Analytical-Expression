@@ -16,8 +16,8 @@ namespace LexicalAnalyzer
             _Z = Z.ToHashSet();
         }
 
-        public const char CHAR_Epsilon = char.MaxValue;
-        private const string STRING_Epsilon = "eps";
+        public const char CHAR_Epsilon = '\0';
+        private const string STRING_Epsilon = "ε";
 
         protected HashSet<int> _S = new();
         protected HashSet<char> _Sigma = new();
