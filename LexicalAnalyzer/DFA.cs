@@ -191,8 +191,8 @@ namespace LexicalAnalyzer
             while (workQ.Count > 0)
             {
                 var I = workQ.Dequeue();
-                var old_s = I.First();
-                foreach (var i in MappingTable.Where(i => i.s1 == old_s))
+                var s = I.First();
+                foreach (var i in MappingTable.Where(i => i.s1 == s))
                 {
                     var sI = Set2Id[I];
                     var J = Q.Single(I => I.Contains(i.s2));
