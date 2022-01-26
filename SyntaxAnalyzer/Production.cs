@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 namespace SyntaxAnalyzer
 {
-    public record Production(NonTerminal Left, IEnumerable<Symbol>Right, int Position = -1)
+    public record Production(NonTerminal Left, IEnumerable<Symbol> Right, int Position = -1)
     {
-        public static Symbol[] Epsilon { get; private set; }  = new Symbol[] { Terminal.Epsilon };
+        public static Symbol[] Epsilon { get; private set; } = new Symbol[] { Terminal.Epsilon };
 
         public override string ToString()
         {
@@ -23,16 +23,17 @@ namespace SyntaxAnalyzer
         protected virtual bool PrintMembers(StringBuilder builder)
         {
             builder.Append($"{Left} =>");
-            for (int i = 0; i < Right.Length; i++)
+            int i = 0;
+            foreach (var rChild in Right)
             {
-                var rChild = Right[i];
                 builder.Append(" ");
                 if (Position == i)
                     builder.Append($"[{rChild}]");
                 else builder.Append($"{rChild}");
+                i++;
             }
 
-            if (Position == Right.Length)
+            if (Position == i)
             {
                 builder.Append($" []");
             }
@@ -40,19 +41,31 @@ namespace SyntaxAnalyzer
             return true;
         }
 
-        public static implicit operator Production((string left, string right) r)
+        private static Production CreateSingle(string left, string right, char splitChar = '\0')
         {
-            return Production.Create(r.left, r.right);
+            string[] itemsRight;
+            var sLeft = new NonTerminal(left);
+            if (splitChar == '\0')
+            {
+                itemsRight = right.Select(c => c.ToString().Trim())
+                    .Where(str => !string.IsNullOrWhiteSpace(str)).ToArray();
+            }
+            else
+            {
+                itemsRight = right.Split(' ', StringSplitOptions.TrimEntries);
+            }
+
+            if (itemsRight.Length == 1 && itemsRight[0] == string.Empty)
+                return new Production(sLeft, Epsilon);
+
+            var sRight = itemsRight.Select(item => char.IsUpper(item[0]) ? (Symbol)new NonTerminal(item) : (Symbol)new Terminal(item)).ToArray();
+            return new Production(sLeft, sRight);
         }
 
-        public static Production Create(string left, string right)
+        public static IEnumerable<Production> Create(string left, string right)
         {
-            var sLeft = new NonTerminal(left);
-            var strRight = right.Split(' ', StringSplitOptions.TrimEntries);
-            var sRight = strRight.Select(str => str.Length > 0 && char.IsUpper(str[0]) ? (Symbol)new NonTerminal(str) : (Symbol)new Terminal(str)).ToArray();
-            if (sRight.Length == 1 && sRight[0].Name == String.Empty)
-                sRight = Epsilon;
-            return new Production(sLeft, sRight);
+            var itemsRight = right.Split('|', StringSplitOptions.TrimEntries);
+            return itemsRight.Select(i => CreateSingle(left, i)).ToArray();
         }
     }
 }

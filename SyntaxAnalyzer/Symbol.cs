@@ -12,8 +12,17 @@ namespace SyntaxAnalyzer
     public record Terminal(string Name) : Symbol(Name)
     {
         public static Terminal Epsilon { get; private set; } = new("\"eps\"");
+
+        public override string ToString()
+        {
+            return base.ToString();
+        }
     }
     public record NonTerminal(string Name) : Symbol(Name)
-    {            
+    {
+        public override string ToString()
+        {
+            return base.ToString();
+        }
     }
 }

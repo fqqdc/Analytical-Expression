@@ -10,7 +10,15 @@ namespace SyntaxAnalyzer
     {
         static void Main(string[] args)
         {
+            var listProduction = new List<Production>();
+            listProduction.AddRange(Production.Create("S", "Qc|c"));
+            listProduction.AddRange(Production.Create("Q", "Rb|b"));
+            listProduction.AddRange(Production.Create("R", "Sa|a"));
 
+            Grammar grammar = new Grammar(listProduction, new("S"));
+
+            Console.WriteLine(grammar);
+            Console.WriteLine(grammar.EliminateLeftRecursion());
         }
     }
 }
