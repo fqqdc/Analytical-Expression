@@ -9,6 +9,7 @@ namespace Analytical_Expression
     public class Grammar
     {
         public static Terminal Epsilon { get; private set; } = new("\"eps\"");
+        public static Terminal EndToken { get; private set; } = new("\"end\"");
         public Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal)
         {
             var symbols = allProduction.SelectMany(p => p.Right.Append(p.Left)).Distinct();

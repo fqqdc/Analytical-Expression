@@ -15,7 +15,7 @@ namespace SyntaxAnalyzer
             listProduction.AddRange(Production.Create("Q", "Rb|b"));
             listProduction.AddRange(Production.Create("R", "Sa|a"));
 
-            Grammar grammar = new Grammar(listProduction, new("S"));
+            Grammar grammar = new Grammar(listProduction.AsEnumerable(), new("S"));
 
             Console.WriteLine(grammar);
             Console.WriteLine(grammar.EliminateLeftRecursion());

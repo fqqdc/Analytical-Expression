@@ -30,29 +30,97 @@ namespace SyntaxAnalyzer
         public NonTerminal S { get; private set; }
 
         /// <summary>
-        /// 重新排序
+        /// 消除左递归
         /// </summary>
-        private static Production[] Reorder(HashSet<Production> set, NonTerminal S)
+        public Grammar EliminateLeftRecursion()
         {
-            return set.ToArray();
-        }
+            var groups = P.GroupBy(p => p.Left).Select(g => g.ToHashSet())
+                .ToArray();
 
-        /// <summary>
-        /// 移除不能抵达的生成式
-        /// </summary>
-        private static HashSet<Production> FilterUnreachable(HashSet<Production> set, NonTerminal S)
-        {
+            //消除间接递归
+            for (int i = 0; i < groups.Length; i++)
+            {
+                bool isChanged = true;
+                while (isChanged)
+                {
+                    isChanged = false;
+
+                    List<Production> exceptSet = new();
+                    List<Production> unionSet = new();
+                    foreach (var p in groups[i])
+                    {
+                        if (!p.Right.Any())
+                            continue;
+                        var fstSymbol = p.Right.ElementAt(0);
+                        if (fstSymbol is NonTerminal nonTerminal)
+                        {
+                            for (int j = 0; j < i; j++)
+                            {
+                                var key = groups[j].First().Left;
+                                if (nonTerminal == key)
+                                {
+                                    exceptSet.Add(p);
+                                    foreach (var pReplaced in groups[j])
+                                    {
+                                        var newRight = Enumerable.Empty<Symbol>();
+                                        if (pReplaced.Right != Production.Epsilon)
+                                            newRight = pReplaced.Right;
+                                        newRight = newRight.Union(p.Right.Skip(1));
+                                        unionSet.Add(new(p.Left, newRight));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    isChanged = isChanged || exceptSet.Any() || unionSet.Any();
+
+                    groups[i].ExceptWith(exceptSet);
+                    groups[i].UnionWith(unionSet);
+                }
+            }
+
+            //消除直接递归
+            for (int i = 0; i < groups.Length; i++)
+            {
+                //存在左递归
+                if (groups[i].Any(p => p.Right.Any() && p.Left == p.Right.First()))
+                {
+                    HashSet<Production> newP = new();
+
+                    var subGroups = groups[i].GroupBy(p => p.Right.Any() && p.Left == p.Right.First());
+                    var left = groups[i].First().Left;
+                    var newLeft = new NonTerminal(left + "'");
+                    foreach (var subGroup in subGroups)
+                    {
+                        if (subGroup.Key)
+                        {
+                            foreach (var p in subGroup)
+                                newP.Add(new(newLeft, p.Right.Skip(1).Append(newLeft)));
+                            newP.Add(new(newLeft, Production.Epsilon));
+                        }
+                        else
+                        {
+                            foreach (var p in subGroup)
+                                newP.Add(new(left, p.Right.Append(newLeft)));
+                        }
+                    }
+                    groups[i] = newP;
+                }
+            }
+
+            //移除不能抵达的生成式
             Queue<NonTerminal> queue = new();
             HashSet<NonTerminal> visited = new();
             queue.Enqueue(S);
             visited.Add(S);
-            HashSet<Production> newSet = new();
+            List<Production> reachableP = new();
             while (queue.Count > 0)
             {
                 var nLeft = queue.Dequeue();
-                foreach (var p in set.Where(p => p.Left == nLeft))
+                foreach (var p in groups.SelectMany(g => g).Where(p => p.Left == nLeft))
                 {
-                    newSet.Add(p);
+                    reachableP.Add(p);
                     foreach (var n in p.Right.Where(n => n is NonTerminal).Cast<NonTerminal>())
                     {
                         if (!visited.Contains(n))
@@ -63,55 +131,8 @@ namespace SyntaxAnalyzer
                     }
                 }
             }
-            return newSet;
-        }
 
-
-        /// <summary>
-        /// 消除左递归
-        /// </summary>
-        public Grammar EliminateLeftRecursion()
-        {
-            throw new NotImplementedException();
-
-            HashSet<Production> newP = new();
-            var groups = P.GroupBy(p => p.Left).ToArray();            
-
-            //消除间接递归
-            for (int i = 0; i < groups.Length; i++)
-            {
-                foreach (var p in groups[i])
-                {
-                    if (!p.Right.Any())
-                        continue;
-                    var fstSymbol = p.Right.ElementAt(0);
-                    bool hasReplaced = false;
-
-                    if (fstSymbol is NonTerminal nonTerminal)
-                    {
-                        for (int j = 0; j < i - 1; j++)
-                        {
-                            if (nonTerminal == groups[j].Key)
-                            {
-                                hasReplaced = true;
-                                foreach (var pReplaced in groups[j])
-                                {
-                                    var newRight = Enumerable.Empty<Symbol>();
-                                    if (pReplaced.Right != Production.Epsilon)
-                                        newRight = pReplaced.Right;
-                                    newRight = newRight.Union(p.Right.Skip(1));
-                                    newP.Add(new(p.Left, newRight));
-                                }
-                            }
-                        }
-                    }
-
-                    if (!hasReplaced)
-                        newP.Add(p);
-                }
-            }
-
-            return new(newP, S);
+            return new(reachableP, S);
         }
 
         #region ToString()
