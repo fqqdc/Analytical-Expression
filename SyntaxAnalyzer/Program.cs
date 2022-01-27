@@ -24,8 +24,8 @@ namespace SyntaxAnalyzer
             Console.WriteLine(grammar);
             grammar = grammar.EliminateLeftRecursion();
             Console.WriteLine(grammar);
-            //grammar = grammar.ExtractLeftCommonfactor();
-            //Console.WriteLine(grammar);
+            grammar = grammar.ExtractLeftCommonfactor();
+            Console.WriteLine(grammar);
         }
 
         static void Main2(string[] args)

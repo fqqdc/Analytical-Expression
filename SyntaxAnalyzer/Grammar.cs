@@ -169,11 +169,13 @@ namespace SyntaxAnalyzer
 
             } while (!newSet.SetEquals(oldSet));
 
-            CombineSingleProduction(oldSet, S);
+            //CombineSingleProduction(oldSet, S);
             return new(oldSet, S);
 
             static void CombineSingleProduction(HashSet<Production> set, NonTerminal start)
             {
+                throw new NotImplementedException();
+
                 Queue<Symbol> queue = new();
                 queue.Enqueue(start);
                 HashSet<Symbol> visited = new();
