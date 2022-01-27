@@ -41,7 +41,24 @@ namespace SyntaxAnalyzer
             return true;
         }
 
-        private static Production CreateSingle(string left, string right, char splitChar = '\0')
+        public virtual bool Equals(Production? other)
+        {
+            if (other == null)
+                return false;
+            bool returnValue = Left.Equals(other.Left);
+            returnValue = returnValue && Right.SequenceEqual(other.Right);
+            return returnValue;
+        }
+
+        public override int GetHashCode()
+        {
+            int value = Left.GetHashCode();
+            foreach (var item in Right)
+                value ^= item.GetHashCode();
+            return value;
+        }
+
+        public static Production CreateSingle(string left, string right, char splitChar = '\0')
         {
             string[] itemsRight;
             var sLeft = new NonTerminal(left);
