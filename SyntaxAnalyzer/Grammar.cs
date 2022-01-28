@@ -14,6 +14,10 @@ namespace SyntaxAnalyzer
             _Vn = symbols.Where(s => s is NonTerminal).Cast<NonTerminal>().ToHashSet();
             _Vt = symbols.Where(s => s is Terminal).Cast<Terminal>().ToHashSet();
             _P = allProduction.ToHashSet();
+
+            if (!symbols.Contains(startNonTerminal))
+                throw new Exception($"无效的起始符:{startNonTerminal}");
+
             S = startNonTerminal;
         }
 
@@ -62,7 +66,7 @@ namespace SyntaxAnalyzer
                                         var newRight = Enumerable.Empty<Symbol>();
                                         if (pReplaced.Right != Production.Epsilon)
                                             newRight = pReplaced.Right;
-                                        newRight = newRight.Union(p.Right.Skip(1));
+                                        newRight = newRight.Concat(p.Right.Skip(1));
                                         unionSet.Add(new(p.Left, newRight));
                                     }
                                 }
@@ -169,61 +173,7 @@ namespace SyntaxAnalyzer
 
             } while (!newSet.SetEquals(oldSet));
 
-            //CombineSingleProduction(oldSet, S);
             return new(oldSet, S);
-
-            static void CombineSingleProduction(HashSet<Production> set, NonTerminal start)
-            {
-                throw new NotImplementedException();
-
-                Queue<Symbol> queue = new();
-                queue.Enqueue(start);
-                HashSet<Symbol> visited = new();
-                visited.Add(start);
-
-                while (queue.Count > 0)
-                {
-                    var symbol = queue.Dequeue();
-                    var productions = set.Where(p => p.Left == symbol && p.Right.Any())
-                        .Where(p => p.Right.Last() is NonTerminal)
-                        .ToArray();
-
-                    foreach (var prod in productions)
-                    {
-                        Production pTemp = prod;
-                        var lastSymbol = pTemp.Right.Last();
-                        bool continueLoop = !visited.Contains(lastSymbol);
-
-                        set.Remove(pTemp);
-                        while (continueLoop)
-                        {
-                            continueLoop = false;
-
-                            if (set.Count(p => p.Left == lastSymbol) == 1)
-                            {
-                                var p2 = set.Where(p => p.Left == lastSymbol).Single();                                
-                                set.Remove(p2);
-                                pTemp = new(pTemp.Left, pTemp.Right.SkipLast(1).Union(p2.Right));
-
-                                lastSymbol = pTemp.Right.Last();
-                                continueLoop = !visited.Contains(lastSymbol);
-                            }
-                        }
-                        set.Add(pTemp);
-
-                        pTemp.Right.Where(s => s is NonTerminal && !visited.Contains(s))
-                            .ToList().ForEach(s =>
-                            {
-                                queue.Enqueue(s);
-                                visited.Add(s);
-                            });
-                    }
-                }
-
-
-
-
-            }
         }
 
         #region ToString()
