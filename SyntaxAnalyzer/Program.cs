@@ -11,25 +11,18 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "iEtSeS|iEtS"));
-            listProduction.AddRange(Production.Create("E", "b"));
+            //listProduction.AddRange(Production.Create("S", "iEtSeS|iEtS"));
+            //listProduction.AddRange(Production.Create("E", "b"));
+            listProduction.AddRange(Production.Create("E", "T E'"));
+            listProduction.AddRange(Production.Create("E'", "+ T E'|"));
+            listProduction.AddRange(Production.Create("T", "F T'"));
+            listProduction.AddRange(Production.Create("T'", "* F T'|"));
+            listProduction.AddRange(Production.Create("F", "( E )|i"));
 
-            Grammar grammar = new Grammar(listProduction.AsEnumerable(), new("S"));
+            Grammar grammar = new Grammar(listProduction.AsEnumerable(), new("E"));
+            Console.WriteLine(grammar);
 
-            Console.WriteLine(grammar);
-            grammar = grammar.EliminateLeftRecursion();
-            Console.WriteLine(grammar);
-            grammar = grammar.ExtractLeftCommonfactor();
-            Console.WriteLine(grammar);
-        }
-
-        static void Main2(string[] args)
-        {
-            int[] arr = { 1,2,3 };
-            foreach (var item in arr.SkipLast(1).Concat(arr))
-            {
-                Console.WriteLine(item);
-            }
+            LL1Grammar.CreateFrom(grammar);
         }
     }
 }

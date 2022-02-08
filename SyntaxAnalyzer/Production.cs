@@ -58,21 +58,13 @@ namespace SyntaxAnalyzer
             return value;
         }
 
-        public static Production CreateSingle(string left, string right, char splitChar = '\0')
+        public static Production CreateSingle(string left, string right)
         {
-            string[] itemsRight;
+            
             var sLeft = new NonTerminal(left);
-            if (splitChar == '\0')
-            {
-                itemsRight = right.Select(c => c.ToString().Trim())
-                    .Where(str => !string.IsNullOrWhiteSpace(str)).ToArray();
-            }
-            else
-            {
-                itemsRight = right.Split(' ', StringSplitOptions.TrimEntries);
-            }
+            string[] itemsRight = right.Split(' ', StringSplitOptions.TrimEntries);
 
-            if (itemsRight.Length == 1 && itemsRight[0] == string.Empty)
+            if (itemsRight.Length == 1 && string.IsNullOrWhiteSpace(itemsRight[0]))
                 return new Production(sLeft, Epsilon);
 
             var sRight = itemsRight.Select(item => char.IsUpper(item[0]) ? (Symbol)new NonTerminal(item) : (Symbol)new Terminal(item)).ToArray();
