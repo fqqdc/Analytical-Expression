@@ -22,7 +22,29 @@ namespace SyntaxAnalyzer
             Grammar grammar = new Grammar(listProduction.AsEnumerable(), new("E"));
             Console.WriteLine(grammar);
 
-            LL1Grammar.CreateFrom(grammar);
+            var lL1Grammar = LL1Grammar.CreateFrom(grammar);
+            Console.WriteLine(lL1Grammar);
+        }
+
+        static void Main2(string[] args)
+        {
+            Stack<int> s = new();
+            for (int i = 0; i < 10; i++)
+            {
+                s.Push(i);
+            }
+
+            foreach (var i in s)
+            {
+                Console.Write(i);
+            }
+            Console.WriteLine();
+            List<int> list = new(s);
+            foreach (var i in list)
+            {
+                Console.Write(i);
+            }
+            Console.WriteLine();
         }
     }
 }

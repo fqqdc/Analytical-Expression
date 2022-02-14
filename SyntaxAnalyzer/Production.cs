@@ -60,7 +60,6 @@ namespace SyntaxAnalyzer
 
         public static Production CreateSingle(string left, string right)
         {
-            
             var sLeft = new NonTerminal(left);
             string[] itemsRight = right.Split(' ', StringSplitOptions.TrimEntries);
 

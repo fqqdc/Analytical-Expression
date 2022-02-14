@@ -15,8 +15,9 @@ namespace SyntaxAnalyzer
             _Vt = symbols.Where(s => s is Terminal).Cast<Terminal>().ToHashSet();
             _P = allProduction.ToHashSet();
 
-            if (!symbols.Contains(startNonTerminal))
-                throw new Exception($"无效的起始符:{startNonTerminal}");
+            var leftVn = allProduction.Select(p=>p.Left).ToHashSet();
+            if (!leftVn.Contains(startNonTerminal))
+                throw new NotSupportedException($"无效的起始符:{startNonTerminal}");
 
             S = startNonTerminal;
         }

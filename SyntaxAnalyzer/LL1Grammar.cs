@@ -12,13 +12,13 @@ namespace SyntaxAnalyzer
         {
         }
 
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst, mapFollow;
 
-        private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
 
         /// <summary>
         /// 消除左递归
         /// </summary>
-        public static Grammar EliminateLeftRecursion(Grammar grammar)
+        private static Grammar EliminateLeftRecursion(Grammar grammar)
         {
             var (S, P) = (grammar.S, grammar.P);
             var groups = P.GroupBy(p => p.Left).Select(g => g.ToHashSet())
@@ -122,7 +122,7 @@ namespace SyntaxAnalyzer
         /// <summary>
         /// 提取左公因子
         /// </summary>
-        public static Grammar ExtractLeftCommonfactor(Grammar grammar)
+        private static Grammar ExtractLeftCommonfactor(Grammar grammar)
         {
             var (S, P) = (grammar.S, grammar.P);
             HashSet<Production> oldSet, newSet;
@@ -163,92 +163,94 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static void CreateFrom(Grammar grammar)
+        public static LL1Grammar CreateFrom(Grammar grammar)
         {
             grammar = EliminateLeftRecursion(grammar);
             grammar = ExtractLeftCommonfactor(grammar);
             var (S, P) = (grammar.S, grammar.P);
 
-            // FIRST集
+
             Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = CalcFirsts(P);
+            //FOLLOW集
+            Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = CalcFollows(P, mapFirst, S);
 
-            HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha)
+            ///对于文法中每一个非终结符A的各个产生式的候选首符集两两不相交。
+            ///即，若A->α1|α2|...|αn
+            ///则 FIRST(αi) ∩ FIRST(αi)=∅ (i≠j)
+            foreach (var pGroup in P.GroupBy(p => p.Left))
             {
-                HashSet<Terminal> first = new();
-                foreach (var symbol in alpha)
+                var pArray = pGroup.ToArray();
+                for (int i = 0; i < pArray.Length; i++)
                 {
-
-                    if (symbol is Terminal terminal)
+                    var iFirst = CalcFirst(pArray[i].Right, mapFirst);
+                    for (int j = i + 1; j < pArray.Length; j++)
                     {
-                        first.Add(terminal);
-                        break;
+                        var jFirst = CalcFirst(pArray[j].Right, mapFirst);
+                        if (iFirst.Intersect(jFirst).Any())
+                            throw new NotSupportedException($" {pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
                     }
-
-                    if (symbol is NonTerminal nonTerminal)
-                    {
-                        if (!mapFirst.TryGetValue(nonTerminal, out var firstNonTerminal))
-                        {
-                            firstNonTerminal = new();
-                        }
-
-                        var elem = firstNonTerminal.ToHashSet();
-                        elem.Remove(Terminal.Epsilon);
-                        first.UnionWith(elem);
-
-                        if (!firstNonTerminal.Contains(Terminal.Epsilon))
-                            break;
-                    }
-                    first.Add(Terminal.Epsilon);
                 }
-
-                return first;
             }
 
-            //FOLLOW集
-            Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
-            bool hasChanged = true;
-            while (hasChanged)
+            ///对文法中的每一个终结符A，若它存在某个候选首符集包含ε，则
+            ///FIRST(αi) ∩ FOLLOW(A)=∅，i=1,2,...,n
+            foreach (var nonTerminal in grammar.Vn)
             {
-                foreach (var production in P)
+                var first = mapFirst[nonTerminal];
+                if (first.Contains(Terminal.Epsilon))
                 {
-                    if (!mapFollow.TryGetValue(production.Left, out var follow))
-                    {
-                        follow = new();
-                        mapFollow[production.Left] = follow;
-                        if (production.Left == S)
-                            follow.Add(Terminal.EndTerminal);
-                        hasChanged = true;
-                    }
-
-                    var oldFollow = follow.ToHashSet();
-
-                    foreach (var symbol in production.Right.Reverse())
-                    {
-                        if (symbol is Terminal terminal)
-                        {
-                            follow.Add(terminal);
-                            break;
-                        }
-
-                        if (symbol is NonTerminal nonTerminal)
-                        {
-                            if (!mapFollow.TryGetValue(nonTerminal, out var followNonTerminal))
-                            {
-                                followNonTerminal = new();
-                                mapFollow[production.Left] = followNonTerminal;
-                                if (production.Left == S)
-                                    followNonTerminal.Add(Terminal.EndTerminal);
-                                hasChanged = true;
-                            }
-
-                            throw new NotImplementedException();
-                        }
-                    }
+                    var follow = mapFollow[nonTerminal];
+                    if (first.Intersect(follow).Any())
+                        throw new NotSupportedException($" {nonTerminal}FIRST集含有ε，并且与它的FOLLOW集相交不为空，无法满足LL1文法");
                 }
+            }
+
+            ///若 ε∈FIRST(αj)，则 FIRST(αi) ∩ FOLLOW(A)=∅，i≠j
+            //foreach (var pGroup in P.GroupBy(p => p.Left))
+            //{
+            //    var pArray = pGroup.ToArray();
+            //    var firsts = pGroup.Select(p => CalcFirst(p.Right, mapFirst)).ToArray();
+            //    var follow = mapFollow[pGroup.Key];
+            //    for (int i = 0; i < pArray.Length; i++)
+            //    {
+            //        var iFirst = firsts[i];
+            //        if (iFirst.Contains(Terminal.Epsilon))
+            //        {
+            //            for (int j = 0; j < pArray.Length; j++)
+            //            {
+            //                if (i == j) continue;
+            //                var jFirst = firsts[j];
+            //                if (jFirst.Intersect(follow).Any())
+            //                    throw new NotSupportedException($" {pArray[i]}产生式右部的FIRST集含有ε，{pArray[j]}与{pGroup.Key}的FOLLOW集相交不为空，无法满足LL1文法");
+            //            }
+            //        }
+            //    }
+            //}
+
+            var lL1Grammar = new LL1Grammar(P, S);
+            lL1Grammar.mapFirst = mapFirst;
+            lL1Grammar.mapFollow = mapFollow;
+            return lL1Grammar;
+        }
+
+        public static bool TryCreateFrom(Grammar grammar, out LL1Grammar? lL1Grammar)
+        {
+            try
+            {
+                lL1Grammar = CreateFrom(grammar);
+                return true;
+            }
+            catch (Exception)
+            {
+                lL1Grammar = null;
+                return false;
             }
         }
 
-        private static Dictionary<NonTerminal, HashSet<Terminal>> CalcFirsts(IEnumerable<Production>? P)
+        /// <summary>
+        /// 计算FIRST集
+        /// </summary>
+        private static Dictionary<NonTerminal, HashSet<Terminal>> CalcFirsts(IEnumerable<Production> P)
         {
             Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
             bool hasChanged = true;
@@ -272,10 +274,14 @@ namespace SyntaxAnalyzer
 
                         if (symbol is Terminal terminal)
                         {
+                            /// 若X∈Vt,则FIRST(X)={X}
+                            /// 若X∈Vn,且有产生式X->a...，则把a加入到FIRST(X)中；
+                            /// 若X->ε也是一条产生式，则把ε也加到FIRST(X)中。
                             first.Add(terminal);
                             break;
                         }
 
+                        ///若X->Y1Y2...Yi-1Yi...Yk是一个产生式，Y1,...Yi-1都是非终结符                        
                         if (symbol is NonTerminal nonTerminal)
                         {
                             if (!mapFirst.TryGetValue(nonTerminal, out var firstNonTerminal))
@@ -285,6 +291,7 @@ namespace SyntaxAnalyzer
                                 hasChanged = true;
                             }
 
+                            ///对于任何j，1<=j<=i-1，FIRST(Yj)都含有ε(即Y1...Yi=>ε)，则把FIRST(Yi)中的所有非ε元素都加到FIRST(X)中
                             var elem = firstNonTerminal.ToHashSet();
                             elem.Remove(Terminal.Epsilon);
                             first.UnionWith(elem);
@@ -292,6 +299,7 @@ namespace SyntaxAnalyzer
                             if (!firstNonTerminal.Contains(Terminal.Epsilon))
                                 break;
                         }
+                        ///若所有的FIRST(Yj)均含有ε，j=1,2,3,...,k，则把ε加到FIRST(X)中
                         first.Add(Terminal.Epsilon);
                     }
 
@@ -299,19 +307,105 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            StringBuilder builder = new StringBuilder();
-            foreach (var kp in mapFirst)
-            {
-                builder.Append($"{kp.Key} => ");
-                foreach (var t in kp.Value)
-                {
-                    builder.Append($"{t}, ");
-                }
-                builder.AppendLine();
-            }
-            Console.WriteLine(builder.ToString());
+            Console.WriteLine(mapFirst.ToString("First Sets:"));
             return mapFirst;
         }
 
+        private static HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst)
+        {
+            HashSet<Terminal> first = new();
+            foreach (var symbol in alpha)
+            {
+
+                if (symbol is Terminal terminal)
+                {
+                    first.Add(terminal);
+                    break;
+                }
+
+                if (symbol is NonTerminal nonTerminal)
+                {
+                    if (!mapFirst.TryGetValue(nonTerminal, out var firstNonTerminal))
+                    {
+                        firstNonTerminal = new();
+                    }
+
+                    first.UnionWith(firstNonTerminal);
+                    first.Remove(Terminal.Epsilon);
+
+                    if (!firstNonTerminal.Contains(Terminal.Epsilon))
+                        break;
+                }
+                first.Add(Terminal.Epsilon);
+            }
+
+            return first;
+        }
+        /// <summary>
+        /// 计算FOLLOW集
+        /// </summary>
+        private static Dictionary<NonTerminal, HashSet<Terminal>> CalcFollows(IEnumerable<Production> P, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst, NonTerminal S)
+        {
+            Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
+            mapFollow[S] = new();
+            mapFollow[S].Add(Terminal.EndTerminal); //对于文法开始符号S，要将#置于FOLLOW(S)中
+
+            bool hasChanged = true;
+            while (hasChanged)
+            {
+                hasChanged = false;
+
+                foreach (var production in P)
+                {
+
+                    Stack<Symbol> beta = new();
+
+                    foreach (var symbol in production.Right.Reverse())
+                    {
+                        if (symbol is Terminal terminal)
+                        {
+                            beta.Push(terminal);
+                            continue;
+                        }
+
+                        if (symbol is NonTerminal nonTerminal)
+                        {
+                            if (!mapFollow.TryGetValue(nonTerminal, out var follow))
+                            {
+                                follow = new();
+                                mapFollow[nonTerminal] = follow;
+                                hasChanged = true;
+                            }
+
+                            var oldFollow = follow.ToHashSet();
+                            if (beta.Any())
+                            {
+                                var first = CalcFirst(beta, mapFirst);
+                                follow.UnionWith(first);
+                                follow.Remove(Terminal.Epsilon); //若A->αBβ是一个产生式，则把FIRST(β)\{ε}加入FOLLOW(B)中
+
+                                if (first.Contains(Terminal.Epsilon) && mapFollow.TryGetValue(production.Left, out var followLeft))
+                                {
+                                    follow.UnionWith(followLeft); //若A->αBβ是一个产生式，而β=>ε(既ε∈FIRST(β))，则将FIRST(A)加入FIRST(B)
+                                }
+                            }
+                            else
+                            {
+                                if (mapFollow.TryGetValue(production.Left, out var followLeft))
+                                {
+                                    follow.UnionWith(followLeft); //若A->αB是一个产生式，则将FIRST(A)加入FIRST(B)
+                                }
+                            }
+
+                            hasChanged = hasChanged || !oldFollow.SetEquals(follow);
+                            beta.Push(nonTerminal);
+                        }
+                    }
+                }
+            }
+
+            Console.WriteLine(mapFollow.ToString("Follow Sets:"));
+            return mapFollow;
+        }
     }
 }
