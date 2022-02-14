@@ -269,36 +269,43 @@ namespace SyntaxAnalyzer
 
                     var oldFirst = first.ToHashSet();
 
+                    bool endWithEpsilon = true;
                     foreach (var symbol in production.Right)
                     {
-
                         if (symbol is Terminal terminal)
                         {
                             /// 若X∈Vt,则FIRST(X)={X}
                             /// 若X∈Vn,且有产生式X->a...，则把a加入到FIRST(X)中；
                             /// 若X->ε也是一条产生式，则把ε也加到FIRST(X)中。
                             first.Add(terminal);
+                            endWithEpsilon = false;
                             break;
                         }
 
                         ///若X->Y1Y2...Yi-1Yi...Yk是一个产生式，Y1,...Yi-1都是非终结符                        
                         if (symbol is NonTerminal nonTerminal)
                         {
-                            if (!mapFirst.TryGetValue(nonTerminal, out var firstNonTerminal))
+                            if (!mapFirst.TryGetValue(nonTerminal, out var firstN))
                             {
-                                firstNonTerminal = new();
-                                mapFirst[nonTerminal] = firstNonTerminal;
+                                firstN = new();
+                                mapFirst[nonTerminal] = firstN;
                                 hasChanged = true;
                             }
 
                             ///对于任何j，1<=j<=i-1，FIRST(Yj)都含有ε(即Y1...Yi=>ε)，则把FIRST(Yi)中的所有非ε元素都加到FIRST(X)中
-                            var elem = firstNonTerminal.ToHashSet();
-                            elem.Remove(Terminal.Epsilon);
-                            first.UnionWith(elem);
+                            var firstN_Copy = firstN.ToHashSet();
+                            firstN_Copy.Remove(Terminal.Epsilon);
+                            first.UnionWith(firstN_Copy);
 
-                            if (!firstNonTerminal.Contains(Terminal.Epsilon))
+                            if (!firstN.Contains(Terminal.Epsilon))
+                            {
+                                endWithEpsilon = false;
                                 break;
+                            }
                         }
+                    }
+                    if (endWithEpsilon)
+                    {
                         ///若所有的FIRST(Yj)均含有ε，j=1,2,3,...,k，则把ε加到FIRST(X)中
                         first.Add(Terminal.Epsilon);
                     }
@@ -381,10 +388,11 @@ namespace SyntaxAnalyzer
                             if (beta.Any())
                             {
                                 var first = CalcFirst(beta, mapFirst);
+                                //若A->αBβ是一个产生式，则把FIRST(β)\{ε}加入FOLLOW(B)中
+                                bool containEpsilon = first.Remove(Terminal.Epsilon);
                                 follow.UnionWith(first);
-                                follow.Remove(Terminal.Epsilon); //若A->αBβ是一个产生式，则把FIRST(β)\{ε}加入FOLLOW(B)中
 
-                                if (first.Contains(Terminal.Epsilon) && mapFollow.TryGetValue(production.Left, out var followLeft))
+                                if (containEpsilon && mapFollow.TryGetValue(production.Left, out var followLeft))
                                 {
                                     follow.UnionWith(followLeft); //若A->αBβ是一个产生式，而β=>ε(既ε∈FIRST(β))，则将FIRST(A)加入FIRST(B)
                                 }
