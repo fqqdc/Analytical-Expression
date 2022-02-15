@@ -8,11 +8,29 @@ namespace SyntaxAnalyzer
 {
     public class LL1Grammar : Grammar
     {
-        private LL1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal) : base(allProduction, startNonTerminal)
+        private LL1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst) : base(allProduction, startNonTerminal)
         {
+            this.mapFirst = mapFirst;
         }
 
-        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst, mapFollow;
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst;
+        //private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow;
+
+        public HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha)
+        {
+            return CalcFirst(alpha, this.mapFirst);
+        }
+
+        public HashSet<Terminal> GetFirst(Symbol symbol)
+        {
+            if (symbol is Terminal terminal)
+                return new(new Terminal[] { terminal });
+            else
+            {
+                var nonTerminal = (NonTerminal)symbol;
+                return mapFirst[nonTerminal].ToHashSet();
+            }
+        }
 
 
         /// <summary>
@@ -227,9 +245,8 @@ namespace SyntaxAnalyzer
             //    }
             //}
 
-            var lL1Grammar = new LL1Grammar(P, S);
-            lL1Grammar.mapFirst = mapFirst;
-            lL1Grammar.mapFollow = mapFollow;
+            var lL1Grammar = new LL1Grammar(P, S, mapFirst);
+            //lL1Grammar.mapFollow = mapFollow;
             return lL1Grammar;
         }
 

@@ -12,6 +12,16 @@ namespace LexicalAnalyzer
                 return false;
             return x.SetEquals(y);
         }
-        int IEqualityComparer<HashSet<T>>.GetHashCode(HashSet<T> obj) => 0;
+        int IEqualityComparer<HashSet<T>>.GetHashCode(HashSet<T> obj)
+        {
+            int code = 0;
+            foreach (T item in obj)
+            {
+                if (item == null)
+                    continue;
+                code ^= item.GetHashCode();
+            }
+            return code;
+        }
     }
 }

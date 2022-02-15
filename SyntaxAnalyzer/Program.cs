@@ -24,27 +24,27 @@ namespace SyntaxAnalyzer
 
             var lL1Grammar = LL1Grammar.CreateFrom(grammar);
             Console.WriteLine(lL1Grammar);
-        }
 
-        static void Main2(string[] args)
-        {
-            Stack<int> s = new();
-            for (int i = 0; i < 10; i++)
-            {
-                s.Push(i);
-            }
+            string input = "i+i*i";
+            int index = 0;
 
-            foreach (var i in s)
+            LL1SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
             {
-                Console.Write(i);
-            }
-            Console.WriteLine();
-            List<int> list = new(s);
-            foreach (var i in list)
-            {
-                Console.Write(i);
-            }
-            Console.WriteLine();
+                if (index < input.Length)
+                {
+                    var c = input[index];
+                    sym = new Terminal(c.ToString());
+                    index = index + 1;
+                }
+                else
+                {
+                    sym = Terminal.EndTerminal;
+                }
+            };
+
+            LL1SyntaxAnalyzer analyzer = new(lL1Grammar, p);
+            analyzer.Analyzer();
+            Console.WriteLine("OK");
         }
     }
 }

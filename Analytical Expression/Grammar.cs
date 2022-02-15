@@ -20,7 +20,7 @@ namespace Analytical_Expression
 
             CalculateFollowSet();
 
-            SortNonTerminal();
+            this.sortedList = SortNonTerminal();
         }
 
         private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
@@ -416,7 +416,7 @@ namespace Analytical_Expression
         #region ToString()
         const string PRE = "    ";
         private List<NonTerminal> sortedList;
-        private void SortNonTerminal()
+        private List<NonTerminal> SortNonTerminal()
         {
             HashSet<NonTerminal> visited = new();
             Queue<NonTerminal> queue = new();
@@ -436,7 +436,7 @@ namespace Analytical_Expression
                     }
                 }
             }
-            sortedList = visited.ToList();
+            return visited.ToList();
         }
         public override string ToString()
         {
