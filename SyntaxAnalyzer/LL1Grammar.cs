@@ -8,13 +8,17 @@ namespace SyntaxAnalyzer
 {
     public class LL1Grammar : Grammar
     {
-        private LL1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst) : base(allProduction, startNonTerminal)
+        private LL1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal
+            , Dictionary<NonTerminal, HashSet<Terminal>> mapFirst
+            , Dictionary<NonTerminal, HashSet<Terminal>> mapFollow
+            ) : base(allProduction, startNonTerminal)
         {
             this.mapFirst = mapFirst;
+            this.mapFollow = mapFollow;
         }
 
         private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst;
-        //private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow;
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow;
 
         public HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha)
         {
@@ -31,6 +35,12 @@ namespace SyntaxAnalyzer
                 return mapFirst[nonTerminal].ToHashSet();
             }
         }
+        public HashSet<Terminal> GetFollow(NonTerminal nonTerminal)
+        {
+            return mapFollow[nonTerminal].ToHashSet();
+
+        }
+
 
 
         /// <summary>
@@ -245,9 +255,7 @@ namespace SyntaxAnalyzer
             //    }
             //}
 
-            var lL1Grammar = new LL1Grammar(P, S, mapFirst);
-            //lL1Grammar.mapFollow = mapFollow;
-            return lL1Grammar;
+            return new LL1Grammar(P, S, mapFirst, mapFollow);
         }
 
         public static bool TryCreateFrom(Grammar grammar, out LL1Grammar? lL1Grammar)

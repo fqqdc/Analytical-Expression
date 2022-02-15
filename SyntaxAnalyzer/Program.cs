@@ -25,10 +25,10 @@ namespace SyntaxAnalyzer
             var lL1Grammar = LL1Grammar.CreateFrom(grammar);
             Console.WriteLine(lL1Grammar);
 
-            string input = "i+i*i";
+            string input = "ii+i*i";
             int index = 0;
 
-            LL1SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
+            LL1SyntaxAnalyzerPT.AdvanceProcedure p = (out Terminal sym) =>
             {
                 if (index < input.Length)
                 {
@@ -42,7 +42,7 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            LL1SyntaxAnalyzer analyzer = new(lL1Grammar, p);
+            LL1SyntaxAnalyzerPT analyzer = new(lL1Grammar, p);
             analyzer.Analyzer();
             Console.WriteLine("OK");
         }

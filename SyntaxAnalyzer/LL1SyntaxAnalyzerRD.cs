@@ -6,14 +6,17 @@ using System.Threading.Tasks;
 
 namespace SyntaxAnalyzer
 {
-    public class LL1SyntaxAnalyzer
+    /// <summary>
+    /// LL1分析器（递归下降分析法）
+    /// </summary>
+    public class LL1SyntaxAnalyzerRD
     {
         public delegate void AdvanceProcedure(out Terminal Sym);
 
         private LL1Grammar grammar;
         private AdvanceProcedure advanceProcedure;
         private Terminal? sym;
-        public LL1SyntaxAnalyzer(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
+        public LL1SyntaxAnalyzerRD(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
         {
             this.grammar = grammar;
             this.advanceProcedure = advanceProcedure;
