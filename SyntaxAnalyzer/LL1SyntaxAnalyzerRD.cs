@@ -74,7 +74,7 @@ namespace SyntaxAnalyzer
                         if (!grammar.GetFirst(nonTerminal).Contains(Terminal.Epsilon))
                             Error();
                         else
-                            Console.WriteLine(new Production(nonTerminal, new Symbol[] { Terminal.Epsilon }));
+                            Console.WriteLine(new Production(nonTerminal, Production.Epsilon));
                     }
                 }
             }

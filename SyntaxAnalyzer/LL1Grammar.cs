@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SyntaxAnalyzer
 {
@@ -41,44 +40,85 @@ namespace SyntaxAnalyzer
 
         }
 
+        #region EliminateLeftRecursion 消除左递归
 
+        /// <summary>
+        /// 消除关于left的产生式的直接左递归
+        /// </summary>
+        private static void EliminateDirectLeftRecursion(HashSet<Production> productions, NonTerminal left)
+        {
+            var prods = productions.Where(p => p.Left == left).ToHashSet();
+
+            if (!prods.Any())
+                return;
+            if (prods.Any(p => p.Right.SequenceEqual(Production.Epsilon)))
+                throw new NotSupportedException($"不能含有以ε为右边的产生式");
+            if (prods.Any(p => p.Right.ElementAtOrDefault(1) == null && p.Right.ElementAt(0) == p.Left))
+                throw new NotSupportedException($"产生式中不能含有回路");
+
+            //左递归产生式
+            var recProds = prods.Where(p => p.Right.First() == left).ToArray();
+            var newLeft = new NonTerminal(left + "'"); // 新的产生式左部
+
+            if (!recProds.Any()) return; //无左递归
+            foreach (var p in recProds)
+            {
+                productions.Add(new(newLeft, p.Right.Skip(1).Append(newLeft)));
+            }
+            productions.Add(new(newLeft, Production.Epsilon));
+
+            productions.ExceptWith(prods);
+            prods.ExceptWith(recProds);
+
+            if (prods.Any())
+            {
+                foreach (var p in prods)
+                {
+                    productions.Add(new(left, p.Right.Append(newLeft)));
+                }
+            }
+            else
+            {
+                productions.Add(new(left, newLeft));
+            }
+        }
 
         /// <summary>
         /// 消除左递归
         /// </summary>
-        private static Grammar EliminateLeftRecursion(Grammar grammar)
+        private static IEnumerable<Production> EliminateLeftRecursion(IEnumerable<Production> P)
         {
-            var (S, P) = (grammar.S, grammar.P);
-            var groups = P.GroupBy(p => p.Left).Select(g => g.ToHashSet())
-                .ToArray();
+            var setP = P.ToHashSet();
+            var nonTerminals = P.Select(p => p.Left).Distinct().ToArray(); //产生固定的非终结符序列
 
-            //消除间接递归
-            for (int i = 0; i < groups.Length; i++)
+            /// 消除间接左递归
+            for (int i = 0; i < nonTerminals.Length; i++)
             {
-                bool isChanged = true;
-                while (isChanged)
+                bool changed = true;
+                while (changed)
                 {
-                    isChanged = false;
+                    var iGroup = setP.Where(p => p.Left == nonTerminals[i]).ToHashSet();
+                    var iGroupCopy = iGroup.ToHashSet();
 
                     List<Production> exceptSet = new();
                     List<Production> unionSet = new();
-                    foreach (var p in groups[i])
+
+                    foreach (var p in iGroup)
                     {
-                        if (!p.Right.Any())
-                            continue;
                         var fstSymbol = p.Right.ElementAt(0);
-                        if (fstSymbol is NonTerminal nonTerminal)
+                        if (fstSymbol is NonTerminal fstRight)
                         {
                             for (int j = 0; j < i; j++)
                             {
-                                var key = groups[j].First().Left;
-                                if (nonTerminal == key)
+                                var jLeft = nonTerminals[j];
+                                if (fstRight == jLeft)
                                 {
+                                    var jGroup = setP.Where(p => p.Left == nonTerminals[j]).ToHashSet();
                                     exceptSet.Add(p);
-                                    foreach (var pReplaced in groups[j])
+                                    foreach (var pReplaced in jGroup)
                                     {
                                         var newRight = Enumerable.Empty<Symbol>();
-                                        if (pReplaced.Right != Production.Epsilon)
+                                        if (!pReplaced.Right.SequenceEqual(Production.Epsilon))
                                             newRight = pReplaced.Right;
                                         newRight = newRight.Concat(p.Right.Skip(1));
                                         unionSet.Add(new(p.Left, newRight));
@@ -87,50 +127,33 @@ namespace SyntaxAnalyzer
                             }
                         }
                     }
-                    groups[i].ExceptWith(exceptSet);
-                    groups[i].UnionWith(unionSet);
 
-                    isChanged = isChanged || exceptSet.Any() || unionSet.Any();
+                    setP.ExceptWith(exceptSet);
+                    setP.UnionWith(unionSet);
+                    iGroup = setP.Where(p => p.Left == nonTerminals[i]).ToHashSet();
+                    changed = !iGroup.SetEquals(iGroupCopy);
                 }
+                /// 消除直接左递归
+                EliminateDirectLeftRecursion(setP, nonTerminals[i]);
             }
+            return setP;
+        }
 
-            //消除直接递归
-            for (int i = 0; i < groups.Length; i++)
-            {
-                bool hasLeftRecursion = false; //是否存在左递归
-                var left = groups[i].First().Left;
-                var newLeft = new NonTerminal(left + "'");
-                HashSet<Production> newGroup = new();
-                foreach (var p in groups[i])
-                {
-                    if (p.Right.Any() && p.Left == p.Right.First())
-                    {
-                        newGroup.Add(new(newLeft, p.Right.Skip(1).Append(newLeft)));
-                        hasLeftRecursion = true;
-                    }
-                    else
-                    {
-                        newGroup.Add(new(left, p.Right.Append(newLeft)));
-                    }
-                }
-                if (hasLeftRecursion)
-                {
-                    newGroup.Add(new(newLeft, Production.Epsilon)); // N'->eps
-                    groups[i] = newGroup;
-                }
-            }
-
-            //移除不能抵达的生成式
-            var newP = groups.SelectMany(g => g).ToHashSet();
+        /// <summary>
+        /// 移除不能抵达的生成式
+        /// </summary>
+        /// <param name="start">开始符</param>
+        private static void RemoveUnreachable(HashSet<Production> productions, NonTerminal start)
+        {
             Queue<NonTerminal> queue = new();
             HashSet<NonTerminal> visited = new();
-            queue.Enqueue(S);
-            visited.Add(S);
+            queue.Enqueue(start);
+            visited.Add(start);
             List<Production> reachableP = new();
             while (queue.Count > 0)
             {
                 var nLeft = queue.Dequeue();
-                foreach (var p in newP.Where(p => p.Left == nLeft))
+                foreach (var p in productions.Where(p => p.Left == nLeft))
                 {
                     reachableP.Add(p);
                     foreach (var n in p.Right.Where(n => n is NonTerminal).Cast<NonTerminal>())
@@ -143,14 +166,25 @@ namespace SyntaxAnalyzer
                     }
                 }
             }
+        }
 
-            return new(reachableP, S);
+        #endregion
+
+        /// <summary>
+        /// 消除左递归
+        /// </summary>
+        public static Grammar EliminateLeftRecursion(Grammar grammar)
+        {
+            var prodSet = EliminateLeftRecursion(grammar.P).ToHashSet();
+            RemoveUnreachable(prodSet, grammar.S);
+
+            return new(prodSet, grammar.S);
         }
 
         /// <summary>
         /// 提取左公因子
         /// </summary>
-        private static Grammar ExtractLeftCommonfactor(Grammar grammar)
+        public static Grammar ExtractLeftCommonfactor(Grammar grammar)
         {
             var (S, P) = (grammar.S, grammar.P);
             HashSet<Production> oldSet, newSet;
@@ -165,9 +199,13 @@ namespace SyntaxAnalyzer
                     if (!group.Skip(1).Any()) //group.Count() > 1
                         continue;
 
-                    NonTerminal newLeft = new(group.Key.Name + "'");
+                    int index = 1;
+                    NonTerminal newLeft = new($"{group.Key.Name}{index}");
                     while (newSet.Any(p => p.Left == newLeft))
-                        newLeft = new NonTerminal(newLeft.Name + "'");
+                    {
+                        index += 1;
+                        newLeft = new($"{group.Key.Name}{index}");
+                    }
 
                     var subGroups2 = group.GroupBy(p => p.Right.First());
                     foreach (var subGroup in subGroups2)
@@ -191,16 +229,12 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static LL1Grammar CreateFrom(Grammar grammar)
+        public static bool CheckLL1Grammar(Grammar grammar, out string errorMsg)
         {
-            grammar = EliminateLeftRecursion(grammar);
-            grammar = ExtractLeftCommonfactor(grammar);
             var (S, P) = (grammar.S, grammar.P);
-
-
-            Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = CalcFirsts(P);
-            //FOLLOW集
-            Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = CalcFollows(P, mapFirst, S);
+            var mapFirst = CalcFirsts(P);
+            var mapFollow = CalcFollows(P, mapFirst, S);
+            StringBuilder stringBuilder = new();
 
             ///对于文法中每一个非终结符A的各个产生式的候选首符集两两不相交。
             ///即，若A->α1|α2|...|αn
@@ -214,8 +248,10 @@ namespace SyntaxAnalyzer
                     for (int j = i + 1; j < pArray.Length; j++)
                     {
                         var jFirst = CalcFirst(pArray[j].Right, mapFirst);
-                        if (iFirst.Intersect(jFirst).Any())
-                            throw new NotSupportedException($" {pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                        /// 如果产生的First交集中有ε，并不会造成冲突 
+                        /// if (iFirst.Intersect(jFirst).Any())
+                        if (iFirst.Intersect(jFirst).Any(t => t != Terminal.Epsilon))
+                            stringBuilder.AppendLine($" {pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
                     }
                 }
             }
@@ -229,31 +265,21 @@ namespace SyntaxAnalyzer
                 {
                     var follow = mapFollow[nonTerminal];
                     if (first.Intersect(follow).Any())
-                        throw new NotSupportedException($" {nonTerminal}FIRST集含有ε，并且与它的FOLLOW集相交不为空，无法满足LL1文法");
+                        stringBuilder.AppendLine($" {nonTerminal}的FIRST集含有ε，并且与它的FOLLOW集相交不为空，无法满足LL1文法。");
                 }
             }
 
-            ///若 ε∈FIRST(αj)，则 FIRST(αi) ∩ FOLLOW(A)=∅，i≠j
-            //foreach (var pGroup in P.GroupBy(p => p.Left))
-            //{
-            //    var pArray = pGroup.ToArray();
-            //    var firsts = pGroup.Select(p => CalcFirst(p.Right, mapFirst)).ToArray();
-            //    var follow = mapFollow[pGroup.Key];
-            //    for (int i = 0; i < pArray.Length; i++)
-            //    {
-            //        var iFirst = firsts[i];
-            //        if (iFirst.Contains(Terminal.Epsilon))
-            //        {
-            //            for (int j = 0; j < pArray.Length; j++)
-            //            {
-            //                if (i == j) continue;
-            //                var jFirst = firsts[j];
-            //                if (jFirst.Intersect(follow).Any())
-            //                    throw new NotSupportedException($" {pArray[i]}产生式右部的FIRST集含有ε，{pArray[j]}与{pGroup.Key}的FOLLOW集相交不为空，无法满足LL1文法");
-            //            }
-            //        }
-            //    }
-            //}
+            errorMsg = stringBuilder.ToString();
+            return string.IsNullOrWhiteSpace(errorMsg);
+        }
+
+        public static LL1Grammar CreateFrom(Grammar grammar)
+        {
+            var (S, P) = (grammar.S, grammar.P);
+            var mapFirst = CalcFirsts(P);
+            var mapFollow = CalcFollows(P, mapFirst, S);
+            if (!CheckLL1Grammar(grammar, out var msg))
+                throw new Exception(msg);
 
             return new LL1Grammar(P, S, mapFirst, mapFollow);
         }

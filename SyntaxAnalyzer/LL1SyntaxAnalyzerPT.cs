@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace SyntaxAnalyzer
 {
     /// <summary>
-    /// LL1分析器（递归下降分析法）
+    /// LL1分析器（构造预测分析表）
     /// </summary>
     public class LL1SyntaxAnalyzerPT
     {
@@ -26,6 +26,9 @@ namespace SyntaxAnalyzer
             this.predictiveTable = ConstructingPredictiveAnalysisTable();
         }
 
+        /// <summary>
+        /// 预测分析表
+        /// </summary>
         private List<(NonTerminal, Terminal, Production)> ConstructingPredictiveAnalysisTable()
         {
             var predictiveTable = new List<(NonTerminal, Terminal, Production)>();
@@ -40,7 +43,7 @@ namespace SyntaxAnalyzer
                     {
                         var follow = grammar.GetFollow(p.Left);
                         foreach (var tFollow in follow)
-                            predictiveTable.Add((p.Left, tFollow, p));
+                            predictiveTable.Add((p.Left, tFollow, new(p.Left, Production.Epsilon)));
                     }
                 }
             }

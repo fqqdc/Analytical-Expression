@@ -5,8 +5,30 @@ using System.Collections.Generic;
 
 namespace SyntaxAnalyzer
 {
-    public record Production(NonTerminal Left, IEnumerable<Symbol> Right, int Position = -1)
+    public record Production
     {
+        private Symbol[] right;
+
+        public Production(NonTerminal left, IEnumerable<Symbol> right, int position = -1)
+        {
+            if (left == null) throw new ArgumentNullException("left");
+            if (right == null) throw new ArgumentNullException("right");
+
+            Left = left;
+            this.right = right.ToArray();
+            Position = position;
+        }
+
+        public Production(NonTerminal left, Symbol singleSymbol, int position = -1) : this(left, new Symbol[] { singleSymbol }, position) { }
+
+        public NonTerminal Left { get; init; }
+        
+        public IEnumerable<Symbol> Right
+        {
+            get { return right; }
+        }
+        public int Position { get; init; }
+
         public static Symbol[] Epsilon { get; private set; } = new Symbol[] { Terminal.Epsilon };
 
         public override string ToString()
@@ -46,7 +68,8 @@ namespace SyntaxAnalyzer
             if (other == null)
                 return false;
             bool returnValue = Left.Equals(other.Left);
-            returnValue = returnValue && Right.SequenceEqual(other.Right);
+            if (!returnValue)
+                returnValue = Right.SequenceEqual(other.Right);
             return returnValue;
         }
 
