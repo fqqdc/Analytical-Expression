@@ -40,7 +40,7 @@ namespace SyntaxAnalyzer
         public override string ToString()
         {
             StringBuilder builder = new StringBuilder();
-            builder.Append("Grammar").AppendLine();
+            builder.Append(GetType().Name).AppendLine();
             VtToString(builder);
             VnToString(builder);
             PToString(builder);

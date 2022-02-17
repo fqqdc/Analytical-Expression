@@ -47,6 +47,10 @@ namespace SyntaxAnalyzer
                     }
                 }
             }
+            foreach (var row in predictiveTable)
+            {
+                Console.WriteLine(row);
+            }
             return predictiveTable;
         }
 

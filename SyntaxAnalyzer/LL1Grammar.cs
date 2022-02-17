@@ -51,8 +51,8 @@ namespace SyntaxAnalyzer
 
             if (!prods.Any())
                 return;
-            if (prods.Any(p => p.Right.SequenceEqual(Production.Epsilon)))
-                throw new NotSupportedException($"不能含有以ε为右边的产生式");
+            //if (prods.Any(p => p.Right.SequenceEqual(Production.Epsilon)))
+            //    throw new NotSupportedException($"不能含有以ε为右边的产生式");
             if (prods.Any(p => p.Right.ElementAtOrDefault(1) == null && p.Right.ElementAt(0) == p.Left))
                 throw new NotSupportedException($"产生式中不能含有回路");
 
@@ -199,12 +199,19 @@ namespace SyntaxAnalyzer
                     if (!group.Skip(1).Any()) //group.Count() > 1
                         continue;
 
+                    var keyName = group.Key.Name;
+                    if (group.Key.Name.Contains("_"))
+                    {
+                        var indexDelimiter = group.Key.Name.LastIndexOf("_");
+                        keyName = keyName.Substring(0, indexDelimiter);
+                    }
+
                     int index = 1;
-                    NonTerminal newLeft = new($"{group.Key.Name}{index}");
+                    NonTerminal newLeft = new($"{keyName}_{index}");
                     while (newSet.Any(p => p.Left == newLeft))
                     {
                         index += 1;
-                        newLeft = new($"{group.Key.Name}{index}");
+                        newLeft = new($"{keyName}_{index}");
                     }
 
                     var subGroups2 = group.GroupBy(p => p.Right.First());
@@ -229,7 +236,7 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static bool CheckLL1Grammar(Grammar grammar, out string errorMsg)
+        public static bool TryCreateLL1Grammar(Grammar grammar,out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
@@ -270,32 +277,11 @@ namespace SyntaxAnalyzer
             }
 
             errorMsg = stringBuilder.ToString();
-            return string.IsNullOrWhiteSpace(errorMsg);
-        }
-
-        public static LL1Grammar CreateFrom(Grammar grammar)
-        {
-            var (S, P) = (grammar.S, grammar.P);
-            var mapFirst = CalcFirsts(P);
-            var mapFollow = CalcFollows(P, mapFirst, S);
-            if (!CheckLL1Grammar(grammar, out var msg))
-                throw new Exception(msg);
-
-            return new LL1Grammar(P, S, mapFirst, mapFollow);
-        }
-
-        public static bool TryCreateFrom(Grammar grammar, out LL1Grammar? lL1Grammar)
-        {
-            try
-            {
-                lL1Grammar = CreateFrom(grammar);
-                return true;
-            }
-            catch (Exception)
-            {
-                lL1Grammar = null;
-                return false;
-            }
+            var result = string.IsNullOrWhiteSpace(errorMsg);
+            if(result)
+                lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);
+            else lL1Grammar = null;
+            return result;
         }
 
         /// <summary>

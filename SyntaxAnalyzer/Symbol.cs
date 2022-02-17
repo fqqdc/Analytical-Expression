@@ -11,8 +11,8 @@ namespace SyntaxAnalyzer
     }
     public record Terminal(string Name) : Symbol(Name)
     {
-        public static Terminal Epsilon { get; private set; } = new("\"eps\"");
-        public static Terminal EndTerminal { get; private set; } = new("\"end\"");
+        public static Terminal Epsilon { get; private set; } = new("\"_NUL_\"");
+        public static Terminal EndTerminal { get; private set; } = new("\"_EOT_\"");
 
         public override string ToString()
         {

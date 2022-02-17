@@ -11,15 +11,13 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "V1"));
-            listProduction.AddRange(Production.Create("V1", "V2|V1 i V2"));
-            listProduction.AddRange(Production.Create("V2", "V3|V2 + V3"));
-            listProduction.AddRange(Production.Create("V3", "V1 *|("));
-            //listProduction.AddRange(Production.Create("S", "Q c|c"));
-            //listProduction.AddRange(Production.Create("Q", "R b|b"));
-            //listProduction.AddRange(Production.Create("R", "S a|a"));
+            listProduction.AddRange(Production.Create("E", "T + E"));
+            listProduction.AddRange(Production.Create("E", "T"));
+            listProduction.AddRange(Production.Create("T", "F * T"));
+            listProduction.AddRange(Production.Create("T", "F"));
+            listProduction.AddRange(Production.Create("F", "i"));
 
-            Grammar grammar = new Grammar(listProduction, new("S"));
+            Grammar grammar = new Grammar(listProduction, new("E"));
             Console.WriteLine(grammar);
 
             Console.WriteLine();
@@ -32,17 +30,16 @@ namespace SyntaxAnalyzer
             grammar = LL1Grammar.ExtractLeftCommonfactor(grammar);
             Console.WriteLine(grammar);
 
-            if (!LL1Grammar.CheckLL1Grammar(grammar, out var msg))
+            if (!LL1Grammar.TryCreateLL1Grammar(grammar, out var lL1Grammar, out var msg))
             {
                 Console.WriteLine(msg);
                 return;
             }
 
-                var lL1Grammar = LL1Grammar.CreateFrom(grammar);
-                Console.WriteLine(lL1Grammar);
 
 
-            return;
+            Console.WriteLine(lL1Grammar);
+
 
             string input = "i+i";
             int index = 0;
@@ -62,6 +59,8 @@ namespace SyntaxAnalyzer
             };
 
             LL1SyntaxAnalyzerPT analyzer = new(lL1Grammar, p);
+
+
             analyzer.Analyzer();
             Console.WriteLine("OK");
         }
