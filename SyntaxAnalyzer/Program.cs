@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,14 +9,16 @@ namespace SyntaxAnalyzer
 {
     public class Program
     {
-        static void Main(string[] args)
+        static void Main2(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("E", "T + E"));
-            listProduction.AddRange(Production.Create("E", "T"));
-            listProduction.AddRange(Production.Create("T", "F * T"));
-            listProduction.AddRange(Production.Create("T", "F"));
-            listProduction.AddRange(Production.Create("F", "i"));
+            listProduction.AddRange(Production.Create("A", "B C c|g D B"));
+            listProduction.AddRange(Production.Create("B", "b C D E|"));
+            listProduction.AddRange(Production.Create("C", "D a B|c a"));
+            listProduction.AddRange(Production.Create("D", "d D|"));
+            listProduction.AddRange(Production.Create("E", "g A f|c"));
+
+            return;
 
             Grammar grammar = new Grammar(listProduction, new("E"));
             Console.WriteLine(grammar);
@@ -63,10 +66,6 @@ namespace SyntaxAnalyzer
 
             analyzer.Analyzer();
             Console.WriteLine("OK");
-        }
-
-        static void Main2(string[] args)
-        {
         }
 
     }

@@ -236,7 +236,7 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static bool TryCreateLL1Grammar(Grammar grammar,out LL1Grammar lL1Grammar, out string errorMsg)
+        public static bool TryCreateLL1Grammar(Grammar grammar, out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
@@ -278,7 +278,7 @@ namespace SyntaxAnalyzer
 
             errorMsg = stringBuilder.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
-            if(result)
+            if (result)
                 lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);
             else lL1Grammar = null;
             return result;
@@ -354,6 +354,109 @@ namespace SyntaxAnalyzer
             Console.WriteLine(mapFirst.ToString("First Sets:"));
             return mapFirst;
         }
+
+        /* 
+        public static Dictionary<NonTerminal, HashSet<Terminal>> CalcFirsts2(IEnumerable<Production> P)
+        {
+            Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
+            HashSet<Terminal> GetFirst(NonTerminal n)
+            {
+                if (!mapFirst.TryGetValue(n, out var first))
+                {
+                    first = new();
+                    mapFirst.Add(n, first);
+                }
+                return first;
+            }
+            bool ContainInRight(Production p, NonTerminal n)
+            {
+                foreach (var symbol in p.Right)
+                {
+                    if (symbol is Terminal)
+                        return false;
+                    else if (symbol is NonTerminal nonTerminal)
+                    {
+                        if (nonTerminal == n)
+                            return true;
+                        else if (!GetFirst(nonTerminal).Contains(Terminal.Epsilon))
+                            return false;
+                        continue;
+                    }
+                    throw new NotSupportedException();
+                }
+                return false;
+            }
+
+
+            Queue<(NonTerminal n, Terminal t)> changeQueue = new();
+            foreach (Production p in P)
+            {
+                var symbol = p.Right.First();
+                var first = GetFirst(p.Left);
+                if (symbol is Terminal terminal)
+                {
+                    first.Add(terminal);
+                    changeQueue.Enqueue((p.Left, terminal));
+                }
+            }
+
+            while (changeQueue.Count > 0)
+            {
+                var item = changeQueue.Dequeue();
+                foreach (Production p in P)
+                {
+                    var first = GetFirst(p.Left);
+                    if (first.Contains(item.t))
+                        continue;
+                    if (!ContainInRight(p, item.n))
+                        continue;
+
+                    bool endWithEpsilon = true;
+                    foreach (var symbol in p.Right)
+                    {
+                        if (symbol is Terminal terminal)
+                        {
+                            if (!first.Contains(terminal))
+                            {
+                                first.Add(terminal);
+                                changeQueue.Enqueue((p.Left, terminal));
+                            }
+                            endWithEpsilon = false;
+                            break;
+                        }
+                        else if (symbol is NonTerminal nonTerminal)
+                        {
+                            var nFirst = GetFirst(nonTerminal);
+                            if (nonTerminal == item.n)
+                            {
+                                foreach (var t in nFirst.Except(first))
+                                {
+                                    if (t == Terminal.Epsilon)
+                                        continue;
+                                    first.Add(t);
+                                    changeQueue.Enqueue((p.Left, t));
+                                }
+                            }
+                            if (!nFirst.Contains(Terminal.Epsilon))
+                            {
+                                endWithEpsilon = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (endWithEpsilon)
+                    {
+                        first.Add(Terminal.Epsilon);
+                        changeQueue.Enqueue((p.Left, Terminal.Epsilon));
+                    }
+                }
+            }
+
+            Console.WriteLine(mapFirst.ToString("First Sets:"));
+            return mapFirst;
+        }
+        */
 
         private static HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst)
         {
