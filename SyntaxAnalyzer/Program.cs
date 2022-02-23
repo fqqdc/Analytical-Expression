@@ -9,29 +9,27 @@ namespace SyntaxAnalyzer
 {
     public class Program
     {
-        static void Main2(string[] args)
+        static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("A", "B C c|g D B"));
-            listProduction.AddRange(Production.Create("B", "b C D E|"));
-            listProduction.AddRange(Production.Create("C", "D a B|c a"));
-            listProduction.AddRange(Production.Create("D", "d D|"));
-            listProduction.AddRange(Production.Create("E", "g A f|c"));
+            listProduction.AddRange(Production.Create("S", "W a"));
+            listProduction.AddRange(Production.Create("W", "a"));
+            listProduction.AddRange(Production.Create("W", "W b"));
+            listProduction.AddRange(Production.Create("W", "W S"));
+
+
+
+            Grammar grammar = new Grammar(listProduction, new("S"));
+            Console.WriteLine(grammar);
+
+            var arr = SPGrammar.GetSymbolOrderArray(grammar);
+            foreach (var item in arr)
+            {
+                Console.WriteLine(item);
+            }
+
 
             return;
-
-            Grammar grammar = new Grammar(listProduction, new("E"));
-            Console.WriteLine(grammar);
-
-            Console.WriteLine();
-            Console.WriteLine("消除左递归");
-            grammar = LL1Grammar.EliminateLeftRecursion(grammar);
-            Console.WriteLine(grammar);
-
-            Console.WriteLine();
-            Console.WriteLine("提取左公因式");
-            grammar = LL1Grammar.ExtractLeftCommonfactor(grammar);
-            Console.WriteLine(grammar);
 
             if (!LL1Grammar.TryCreateLL1Grammar(grammar, out var lL1Grammar, out var msg))
             {
@@ -68,5 +66,14 @@ namespace SyntaxAnalyzer
             Console.WriteLine("OK");
         }
 
+        static void Main1(string[] args)
+        {
+            int[,] arr = new int[2, 3];
+            Console.WriteLine(arr.Rank);
+            for (int i = 0; i < arr.Rank; i++)
+            {
+                Console.WriteLine(arr.GetLength(i));
+            }
+        }
     }
 }

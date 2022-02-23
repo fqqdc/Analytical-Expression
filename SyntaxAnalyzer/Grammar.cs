@@ -15,7 +15,7 @@ namespace SyntaxAnalyzer
             _Vt = symbols.Where(s => s is Terminal).Cast<Terminal>().ToHashSet();
             _P = allProduction.ToHashSet();
 
-            var leftVn = allProduction.Select(p=>p.Left).ToHashSet();
+            var leftVn = allProduction.Select(p => p.Left).ToHashSet();
             if (!leftVn.Contains(startNonTerminal))
                 throw new NotSupportedException($"无效的起始符:{startNonTerminal}");
 
@@ -71,7 +71,7 @@ namespace SyntaxAnalyzer
         private void VnToString(StringBuilder builder)
         {
             builder.Append(PRE).Append("NonTerminal : {");
-            foreach (var n in Vn)
+            foreach (var n in Vn.OrderBy(n => n != S))
             {
                 builder.Append($" {n},");
             }
