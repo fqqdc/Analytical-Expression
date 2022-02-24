@@ -12,21 +12,27 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "W a"));
-            listProduction.AddRange(Production.Create("W", "a"));
-            listProduction.AddRange(Production.Create("W", "W b"));
-            listProduction.AddRange(Production.Create("W", "W S"));
+            //listProduction.AddRange(Production.Create("S", "W a"));
+            //listProduction.AddRange(Production.Create("W", "a"));
+            //listProduction.AddRange(Production.Create("W", "W b"));
+            //listProduction.AddRange(Production.Create("W", "W S"));
+            listProduction.AddRange(Production.Create("A", "A f|B"));
+            listProduction.AddRange(Production.Create("B", "D d e|D e"));
+            listProduction.AddRange(Production.Create("C", "e"));
+            listProduction.AddRange(Production.Create("D", "B f"));
 
 
 
-            Grammar grammar = new Grammar(listProduction, new("S"));
+            Grammar grammar = new Grammar(listProduction, new("A"));
             Console.WriteLine(grammar);
 
             var arr = SPGrammar.GetSymbolOrderArray(grammar);
-            foreach (var item in arr)
-            {
-                Console.WriteLine(item);
-            }
+            var matrix = SPGrammar.GetFirstMatrix(grammar, arr);
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
+            matrix = SPGrammar.GetClosureMatrix(matrix);
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
+            matrix = SPGrammar.GetSelfClosureMatrix(matrix);
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
 
 
             return;
@@ -70,10 +76,6 @@ namespace SyntaxAnalyzer
         {
             int[,] arr = new int[2, 3];
             Console.WriteLine(arr.Rank);
-            for (int i = 0; i < arr.Rank; i++)
-            {
-                Console.WriteLine(arr.GetLength(i));
-            }
         }
     }
 }
