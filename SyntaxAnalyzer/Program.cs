@@ -12,27 +12,33 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            //listProduction.AddRange(Production.Create("S", "W a"));
-            //listProduction.AddRange(Production.Create("W", "a"));
-            //listProduction.AddRange(Production.Create("W", "W b"));
-            //listProduction.AddRange(Production.Create("W", "W S"));
-            listProduction.AddRange(Production.Create("A", "A f|B"));
-            listProduction.AddRange(Production.Create("B", "D d e|D e"));
-            listProduction.AddRange(Production.Create("C", "e"));
-            listProduction.AddRange(Production.Create("D", "B f"));
+            listProduction.AddRange(Production.Create("S", "W a"));
+            listProduction.AddRange(Production.Create("W", "a"));
+            listProduction.AddRange(Production.Create("W", "W b"));
+            listProduction.AddRange(Production.Create("W", "W S"));
+            //listProduction.AddRange(Production.Create("A", "A f|B"));
+            //listProduction.AddRange(Production.Create("B", "D d e|D e"));
+            //listProduction.AddRange(Production.Create("C", "e"));
+            //listProduction.AddRange(Production.Create("D", "B f"));
 
 
 
-            Grammar grammar = new Grammar(listProduction, new("A"));
+            Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
             var arr = SPGrammar.GetSymbolOrderArray(grammar);
-            var matrix = SPGrammar.GetFirstMatrix(grammar, arr);
-            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
-            matrix = SPGrammar.GetClosureMatrix(matrix);
-            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
-            matrix = SPGrammar.GetSelfClosureMatrix(matrix);
-            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
+
+            var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
+            Console.WriteLine("=矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(equalMatrix, arr));
+
+            var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
+            Console.WriteLine("fisrt矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(fisrtMatrix, arr));
+
+            var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
+            Console.WriteLine("fisrt+矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(fisrtPlusMatrix, arr));
 
 
             return;
