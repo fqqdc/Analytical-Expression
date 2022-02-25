@@ -12,18 +12,26 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            //listProduction.AddRange(Production.Create("S", "W a"));
-            //listProduction.AddRange(Production.Create("W", "a"));
-            //listProduction.AddRange(Production.Create("W", "W b"));
-            //listProduction.AddRange(Production.Create("W", "W S"));
-            listProduction.AddRange(Production.Create("A", "A f|B"));
-            listProduction.AddRange(Production.Create("B", "D d e|D e"));
-            listProduction.AddRange(Production.Create("C", "e"));
-            listProduction.AddRange(Production.Create("D", "B f"));
+            listProduction.AddRange(Production.Create("S", "W a"));
+            listProduction.AddRange(Production.Create("W", "a"));
+            listProduction.AddRange(Production.Create("W", "W b"));
+            listProduction.AddRange(Production.Create("W", "W S"));
+
+            //listProduction.AddRange(Production.Create("A", "A f|B"));
+            //listProduction.AddRange(Production.Create("B", "D d e|D e"));
+            //listProduction.AddRange(Production.Create("C", "e"));
+            //listProduction.AddRange(Production.Create("D", "B f"));
+
+            //listProduction.AddRange(Production.Create("S", "b M b"));
+            //listProduction.AddRange(Production.Create("M", "( L|a"));
+            //listProduction.AddRange(Production.Create("L", "M a )"));
+
+            //listProduction.AddRange(Production.Create("S", "a|^|( R )"));
+            //listProduction.AddRange(Production.Create("R", "T"));
+            //listProduction.AddRange(Production.Create("T", "S , T|S"));
 
 
-
-            Grammar grammar = new Grammar(listProduction, new("A"));
+            Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
             var arr = SPGrammar.GetSymbolOrderArray(grammar);
@@ -61,19 +69,21 @@ namespace SyntaxAnalyzer
             Console.WriteLine(SPGrammar.FormatMatrix(fisrtStarMatrix, arr));
 
             var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
-            Console.WriteLine("TRP(last+) X =");
-            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
-
             greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
             Console.WriteLine(">矩阵");
             Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
 
-            var matrix = SPGrammar.IntersectMatrix(equalMatrix, lessMatrix);
-            Console.WriteLine("M(=) ^ M(<)");
-            Console.WriteLine(SPGrammar.FormatMatrix(matrix, arr));
+            var matrix1 = SPGrammar.IntersectMatrix(equalMatrix, lessMatrix);
+            Console.WriteLine($"M(=) ∩ M(<) : {matrix1.Cast<bool>().All(b => !b)}");
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix1, arr));
+            var matrix2 = SPGrammar.IntersectMatrix(equalMatrix, greaterMatrix);
+            Console.WriteLine($"M(=) ∩ M(>) : {matrix2.Cast<bool>().All(b => !b)}");
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix2, arr));
+            var matrix3 = SPGrammar.IntersectMatrix(lessMatrix, greaterMatrix);
+            Console.WriteLine($"M(<) ∩ M(>) : {matrix3.Cast<bool>().All(b => !b)}");
+            Console.WriteLine(SPGrammar.FormatMatrix(matrix3, arr));
+            Console.WriteLine(matrix1.Cast<bool>().Union(matrix2.Cast<bool>()).Union(matrix3.Cast<bool>()).All(b => !b));
 
-            Console.WriteLine(matrix.Cast<bool>().Any());
-            
             return;
 
             if (!LL1Grammar.TryCreateLL1Grammar(grammar, out var lL1Grammar, out var msg))
@@ -113,8 +123,16 @@ namespace SyntaxAnalyzer
 
         static void Main1(string[] args)
         {
-            int[,] arr = new int[2, 3];
-            Console.WriteLine(arr.Rank);
+            Stack<int> stack = new Stack<int>();
+            for (int i = 0; i < 10; i++)
+            {
+                stack.Push(i);
+            }
+
+            foreach (var item in stack.TakeWhile((i, index) => index < 3))
+            {
+                Console.WriteLine(item);
+            }
         }
     }
 }

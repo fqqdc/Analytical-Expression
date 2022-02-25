@@ -11,60 +11,44 @@ namespace SyntaxAnalyzer
     public class SPGrammar : Grammar
     {
         private SPGrammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal
-            , Dictionary<NonTerminal, HashSet<Terminal>> mapFirst
-            , Dictionary<NonTerminal, HashSet<Terminal>> mapFollow
-            ) : base(allProduction, startNonTerminal)
+            ) : base(allProduction, startNonTerminal) { }
+
+
+        public static bool TryCreateSPGrammar(Grammar grammar, out SPGrammar? sPGrammar, out string errorMsg)
         {
-            throw new NotImplementedException();
-        }
+            var (equalMatrix, lessMatrix, greaterMatrix, _) = SPGrammar.GetMatrices(grammar);
 
+            StringBuilder sbErrorMsg = new();
+            var intersectMatrix1 = SPGrammar.IntersectMatrix(equalMatrix, lessMatrix);
+            if (intersectMatrix1.Cast<bool>().Any(b => b == true))
+            {
+                sbErrorMsg.AppendLine("=集与<集有交集。");
+                sPGrammar = null;
+                errorMsg = sbErrorMsg.ToString();
+                return false;
+            }
 
-        public static bool TryCreateSPGrammar(Grammar grammar, out SPGrammar sPGrammar, out string errorMsg)
-        {
-            var arr = SPGrammar.GetSymbolOrderArray(grammar);
+            var intersectMatrix2 = SPGrammar.IntersectMatrix(equalMatrix, greaterMatrix);
+            if (intersectMatrix2.Cast<bool>().Any(b => b == true))
+            {
+                sbErrorMsg.AppendLine("=集与>集有交集。");
+                sPGrammar = null;
+                errorMsg = sbErrorMsg.ToString();
+                return false;
+            }
 
-            var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
-            Console.WriteLine("=矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(equalMatrix, arr));
+            var intersectMatrix3 = SPGrammar.IntersectMatrix(lessMatrix, greaterMatrix);
+            if (intersectMatrix3.Cast<bool>().Any(b => b == true))
+            {
+                sbErrorMsg.AppendLine("<集与>集有交集。");
+                sPGrammar = null;
+                errorMsg = sbErrorMsg.ToString();
+                return false;
+            }
 
-            var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
-            Console.WriteLine("fisrt矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(fisrtMatrix, arr));
-
-            var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
-            Console.WriteLine("fisrt+矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(fisrtPlusMatrix, arr));
-
-            var lessMatrix = SPGrammar.ProductMatrix(equalMatrix, fisrtPlusMatrix);
-            Console.WriteLine("<矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(lessMatrix, arr));
-
-            var lastMatrix = SPGrammar.GetLastMatrix(grammar, arr);
-            Console.WriteLine("last矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(lastMatrix, arr));
-
-            var lastPlusMatrix = SPGrammar.ClosureMatrix(lastMatrix);
-            Console.WriteLine("last+矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(lastPlusMatrix, arr));
-
-            var trpLastPlusMatrix = SPGrammar.TransposeMatrix(lastPlusMatrix);
-            Console.WriteLine("TRP(last+)矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(trpLastPlusMatrix, arr));
-
-            var fisrtStarMatrix = SPGrammar.UnionMatrix(fisrtPlusMatrix, SPGrammar.IdentityMatrix(fisrtPlusMatrix.GetLength(0)));
-            Console.WriteLine("fisrt*矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(fisrtStarMatrix, arr));
-
-            var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
-            Console.WriteLine("TRP(last+) X =");
-            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
-
-            greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
-            Console.WriteLine(">矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
-
-            throw new NotImplementedException();
-
+            sPGrammar = new(grammar.P, grammar.S);
+            errorMsg = sbErrorMsg.ToString();
+            return true;
         }
 
 
@@ -77,6 +61,24 @@ namespace SyntaxAnalyzer
                 .ThenBy(s => s is not NonTerminal)
                 .ThenBy(s => s.Name)
                 .ToArray();
+        }
+
+        public static (bool[,] equalMatrix, bool[,] lessMatrix, bool[,] greaterMatrix, Dictionary<Symbol, int> symbolIndex) GetMatrices(Grammar grammar)
+        {
+            var arr = SPGrammar.GetSymbolOrderArray(grammar);
+            var dict = arr.ToDictionary(i => i, i => Array.IndexOf(arr, i));
+
+            var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
+            var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
+            var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
+            var lessMatrix = SPGrammar.ProductMatrix(equalMatrix, fisrtPlusMatrix);
+            var lastMatrix = SPGrammar.GetLastMatrix(grammar, arr);
+            var lastPlusMatrix = SPGrammar.ClosureMatrix(lastMatrix);
+            var trpLastPlusMatrix = SPGrammar.TransposeMatrix(lastPlusMatrix);
+            var fisrtStarMatrix = SPGrammar.UnionMatrix(fisrtPlusMatrix, SPGrammar.IdentityMatrix(fisrtPlusMatrix.GetLength(0)));
+            var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
+            greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
+            return (equalMatrix, lessMatrix, greaterMatrix, dict);
         }
 
         /// <summary>
@@ -157,24 +159,18 @@ namespace SyntaxAnalyzer
                 throw new Exception("left矩阵与right矩阵阶数不相等。");
 
             var n = left.GetLength(0);
-            bool[] leftRow = new bool[n];
-            bool[] rightCol = new bool[n];
             bool[,] matrix = new bool[n, n];
 
             for (int i = 0; i < n; i++)
             {
                 for (int j = 0; j < n; j++)
                 {
-                    leftRow[i] = leftRow[i] || left[i, j];
-                    rightCol[j] = rightCol[j] || right[i, j];
-                }
-            }
-
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    matrix[i, j] = leftRow[i] && rightCol[j];
+                    bool v_ij = false;
+                    for (int k = 0; k < n; k++)
+                    {
+                        v_ij = left[i, k] && right[k, j];
+                        if (v_ij) break;
+                    }
                 }
             }
 
