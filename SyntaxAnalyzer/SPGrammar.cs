@@ -21,7 +21,50 @@ namespace SyntaxAnalyzer
 
         public static bool TryCreateSPGrammar(Grammar grammar, out SPGrammar sPGrammar, out string errorMsg)
         {
+            var arr = SPGrammar.GetSymbolOrderArray(grammar);
+
+            var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
+            Console.WriteLine("=矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(equalMatrix, arr));
+
+            var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
+            Console.WriteLine("fisrt矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(fisrtMatrix, arr));
+
+            var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
+            Console.WriteLine("fisrt+矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(fisrtPlusMatrix, arr));
+
+            var lessMatrix = SPGrammar.ProductMatrix(equalMatrix, fisrtPlusMatrix);
+            Console.WriteLine("<矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(lessMatrix, arr));
+
+            var lastMatrix = SPGrammar.GetLastMatrix(grammar, arr);
+            Console.WriteLine("last矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(lastMatrix, arr));
+
+            var lastPlusMatrix = SPGrammar.ClosureMatrix(lastMatrix);
+            Console.WriteLine("last+矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(lastPlusMatrix, arr));
+
+            var trpLastPlusMatrix = SPGrammar.TransposeMatrix(lastPlusMatrix);
+            Console.WriteLine("TRP(last+)矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(trpLastPlusMatrix, arr));
+
+            var fisrtStarMatrix = SPGrammar.UnionMatrix(fisrtPlusMatrix, SPGrammar.IdentityMatrix(fisrtPlusMatrix.GetLength(0)));
+            Console.WriteLine("fisrt*矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(fisrtStarMatrix, arr));
+
+            var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
+            Console.WriteLine("TRP(last+) X =");
+            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
+
+            greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
+            Console.WriteLine(">矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
+
             throw new NotImplementedException();
+
         }
 
 
@@ -44,12 +87,31 @@ namespace SyntaxAnalyzer
             bool[,] matrix = new bool[symbols.Length, symbols.Length];
             var symbolId = symbols.ToDictionary(s => s, s => Array.IndexOf(symbols, s));
 
-
             foreach (var p in grammar.P)
             {
                 if (!p.Right.Any() || p.Right.First() == Terminal.Epsilon)
                     throw new Exception($"无效的产生式:{p}");
                 var fstRight = p.Right.First();
+                matrix[symbolId[p.Left], symbolId[fstRight]] = true;
+            }
+
+            return matrix;
+        }
+
+        /// <summary>
+        /// Last矩阵
+        /// </summary>
+        public static bool[,] GetLastMatrix(Grammar grammar, Symbol[] symbols)
+        {
+            bool[,] matrix = new bool[symbols.Length, symbols.Length];
+            var symbolId = symbols.ToDictionary(s => s, s => Array.IndexOf(symbols, s));
+
+            foreach (var p in grammar.P)
+            {
+                var revRight = p.Right.Reverse().ToArray();
+                if (revRight.Length == 0 || revRight[0] == Terminal.Epsilon)
+                    throw new Exception($"无效的产生式:{p}");
+                var fstRight = revRight[0];
                 matrix[symbolId[p.Left], symbolId[fstRight]] = true;
             }
 
@@ -64,7 +126,6 @@ namespace SyntaxAnalyzer
         {
             bool[,] matrix = new bool[symbols.Length, symbols.Length];
             var symbolId = symbols.ToDictionary(s => s, s => Array.IndexOf(symbols, s));
-
 
             foreach (var p in grammar.P)
             {
@@ -86,7 +147,7 @@ namespace SyntaxAnalyzer
         /// <summary>
         /// 布尔矩阵乘积
         /// </summary>
-        public static bool[,] BooleanProduct(bool[,] left, bool[,] right)
+        public static bool[,] ProductMatrix(bool[,] left, bool[,] right)
         {
             if (left.GetLength(0) != left.GetLength(1))
                 throw new Exception("left不是方阵。");
@@ -104,10 +165,8 @@ namespace SyntaxAnalyzer
             {
                 for (int j = 0; j < n; j++)
                 {
-                    if (left[i, j])
-                        leftRow[i] = true;
-                    if (right[i, j])
-                        rightCol[j] = true;
+                    leftRow[i] = leftRow[i] || left[i, j];
+                    rightCol[j] = rightCol[j] || right[i, j];
                 }
             }
 
@@ -120,6 +179,91 @@ namespace SyntaxAnalyzer
             }
 
             return matrix;
+        }
+
+        /// <summary>
+        /// 交集
+        /// </summary>
+        public static bool[,] IntersectMatrix(bool[,] left, bool[,] right)
+        {
+            if (left.GetLength(0) != left.GetLength(1))
+                throw new Exception("left不是方阵。");
+            if (right.GetLength(0) != right.GetLength(1))
+                throw new Exception("right不是方阵。");
+            if (left.GetLength(0) != right.GetLength(0))
+                throw new Exception("left矩阵与right矩阵阶数不相等。");
+
+            var n = left.GetLength(0);
+            bool[,] matrix = new bool[n, n];
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    matrix[i, j] = left[i, j] && right[i, j];
+                }
+            }
+
+            return matrix;
+        }
+
+        /// <summary>
+        /// 并集
+        /// </summary>
+        public static bool[,] UnionMatrix(bool[,] left, bool[,] right)
+        {
+            if (left.GetLength(0) != left.GetLength(1))
+                throw new Exception("left不是方阵。");
+            if (right.GetLength(0) != right.GetLength(1))
+                throw new Exception("right不是方阵。");
+            if (left.GetLength(0) != right.GetLength(0))
+                throw new Exception("left矩阵与right矩阵阶数不相等。");
+
+            var n = left.GetLength(0);
+            bool[,] matrix = new bool[n, n];
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    matrix[i, j] = left[i, j] || right[i, j];
+                }
+            }
+
+            return matrix;
+        }
+
+        /// <summary>
+        /// 单位矩阵
+        /// </summary>
+        public static bool[,] IdentityMatrix(int length)
+        {
+            bool[,] matrix = new bool[length, length];
+
+            for (int i = 0; i < length; i++)
+            {
+                matrix[i, i] = true;
+            }
+
+            return matrix;
+        }
+
+        /// <summary>
+        /// 转置矩阵
+        /// </summary>
+        public static bool[,] TransposeMatrix(bool[,] oriMatrix)
+        {
+            bool[,] transposeMatrix = new bool[oriMatrix.GetLength(1), oriMatrix.GetLength(0)];
+
+            for (int i = 0; i < oriMatrix.GetLength(0); i++)
+            {
+                for (int j = 0; j < oriMatrix.GetLength(1); j++)
+                {
+                    transposeMatrix[j, i] = oriMatrix[i, j];
+                }
+            }
+
+            return transposeMatrix;
         }
 
 
@@ -149,21 +293,6 @@ namespace SyntaxAnalyzer
                     }
                 }
             }
-            return matrix;
-        }
-
-        /// <summary>
-        /// 矩阵*
-        /// </summary>
-        public static bool[,] SelfClosureMatrix(bool[,] oriMatrix)
-        {
-            var matrix = ClosureMatrix(oriMatrix);
-            var n = matrix.GetLength(0);
-            for (int i = 0; i < n; i++)
-            {
-                matrix[i, i] = true;
-            }
-
             return matrix;
         }
 
