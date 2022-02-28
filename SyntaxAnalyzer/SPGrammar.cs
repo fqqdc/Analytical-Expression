@@ -165,11 +165,10 @@ namespace SyntaxAnalyzer
             {
                 for (int j = 0; j < n; j++)
                 {
-                    bool v_ij = false;
                     for (int k = 0; k < n; k++)
                     {
-                        v_ij = left[i, k] && right[k, j];
-                        if (v_ij) break;
+                        matrix[i, j] = left[i, k] && right[k, j];
+                        if (matrix[i, j]) break;
                     }
                 }
             }

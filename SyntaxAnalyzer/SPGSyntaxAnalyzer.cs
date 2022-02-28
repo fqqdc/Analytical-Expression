@@ -56,6 +56,41 @@ namespace SyntaxAnalyzer
             }
             this.predictiveMatrix = pMatrix;
             this.symbolIndex = symbolIndex;
+
+            // ===== Print
+
+            StringBuilder sbMatrix = new StringBuilder();
+            var symbols = symbolIndex.Keys.OrderBy(key => symbolIndex[key]).ToArray();
+            for (int i = -1; i < pMatrix.GetLength(0); i++)
+            {
+
+                if (i == -1)
+                {
+                    // 行首
+                    sbMatrix.Append("\t");
+                }
+                else
+                {
+                    sbMatrix.Append($"{symbols[i]}\t");
+                }
+
+
+                for (int j = 0; j < pMatrix.GetLength(1); j++)
+                {
+
+                    if (i == -1)
+                    {
+                        // 行首
+                        sbMatrix.Append($"{symbols[j]}\t");
+                    }
+                    else
+                    {
+                        sbMatrix.Append($"{pMatrix[i, j]}\t");
+                    }
+                }
+                sbMatrix.AppendLine();
+            }
+            Console.WriteLine(sbMatrix.ToString());
         }
 
         private char GetPredictiveChar(Symbol left, Symbol right)
@@ -81,16 +116,47 @@ namespace SyntaxAnalyzer
 
         private void Procedure()
         {
-            while (GetPredictiveChar(stackAnalysis.Peek(), sym) != '>')
+            do
             {
-                stackAnalysis.Push(sym);
-                Advance();
+                while (GetPredictiveChar(stackAnalysis.Peek(), sym) != '>')
+                {
+                    stackAnalysis.Push(sym);
+                    Advance();
+                }
+                int j = 0;
+                while (GetPredictiveChar(stackAnalysis.ElementAt(j + 1), stackAnalysis.ElementAt(j)) != '<')
+                {
+                    j += 1;
+                }
+
+                bool hasFound = false;
+                foreach (var p in grammar.P)
+                {
+                    var pRight = p.Right.ToArray();
+                    var n = pRight.Length;
+                    var stackPart = stackAnalysis.Take(n).ToArray();
+                    if (stackPart.Length == n
+                        && p.Right.SequenceEqual(stackPart))
+                    {
+                        for (int i = 0; i < n; i++)
+                        {
+                            stackAnalysis.Pop();
+                        }
+                        stackAnalysis.Push(p.Left);
+                        Console.WriteLine(p);
+                        hasFound = true;
+                        break;
+                    }
+                }
+                if (!hasFound)
+                    Error();
+
+                if (stackAnalysis.Count == 2
+                    && stackAnalysis.ElementAt(0) == grammar.S)
+                    break;
             }
-            int j = 0;
-            while (GetPredictiveChar(stackAnalysis.ElementAt(j+1), stackAnalysis.ElementAt(j)) != '<')
-            {
-                j += 1;
-            }
+            while (true);
+
         }
 
         public void Analyzer()
