@@ -12,62 +12,11 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("A", "B d|B e"));
-            listProduction.AddRange(Production.Create("B", "c|B c"));
+            listProduction.AddRange(Production.Create("S", "W a"));
+            listProduction.AddRange(Production.Create("W", "a|W b|W S"));
 
-
-            Grammar grammar = new Grammar(listProduction, new("A"));
+            Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
-
-            var arr = SPGrammar.GetSymbolOrderArray(grammar);
-
-            var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
-            Console.WriteLine("=矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(equalMatrix, arr));
-
-            var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
-            //Console.WriteLine("fisrt矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(fisrtMatrix, arr));
-
-            var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
-            //Console.WriteLine("fisrt+矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(fisrtPlusMatrix, arr));
-
-            var lessMatrix = SPGrammar.ProductMatrix(equalMatrix, fisrtPlusMatrix);
-            Console.WriteLine("<矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(lessMatrix, arr));
-
-            var lastMatrix = SPGrammar.GetLastMatrix(grammar, arr);
-            //Console.WriteLine("last矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(lastMatrix, arr));
-
-            var lastPlusMatrix = SPGrammar.ClosureMatrix(lastMatrix);
-            //Console.WriteLine("last+矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(lastPlusMatrix, arr));
-
-            var trpLastPlusMatrix = SPGrammar.TransposeMatrix(lastPlusMatrix);
-            //Console.WriteLine("TRP(last+)矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(trpLastPlusMatrix, arr));
-
-            var fisrtStarMatrix = SPGrammar.UnionMatrix(fisrtPlusMatrix, SPGrammar.IdentityMatrix(fisrtPlusMatrix.GetLength(0)));
-            //Console.WriteLine("fisrt*矩阵");
-            //Console.WriteLine(SPGrammar.FormatMatrix(fisrtStarMatrix, arr));
-
-            var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
-            greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
-            Console.WriteLine(">矩阵");
-            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
-
-            //var matrix1 = SPGrammar.IntersectMatrix(equalMatrix, lessMatrix);
-            //Console.WriteLine($"M(=) ∩ M(<) : {matrix1.Cast<bool>().All(b => !b)}");
-            //Console.WriteLine(SPGrammar.FormatMatrix(matrix1, arr));
-            //var matrix2 = SPGrammar.IntersectMatrix(equalMatrix, greaterMatrix);
-            //Console.WriteLine($"M(=) ∩ M(>) : {matrix2.Cast<bool>().All(b => !b)}");
-            //Console.WriteLine(SPGrammar.FormatMatrix(matrix2, arr));
-            //var matrix3 = SPGrammar.IntersectMatrix(lessMatrix, greaterMatrix);
-            //Console.WriteLine($"M(<) ∩ M(>) : {matrix3.Cast<bool>().All(b => !b)}");
-            //Console.WriteLine(SPGrammar.FormatMatrix(matrix3, arr));
-            //Console.WriteLine(matrix1.Cast<bool>().Union(matrix2.Cast<bool>()).Union(matrix3.Cast<bool>()).All(b => !b));
 
             if (!SPGrammar.TryCreateSPGrammar(grammar, out var spGrammar, out var msg))
             {
@@ -77,10 +26,12 @@ namespace SyntaxAnalyzer
 
             Console.WriteLine(spGrammar);
 
-            string input = "ccd";
+            return;
+
+            string input = "cce";
             int index = 0;
 
-            SPGSyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
+            SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
             {
                 if (index < input.Length)
                 {

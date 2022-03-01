@@ -23,31 +23,29 @@ namespace SyntaxAnalyzer
             if (intersectMatrix1.Cast<bool>().Any(b => b == true))
             {
                 sbErrorMsg.AppendLine("=集与<集有交集。");
-                sPGrammar = null;
-                errorMsg = sbErrorMsg.ToString();
-                return false;
+                
             }
 
             var intersectMatrix2 = SPGrammar.IntersectMatrix(equalMatrix, greaterMatrix);
             if (intersectMatrix2.Cast<bool>().Any(b => b == true))
             {
                 sbErrorMsg.AppendLine("=集与>集有交集。");
-                sPGrammar = null;
-                errorMsg = sbErrorMsg.ToString();
-                return false;
             }
 
             var intersectMatrix3 = SPGrammar.IntersectMatrix(lessMatrix, greaterMatrix);
             if (intersectMatrix3.Cast<bool>().Any(b => b == true))
             {
                 sbErrorMsg.AppendLine("<集与>集有交集。");
+            }
+
+            errorMsg = sbErrorMsg.ToString();
+            if (sbErrorMsg.Length > 0)
+            {
                 sPGrammar = null;
-                errorMsg = sbErrorMsg.ToString();
                 return false;
             }
 
-            sPGrammar = new(grammar.P, grammar.S);
-            errorMsg = sbErrorMsg.ToString();
+            sPGrammar = new(grammar.P, grammar.S);            
             return true;
         }
 
@@ -69,15 +67,21 @@ namespace SyntaxAnalyzer
             var dict = arr.ToDictionary(i => i, i => Array.IndexOf(arr, i));
 
             var equalMatrix = SPGrammar.GetEqualMatrix(grammar, arr);
+            Console.WriteLine("=矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(equalMatrix, arr));
             var fisrtMatrix = SPGrammar.GetFirstMatrix(grammar, arr);
             var fisrtPlusMatrix = SPGrammar.ClosureMatrix(fisrtMatrix);
             var lessMatrix = SPGrammar.ProductMatrix(equalMatrix, fisrtPlusMatrix);
+            Console.WriteLine("<矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(lessMatrix, arr));
             var lastMatrix = SPGrammar.GetLastMatrix(grammar, arr);
             var lastPlusMatrix = SPGrammar.ClosureMatrix(lastMatrix);
             var trpLastPlusMatrix = SPGrammar.TransposeMatrix(lastPlusMatrix);
             var fisrtStarMatrix = SPGrammar.UnionMatrix(fisrtPlusMatrix, SPGrammar.IdentityMatrix(fisrtPlusMatrix.GetLength(0)));
             var greaterMatrix = SPGrammar.ProductMatrix(trpLastPlusMatrix, equalMatrix);
             greaterMatrix = SPGrammar.ProductMatrix(greaterMatrix, fisrtStarMatrix);
+            Console.WriteLine(">矩阵");
+            Console.WriteLine(SPGrammar.FormatMatrix(greaterMatrix, arr));
             return (equalMatrix, lessMatrix, greaterMatrix, dict);
         }
 

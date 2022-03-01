@@ -9,10 +9,8 @@ namespace SyntaxAnalyzer
     /// <summary>
     /// 简单文本优先分析器
     /// </summary>
-    public class SPGSyntaxAnalyzer
+    public class SPGSyntaxAnalyzer : SyntaxAnalyzer
     {
-        public delegate void AdvanceProcedure(out Terminal Sym);
-
         private SPGrammar grammar;
         private AdvanceProcedure advanceProcedure;
         private Terminal sym = Terminal.Epsilon;
@@ -95,6 +93,11 @@ namespace SyntaxAnalyzer
 
         private char GetPredictiveChar(Symbol left, Symbol right)
         {
+            if (left == Terminal.EndTerminal)
+                return '<';
+            if (right == Terminal.EndTerminal)
+                return '>';
+
             int indexLeft = symbolIndex[left];
             int indexRight = symbolIndex[right];
             return predictiveMatrix[indexLeft, indexRight];
@@ -123,6 +126,7 @@ namespace SyntaxAnalyzer
                     stackAnalysis.Push(sym);
                     Advance();
                 }
+
                 int j = 0;
                 while (GetPredictiveChar(stackAnalysis.ElementAt(j + 1), stackAnalysis.ElementAt(j)) != '<')
                 {
@@ -130,12 +134,13 @@ namespace SyntaxAnalyzer
                 }
 
                 bool hasFound = false;
+                var n = j + 1;
+                var stackPart = stackAnalysis.Take(n).Reverse().ToArray();
+
                 foreach (var p in grammar.P)
                 {
-                    var pRight = p.Right.ToArray();
-                    var n = pRight.Length;
-                    var stackPart = stackAnalysis.Take(n).ToArray();
-                    if (stackPart.Length == n
+                    var pRight = p.Right.ToArray();                    
+                    if (pRight.Length == n
                         && p.Right.SequenceEqual(stackPart))
                     {
                         for (int i = 0; i < n; i++)
@@ -151,9 +156,13 @@ namespace SyntaxAnalyzer
                 if (!hasFound)
                     Error();
 
-                if (stackAnalysis.Count == 2
-                    && stackAnalysis.ElementAt(0) == grammar.S)
-                    break;
+                if (stackAnalysis.First() == grammar.S)
+                {
+                    if (sym == Terminal.EndTerminal)
+                        break;
+                    Error();
+                }
+                    
             }
             while (true);
 
