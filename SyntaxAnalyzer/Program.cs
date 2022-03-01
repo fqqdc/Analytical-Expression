@@ -12,19 +12,22 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "W a"));
-            listProduction.AddRange(Production.Create("W", "a|W b|W S"));
+            listProduction.AddRange(Production.Create("S", "if Eb then E else E"));
+            listProduction.AddRange(Production.Create("E", "E + T|T"));
+            listProduction.AddRange(Production.Create("T", "T * F|F"));
+            listProduction.AddRange(Production.Create("F", "i"));
+            listProduction.AddRange(Production.Create("Eb", "b"));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
-            if (!SPGrammar.TryCreateSPGrammar(grammar, out var spGrammar, out var msg))
+            if (!OPGrammar.TryCreate(grammar, out var opGrammar, out var msg))
             {
                 Console.WriteLine(msg);
                 return;
             }
 
-            Console.WriteLine(spGrammar);
+            Console.WriteLine(opGrammar);
 
             return;
 
@@ -45,9 +48,9 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            SPGSyntaxAnalyzer analyzer = new(spGrammar, p);
+            //SPGSyntaxAnalyzer analyzer = new(spGrammar, p);
 
-            analyzer.Analyzer();
+            //analyzer.Analyzer();
             Console.WriteLine("OK");
         }
 
