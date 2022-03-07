@@ -9,17 +9,16 @@ namespace SyntaxAnalyzer
     {
         private Symbol[] right;
 
-        public Production(NonTerminal left, IEnumerable<Symbol> right, int position = -1)
+        public Production(NonTerminal left, IEnumerable<Symbol> right)
         {
             if (left == null) throw new ArgumentNullException("left");
             if (right == null) throw new ArgumentNullException("right");
 
             Left = left;
             this.right = right.ToArray();
-            Position = position;
         }
 
-        public Production(NonTerminal left, Symbol singleSymbol, int position = -1) : this(left, new Symbol[] { singleSymbol }, position) { }
+        public Production(NonTerminal left, Symbol singleSymbol) : this(left, new Symbol[] { singleSymbol }) { }
 
         public NonTerminal Left { get; init; }
         
@@ -27,7 +26,6 @@ namespace SyntaxAnalyzer
         {
             get { return right; }
         }
-        public int Position { get; init; }
 
         public static Symbol[] Epsilon { get; private set; } = new Symbol[] { Terminal.Epsilon };
 
@@ -45,19 +43,9 @@ namespace SyntaxAnalyzer
         protected virtual bool PrintMembers(StringBuilder builder)
         {
             builder.Append($"{Left} =>");
-            int i = 0;
             foreach (var rChild in Right)
             {
-                builder.Append(" ");
-                if (Position == i)
-                    builder.Append($"[{rChild}]");
-                else builder.Append($"{rChild}");
-                i++;
-            }
-
-            if (Position == i)
-            {
-                builder.Append($" []");
+                builder.Append($" {rChild}");
             }
 
             return true;
