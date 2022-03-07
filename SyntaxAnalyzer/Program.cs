@@ -12,11 +12,10 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "if Eb then E else E"));
-            listProduction.AddRange(Production.Create("E", "E + T|T"));
-            listProduction.AddRange(Production.Create("T", "T * F|F"));
-            listProduction.AddRange(Production.Create("F", "i"));
-            listProduction.AddRange(Production.Create("Eb", "b"));
+            listProduction.AddRange(Production.Create("S", "V1"));
+            listProduction.AddRange(Production.Create("V1", "V2|V1 i V2"));
+            listProduction.AddRange(Production.Create("V2", "V3|V2 + V3"));
+            listProduction.AddRange(Production.Create("V3", ") V1 *|("));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
@@ -31,11 +30,12 @@ namespace SyntaxAnalyzer
 
             return;
 
-            string input = "cce";
+            string strInput = "var i , i : char";
             int index = 0;
 
             SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
             {
+                var input = strInput.Split(' ');
                 if (index < input.Length)
                 {
                     var c = input[index];
@@ -48,9 +48,9 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            //SPGSyntaxAnalyzer analyzer = new(spGrammar, p);
+            OPGSyntaxAnalyzer analyzer = new(opGrammar, p);
 
-            //analyzer.Analyzer();
+            analyzer.Analyzer();
             Console.WriteLine("OK");
         }
 
