@@ -53,12 +53,9 @@ namespace SyntaxAnalyzer
 
         public virtual bool Equals(Production? other)
         {
-            if (other == null)
-                return false;
-            bool returnValue = Left.Equals(other.Left);
-            if (!returnValue)
-                returnValue = Right.SequenceEqual(other.Right);
-            return returnValue;
+            return other != null 
+                && Left.Equals(other.Left) 
+                && Right.SequenceEqual(other.Right);
         }
 
         public override int GetHashCode()
