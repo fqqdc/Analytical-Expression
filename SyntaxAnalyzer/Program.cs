@@ -9,7 +9,7 @@ namespace SyntaxAnalyzer
 {
     public class Program
     {
-        static void Main(string[] args)
+        static void Main1(string[] args)
         {
             var listProduction = new List<Production>();
             listProduction.AddRange(Production.Create("S", "V1"));
@@ -54,18 +54,17 @@ namespace SyntaxAnalyzer
             Console.WriteLine("OK");
         }
 
-        static void Main1(string[] args)
+        static void Main(string[] args)
         {
-            Stack<int> stack = new Stack<int>();
-            for (int i = 0; i < 10; i++)
-            {
-                stack.Push(i);
-            }
-
-            foreach (var item in stack.TakeWhile((i, index) => index < 3))
+            Production p = Production.CreateSingle("S", "a B c");
+            Console.WriteLine(p);
+            foreach (var item in ProductionItem.CreateSet(p))
             {
                 Console.WriteLine(item);
             }
+
+            int[] arr = new int[3];
+            Console.WriteLine(arr is ICollection);
         }
     }
 }
