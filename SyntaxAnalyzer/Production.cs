@@ -21,7 +21,7 @@ namespace SyntaxAnalyzer
         public Production(NonTerminal left, Symbol singleSymbol) : this(left, new Symbol[] { singleSymbol }) { }
 
         public NonTerminal Left { get; init; }
-        
+
         public IEnumerable<Symbol> Right
         {
             get { return right; }
@@ -53,8 +53,11 @@ namespace SyntaxAnalyzer
 
         public virtual bool Equals(Production? other)
         {
-            return other != null 
-                && Left.Equals(other.Left) 
+            if (ReferenceEquals(this, other)) 
+                return true;
+
+            return other != null
+                && Left.Equals(other.Left)
                 && Right.SequenceEqual(other.Right);
         }
 

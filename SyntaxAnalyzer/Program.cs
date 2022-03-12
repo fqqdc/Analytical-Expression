@@ -9,24 +9,23 @@ namespace SyntaxAnalyzer
 {
     public class Program
     {
-        static void Main1(string[] args)
+        static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "V1"));
-            listProduction.AddRange(Production.Create("V1", "V2|V1 i V2"));
-            listProduction.AddRange(Production.Create("V2", "V3|V2 + V3"));
-            listProduction.AddRange(Production.Create("V3", ") V1 *|("));
+            listProduction.AddRange(Production.Create("E", "a A|b B"));
+            listProduction.AddRange(Production.Create("A", "c A|d"));
+            listProduction.AddRange(Production.Create("B", "c B|d"));
 
-            Grammar grammar = new Grammar(listProduction, new("S"));
+            Grammar grammar = new Grammar(listProduction, new("E"));
             Console.WriteLine(grammar);
 
-            if (!OPGrammar.TryCreate(grammar, out var opGrammar, out var msg))
+            if (!LR0rammar.TryCreate(grammar, out var newGrammar, out var msg))
             {
                 Console.WriteLine(msg);
                 return;
             }
 
-            Console.WriteLine(opGrammar);
+            Console.WriteLine(newGrammar);
 
             return;
 
@@ -48,13 +47,13 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            OPGSyntaxAnalyzer analyzer = new(opGrammar, p);
+            //OPGSyntaxAnalyzer analyzer = new(newGrammar, p);
 
-            analyzer.Analyzer();
+            //analyzer.Analyzer();
             Console.WriteLine("OK");
         }
 
-        static void Main(string[] args)
+        static void Main2(string[] args)
         {
             Production p = Production.CreateSingle("S", "a B c");
             Console.WriteLine(p);
