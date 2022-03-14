@@ -19,7 +19,7 @@ namespace SyntaxAnalyzer
             Grammar grammar = new Grammar(listProduction, new("E"));
             Console.WriteLine(grammar);
 
-            if (!LR0rammar.TryCreate(grammar, out var newGrammar, out var msg))
+            if (!LR0Grammar.TryCreate(grammar, out var newGrammar, out var msg))
             {
                 Console.WriteLine(msg);
                 return;

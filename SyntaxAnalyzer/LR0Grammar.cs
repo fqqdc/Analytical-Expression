@@ -9,16 +9,29 @@ namespace SyntaxAnalyzer
     /// <summary>
     /// LR(0)文法
     /// </summary>
-    public class LR0rammar : Grammar
+    public class LR0Grammar : Grammar
     {
-        private LR0rammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal
-            , Dictionary<(Symbol, Symbol), char> predictiveTable
+        private LR0Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
+            Dictionary<(int state, Terminal t), List<ActionItem>> mapAction,
+            Dictionary<(int state, NonTerminal t), int> mapGoto
             ) : base(allProduction, startNonTerminal)
         {
+            this.mapAction = mapAction.ToDictionary(i => i.Key, i => i.Value.ToList());
+            this.mapGoto = mapGoto.ToDictionary(i => i.Key, i => i.Value);
+        }
+        private Dictionary<(int state, Terminal t), List<ActionItem>> mapAction;
+        private Dictionary<(int state, NonTerminal t), int> mapGoto;
 
+        public Dictionary<(int state, Terminal t), List<ActionItem>> GetAction()
+        {
+            return mapAction.ToDictionary(i => i.Key, i => i.Value);
+        }
+        public Dictionary<(int state, NonTerminal t), int> GetGoto()
+        {
+            return mapGoto.ToDictionary(i => i.Key, i => i.Value);
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LR0rammar oPGrammar, [MaybeNullWhen(true)] out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LR0Grammar oPGrammar, [MaybeNullWhen(true)] out string errorMsg)
         {
             oPGrammar = null;
             errorMsg = null;
@@ -37,7 +50,8 @@ namespace SyntaxAnalyzer
                 S_Ex = new NonTerminal($"{S.Name}_Ex_{i}");
             }
             Vn.Add(S_Ex);
-            var (Action, Goto) = CreateItemSets(new Production(S_Ex, S), grammar);
+            P.Add(new Production(S_Ex, S));
+            var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
             // ===== Print Table
 
@@ -97,7 +111,7 @@ namespace SyntaxAnalyzer
                                     }
                                 }
                             }
-                            if(sbItem.Length == 0)
+                            if (sbItem.Length == 0)
                                 sbItem.Append("");
                             sbItem.Append($"\t");
                             sbMatrix.Append(sbItem);
@@ -119,21 +133,24 @@ namespace SyntaxAnalyzer
             }
             Console.WriteLine(sbMatrix.ToString());
 
-            throw new NotImplementedException();
+            foreach (var item in Action)
+            {
+                if (item.Value.Count > 1)
+                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",",item.Value)})");
+            }            
+
+            errorMsg = sbErrorMsg.ToString();
+            var result = string.IsNullOrWhiteSpace(errorMsg);
+            if (result)
+                oPGrammar = new(P, S_Ex, Action, Goto);
+            return result;
         }
 
-        internal abstract record ActionItem();
-        internal record ShiftItem(int State) : ActionItem;
-        internal record ReduceItem(Production Production) : ActionItem;
-        internal record AcceptItem() : ActionItem;
-
-        private static (Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
-            CreateItemSets(Production startProduction, Grammar grammar)
+        private static (Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto) 
+            CreateItemSets(IEnumerable<Production> P, IEnumerable<Terminal> Vt, IEnumerable<NonTerminal> Vn, NonTerminal S)
         {
-            var P = grammar.P;
-            var V = grammar.Vn.Cast<Symbol>().Union(grammar.Vt);
-            var Vt = grammar.Vt;
-            var Vn = grammar.Vn;
+            var V = Vn.Cast<Symbol>().Union(Vt);
+            var startProduction = P.Single(p => p.Left == S);
 
             // ================
 
@@ -296,6 +313,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
+            // 打印项目集
             foreach (var I in C)
             {
                 var id_I = IdTable[I];
@@ -319,4 +337,9 @@ namespace SyntaxAnalyzer
             return (Action, Goto);
         }
     }
+
+    public abstract record ActionItem();
+    public record ShiftItem(int State) : ActionItem;
+    public record ReduceItem(Production Production) : ActionItem;
+    public record AcceptItem() : ActionItem;
 }
