@@ -12,11 +12,10 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("E", "a A|b B"));
-            listProduction.AddRange(Production.Create("A", "c A|d"));
-            listProduction.AddRange(Production.Create("B", "c B|d"));
+            listProduction.AddRange(Production.Create("S", "A S|b"));
+            listProduction.AddRange(Production.Create("A", "S A|a"));
 
-            Grammar grammar = new Grammar(listProduction, new("E"));
+            Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
             if (!LR0Grammar.TryCreate(grammar, out var newGrammar, out var msg))

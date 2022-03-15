@@ -136,8 +136,8 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",",item.Value)})");
-            }            
+                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+            }
 
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
@@ -146,7 +146,7 @@ namespace SyntaxAnalyzer
             return result;
         }
 
-        private static (Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto) 
+        private static (Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
             CreateItemSets(IEnumerable<Production> P, IEnumerable<Terminal> Vt, IEnumerable<NonTerminal> Vn, NonTerminal S)
         {
             var V = Vn.Cast<Symbol>().Union(Vt);
@@ -168,8 +168,8 @@ namespace SyntaxAnalyzer
                         foreach (var p in P.Where(p => p.Left == nonTerminal))
                         {
                             var newItem = new ProductionItem(p, 0);
-                            closure.Add(newItem);
-                            queueWork.Enqueue(newItem);
+                            if (closure.Add(newItem))
+                                queueWork.Enqueue(newItem);
                         }
                     }
                 }
