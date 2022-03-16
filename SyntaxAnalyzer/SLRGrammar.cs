@@ -53,87 +53,7 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            #region Print Table
-
-            StringBuilder sbMatrix = new StringBuilder();
-            var symbols = grammar.Vt.Cast<Symbol>()
-                .Append(Terminal.EndTerminal)
-                .Union(grammar.Vn)
-                .ToArray();
-            var states = Action.Keys.Select(key => key.state)
-                .Union(Goto.Keys.Select(key => key.state))
-                .Distinct().OrderBy(s => s).ToArray();
-
-            for (i = -1; i < states.Length; i++)
-            {
-                // 打印列首
-                if (i == -1)
-                {
-                    sbMatrix.Append("\t");
-                }
-                else
-                {
-                    sbMatrix.Append($"{states[i]}\t");
-                }
-
-                // 打印每一列
-                for (int j = 0; j < symbols.Length; j++)
-                {
-                    var symbol = symbols[j];
-                    if (i == -1)
-                    {
-                        // 行首
-                        var strSymbol = symbol.ToString();
-                        if (symbol == Terminal.EndTerminal)
-                            strSymbol = "#";
-                        sbMatrix.Append($"{strSymbol}\t");
-                    }
-                    else
-                    {
-                        var sbItem = new StringBuilder();
-                        if (symbol is Terminal t)
-                        {
-                            if (Action.TryGetValue((i, t), out var list))
-                            {
-                                foreach (var item in list)
-                                {
-                                    if (item is ShiftItem si)
-                                    {
-                                        sbItem.Append($"s{si.State} ");
-                                    }
-                                    else if (item is ReduceItem ri)
-                                    {
-                                        sbItem.Append($"{ri.Production.Left}=>{string.Join("", ri.Production.Right)} ");
-                                    }
-                                    else if (item is AcceptItem ai)
-                                    {
-                                        sbItem.Append($"acc ");
-                                    }
-                                }
-                            }
-                            if (sbItem.Length == 0)
-                                sbItem.Append("");
-                            sbItem.Append($"\t");
-                            sbMatrix.Append(sbItem);
-                        }
-                        else if (symbol is NonTerminal n)
-                        {
-                            if (Goto.TryGetValue((i, n), out var state))
-                            {
-                                sbItem.Append($"{state}");
-                            }
-                            if (sbItem.Length == 0)
-                                sbItem.Append("");
-                            sbItem.Append($"\t");
-                            sbMatrix.Append(sbItem);
-                        }
-                    }
-                }
-                sbMatrix.AppendLine();
-            }
-            Console.WriteLine(sbMatrix.ToString());
-
-            #endregion
+            LRGrammarHelper.PrintTable(grammar, Action, Goto);
 
             foreach (var item in Action)
             {
@@ -170,6 +90,10 @@ namespace SyntaxAnalyzer
                         foreach (var p in P.Where(p => p.Left == nonTerminal))
                         {
                             var newItem = new ProductionItem(p, 0);
+                            // N -> eps  =>  N -> eps []
+                            // 如果产生式为空，则生成归约项目
+                            if (p.Right == Production.Epsilon)
+                                newItem = newItem with { Position = 1 };
                             if (closure.Add(newItem))
                                 queueWork.Enqueue(newItem);
                         }
@@ -342,9 +266,4 @@ namespace SyntaxAnalyzer
             return (Action, Goto);
         }
     }
-
-    public abstract record ActionItem();
-    public record ShiftItem(int State) : ActionItem;
-    public record ReduceItem(Production Production) : ActionItem;
-    public record AcceptItem() : ActionItem;
 }

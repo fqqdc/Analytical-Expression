@@ -12,20 +12,18 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "( A )"));
-            listProduction.AddRange(Production.Create("A", "A B B|B"));
-            listProduction.AddRange(Production.Create("B", "b"));
+            listProduction.AddRange(Production.Create("S", "L = R|R"));
+            listProduction.AddRange(Production.Create("L", "* R|i"));
+            listProduction.AddRange(Production.Create("R", "L"));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
-            if (!LR0Grammar.TryCreate(grammar, out var newGrammar, out var msg))
+            if (!SLRGrammar.TryCreate(grammar, out var newGrammar2, out var msg))
             {
-                Console.WriteLine(msg);
-                return;
+                Console.WriteLine($"SLRGrammar:\n{msg}");
             }
-
-            Console.WriteLine(newGrammar);
+            else Console.WriteLine(newGrammar2);
 
             return;
 
