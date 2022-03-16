@@ -7,11 +7,11 @@ using System.Text;
 namespace SyntaxAnalyzer
 {
     /// <summary>
-    /// LR(0)文法
+    /// SLR文法
     /// </summary>
-    public class LR0Grammar : Grammar
+    public class SLRGrammar : Grammar
     {
-        private LR0Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
+        private SLRGrammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
             Dictionary<(int state, Terminal t), List<ActionItem>> mapAction,
             Dictionary<(int state, NonTerminal t), int> mapGoto
             ) : base(allProduction, startNonTerminal)
@@ -31,10 +31,10 @@ namespace SyntaxAnalyzer
             return mapGoto.ToDictionary(i => i.Key, i => i.Value);
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LR0Grammar oPGrammar, [MaybeNullWhen(true)] out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out SLRGrammar slrGrammar, out string errorMsg)
         {
-            oPGrammar = null;
-            errorMsg = null;
+            slrGrammar = null;
+            errorMsg = string.Empty;
             StringBuilder sbErrorMsg = new();
 
             var S = grammar.S;
@@ -53,7 +53,7 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            // ===== Print Table
+            #region Print Table
 
             StringBuilder sbMatrix = new StringBuilder();
             var symbols = grammar.Vt.Cast<Symbol>()
@@ -133,6 +133,8 @@ namespace SyntaxAnalyzer
             }
             Console.WriteLine(sbMatrix.ToString());
 
+            #endregion
+
             foreach (var item in Action)
             {
                 if (item.Value.Count > 1)
@@ -142,7 +144,7 @@ namespace SyntaxAnalyzer
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
             if (result)
-                oPGrammar = new(P, S_Ex, Action, Goto);
+                slrGrammar = new(P, S_Ex, Action, Goto);
             return result;
         }
 
@@ -243,6 +245,8 @@ namespace SyntaxAnalyzer
             Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
 
             var accept = new ProductionItem(startProduction, 1);
+            var mapFirst = Grammar.CalcFirsts(P);
+            var mapFollow = Grammar.CalcFollows(P, mapFirst, S);
 
             queueWork = new();
             HashSet<HashSet<ProductionItem>> visited = new(HashSetComparer<ProductionItem>.Default);
@@ -263,7 +267,8 @@ namespace SyntaxAnalyzer
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
-                        foreach (var t in Vt)
+                        var follow = mapFollow[item.Production.Left];
+                        foreach (var t in follow)
                         {
                             var list = GetActionItemList((IdTable[I], t));
                             list.Add(new ReduceItem(item.Production));

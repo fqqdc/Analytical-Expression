@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -12,8 +13,8 @@ namespace SyntaxAnalyzer
             , Dictionary<NonTerminal, HashSet<Terminal>> mapFollow
             ) : base(allProduction, startNonTerminal)
         {
-            this.mapFirst = mapFirst;
-            this.mapFollow = mapFollow;
+            this.mapFirst = mapFirst.ToDictionary(i => i.Key, i => i.Value.ToHashSet());
+            this.mapFollow = mapFollow.ToDictionary(i => i.Key, i => i.Value.ToHashSet()); ;
         }
 
         private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst;
@@ -236,7 +237,7 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static bool TryCreateLL1Grammar(Grammar grammar, out LL1Grammar lL1Grammar, out string errorMsg)
+        public static bool TryCreateLL1Grammar(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
@@ -282,175 +283,6 @@ namespace SyntaxAnalyzer
                 lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);
             else lL1Grammar = null;
             return result;
-        }
-
-        /// <summary>
-        /// 计算FIRST集
-        /// </summary>
-        private static Dictionary<NonTerminal, HashSet<Terminal>> CalcFirsts(IEnumerable<Production> P)
-        {
-            Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
-            bool hasChanged = true;
-            while (hasChanged)
-            {
-                hasChanged = false;
-
-                foreach (var production in P)
-                {
-                    if (!mapFirst.TryGetValue(production.Left, out var first))
-                    {
-                        first = new();
-                        mapFirst[production.Left] = first;
-                        hasChanged = true;
-                    }
-
-                    var oldFirst = first.ToHashSet();
-
-                    bool endWithEpsilon = true;
-                    foreach (var symbol in production.Right)
-                    {
-                        if (symbol is Terminal terminal)
-                        {
-                            /// 若X∈Vt,则FIRST(X)={X}
-                            /// 若X∈Vn,且有产生式X->a...，则把a加入到FIRST(X)中；
-                            /// 若X->ε也是一条产生式，则把ε也加到FIRST(X)中。
-                            first.Add(terminal);
-                            endWithEpsilon = false;
-                            break;
-                        }
-
-                        ///若X->Y1Y2...Yi-1Yi...Yk是一个产生式，Y1,...Yi-1都是非终结符                        
-                        if (symbol is NonTerminal nonTerminal)
-                        {
-                            if (!mapFirst.TryGetValue(nonTerminal, out var firstN))
-                            {
-                                firstN = new();
-                                mapFirst[nonTerminal] = firstN;
-                                hasChanged = true;
-                            }
-
-                            ///对于任何j，1<=j<=i-1，FIRST(Yj)都含有ε(即Y1...Yi=>ε)，则把FIRST(Yi)中的所有非ε元素都加到FIRST(X)中
-                            var firstN_Copy = firstN.ToHashSet();
-                            firstN_Copy.Remove(Terminal.Epsilon);
-                            first.UnionWith(firstN_Copy);
-
-                            if (!firstN.Contains(Terminal.Epsilon))
-                            {
-                                endWithEpsilon = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (endWithEpsilon)
-                    {
-                        ///若所有的FIRST(Yj)均含有ε，j=1,2,3,...,k，则把ε加到FIRST(X)中
-                        first.Add(Terminal.Epsilon);
-                    }
-
-                    hasChanged = hasChanged || !first.SetEquals(oldFirst);
-                }
-            }
-
-            Console.WriteLine(mapFirst.ToString("First Sets:"));
-            return mapFirst;
-        }
-
-        private static HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst)
-        {
-            HashSet<Terminal> first = new();
-            foreach (var symbol in alpha)
-            {
-
-                if (symbol is Terminal terminal)
-                {
-                    first.Add(terminal);
-                    break;
-                }
-
-                if (symbol is NonTerminal nonTerminal)
-                {
-                    if (!mapFirst.TryGetValue(nonTerminal, out var firstNonTerminal))
-                    {
-                        firstNonTerminal = new();
-                    }
-
-                    first.UnionWith(firstNonTerminal);
-                    first.Remove(Terminal.Epsilon);
-
-                    if (!firstNonTerminal.Contains(Terminal.Epsilon))
-                        break;
-                }
-                first.Add(Terminal.Epsilon);
-            }
-
-            return first;
-        }
-        /// <summary>
-        /// 计算FOLLOW集
-        /// </summary>
-        private static Dictionary<NonTerminal, HashSet<Terminal>> CalcFollows(IEnumerable<Production> P, Dictionary<NonTerminal, HashSet<Terminal>> mapFirst, NonTerminal S)
-        {
-            Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
-            mapFollow[S] = new();
-            mapFollow[S].Add(Terminal.EndTerminal); //对于文法开始符号S，要将#置于FOLLOW(S)中
-
-            bool hasChanged = true;
-            while (hasChanged)
-            {
-                hasChanged = false;
-
-                foreach (var production in P)
-                {
-
-                    Stack<Symbol> beta = new();
-
-                    foreach (var symbol in production.Right.Reverse())
-                    {
-                        if (symbol is Terminal terminal)
-                        {
-                            beta.Push(terminal);
-                            continue;
-                        }
-
-                        if (symbol is NonTerminal nonTerminal)
-                        {
-                            if (!mapFollow.TryGetValue(nonTerminal, out var follow))
-                            {
-                                follow = new();
-                                mapFollow[nonTerminal] = follow;
-                                hasChanged = true;
-                            }
-
-                            var oldFollow = follow.ToHashSet();
-                            if (beta.Any())
-                            {
-                                var first = CalcFirst(beta, mapFirst);
-                                //若A->αBβ是一个产生式，则把FIRST(β)\{ε}加入FOLLOW(B)中
-                                bool containEpsilon = first.Remove(Terminal.Epsilon);
-                                follow.UnionWith(first);
-
-                                if (containEpsilon && mapFollow.TryGetValue(production.Left, out var followLeft))
-                                {
-                                    follow.UnionWith(followLeft); //若A->αBβ是一个产生式，而β=>ε(既ε∈FIRST(β))，则将FIRST(A)加入FIRST(B)
-                                }
-                            }
-                            else
-                            {
-                                if (mapFollow.TryGetValue(production.Left, out var followLeft))
-                                {
-                                    follow.UnionWith(followLeft); //若A->αB是一个产生式，则将FIRST(A)加入FIRST(B)
-                                }
-                            }
-
-                            hasChanged = hasChanged || !oldFollow.SetEquals(follow);
-                            beta.Push(nonTerminal);
-                        }
-                    }
-                }
-            }
-
-            Console.WriteLine(mapFollow.ToString("Follow Sets:"));
-            return mapFollow;
         }
     }
 }

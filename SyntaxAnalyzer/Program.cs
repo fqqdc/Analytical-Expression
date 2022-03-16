@@ -12,8 +12,9 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "A S|b"));
-            listProduction.AddRange(Production.Create("A", "S A|a"));
+            listProduction.AddRange(Production.Create("S", "( A )"));
+            listProduction.AddRange(Production.Create("A", "A B B|B"));
+            listProduction.AddRange(Production.Create("B", "b"));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
