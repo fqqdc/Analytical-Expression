@@ -8,9 +8,8 @@ namespace SyntaxAnalyzer
 {
     public static class LRGrammarHelper
     {
-        public static void PrintTable(Grammar grammar, Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
+        public static void PrintTable(Grammar grammar, Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
         {
-            StringBuilder sbMatrix = new StringBuilder();
             var symbols = grammar.Vt.Cast<Symbol>()
                 .Append(Terminal.EndTerminal)
                 .Union(grammar.Vn)
@@ -19,78 +18,83 @@ namespace SyntaxAnalyzer
                 .Union(Goto.Keys.Select(key => key.state))
                 .Distinct().OrderBy(s => s).ToArray();
 
-            for (int i = -1; i < states.Length; i++)
-            {
-                // 打印列首
-                if (i == -1)
-                {
-                    sbMatrix.Append("\t");
-                }
-                else
-                {
-                    sbMatrix.Append($"{states[i]}\t");
-                }
+            var rows = states.Length + 1;
+            var cols = symbols.Length + 1;
+            int[] lengthCol = new int[cols];
 
-                // 打印每一列
-                for (int j = 0; j < symbols.Length; j++)
+            var sbMatrix = new StringBuilder[rows, cols];
+
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < cols; j++)
                 {
-                    var symbol = symbols[j];
-                    if (i == -1)
+                    sbMatrix[i, j] = new();
+                    var symbol = symbols[j - 1];
+
+                    // 首行
+                    if (i == 0)
                     {
-                        // 行首
+                        // 首列
+                        if (j == 0)
+                            continue;                        
                         var strSymbol = symbol.ToString();
                         if (symbol == Terminal.EndTerminal)
                             strSymbol = "#";
-                        sbMatrix.Append($"{strSymbol}\t");
+                        sbMatrix[i, j].Append(strSymbol);
                     }
                     else
                     {
-                        var sbItem = new StringBuilder();
-                        if (symbol is Terminal t)
+                        // 首列
+                        if (j == 0)
                         {
-                            if (Action.TryGetValue((i, t), out var list))
+                            sbMatrix[i, j].Append(states[i - 1]);
+                        }
+                        else
+                        {
+                            if (symbol is Terminal t)
                             {
-                                foreach (var item in list)
+                                if (Action.TryGetValue((i, t), out var list))
                                 {
-                                    if (item is ShiftItem si)
+                                    foreach (var item in list)
                                     {
-                                        sbItem.Append($"s{si.State} ");
-                                    }
-                                    else if (item is ReduceItem ri)
-                                    {
-                                        // N -> eps []
-                                        // 如果产生式为空，则为归约项目
-                                        if (ri.Production.Right == Production.Epsilon)
-                                            sbItem.Append($"r0 ");
-                                        else
-                                            sbItem.Append($"r{ri.Production.Right.Count()} ");
-                                    }
-                                    else if (item is AcceptItem ai)
-                                    {
-                                        sbItem.Append($"acc ");
+                                        if (item is ShiftItem si)
+                                        {
+                                            sbMatrix[i, j].Append($"s{si.State} ");
+                                        }
+                                        else if (item is ReduceItem ri)
+                                        {
+                                            // N -> eps []
+                                            // 如果产生式为空，则为归约项目
+                                            if (ri.Production.Right.SequenceEqual(Production.Epsilon))
+                                                sbMatrix[i, j].Append($"r0@{ri.Production.Left} ");
+                                            else
+                                                sbMatrix[i, j].Append($"r{ri.Production.Right.Count()}@{ri.Production.Left} ");
+                                        }
+                                        else if (item is AcceptItem ai)
+                                        {
+                                            sbMatrix[i, j].Append($"acc ");
+                                        }
                                     }
                                 }
                             }
-                            if (sbItem.Length == 0)
-                                sbItem.Append("");
-                            sbItem.Append($"\t");
-                            sbMatrix.Append(sbItem);
-                        }
-                        else if (symbol is NonTerminal n)
-                        {
-                            if (Goto.TryGetValue((i, n), out var state))
+                            else if (symbol is NonTerminal n)
                             {
-                                sbItem.Append($"{state}");
+                                if (Goto.TryGetValue((i, n), out var state))
+                                {
+                                    sbMatrix[i, j].Append($"{state}");
+                                }
                             }
-                            if (sbItem.Length == 0)
-                                sbItem.Append("");
-                            sbItem.Append($"\t");
-                            sbMatrix.Append(sbItem);
                         }
                     }
+
+                    lengthCol[j] = Math.Max(lengthCol[j], sbMatrix[i, j].Length);
                 }
-                sbMatrix.AppendLine();
             }
+
+            
+           
+
+
             Console.WriteLine(sbMatrix.ToString());
         }
     }

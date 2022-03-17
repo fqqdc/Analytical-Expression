@@ -12,7 +12,7 @@ namespace SyntaxAnalyzer
     public class LR0Grammar : Grammar
     {
         private LR0Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
-            Dictionary<(int state, Terminal t), List<ActionItem>> mapAction,
+            Dictionary<(int state, Terminal t), HashSet<ActionItem>> mapAction,
             Dictionary<(int state, NonTerminal t), int> mapGoto
             ) : base(allProduction, startNonTerminal)
         {
@@ -57,7 +57,7 @@ namespace SyntaxAnalyzer
 
             foreach (var item in Action)
             {
-                if (item.Value.Count > 1)
+                if (item.Value.Count() > 1)
                     sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
             }
 
@@ -68,7 +68,7 @@ namespace SyntaxAnalyzer
             return result;
         }
 
-        protected static (Dictionary<(int state, Terminal t), List<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
+        protected static (Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
             CreateItemSets(IEnumerable<Production> P, IEnumerable<Terminal> Vt, IEnumerable<NonTerminal> Vn, NonTerminal S)
         {
             var V = Vn.Cast<Symbol>().Union(Vt);
@@ -93,7 +93,7 @@ namespace SyntaxAnalyzer
 
                             // N -> eps  =>  N -> eps []
                             // 如果产生式为空，则生成归约项目
-                            if (p.Right == Production.Epsilon)
+                            if (p.Right.SequenceEqual(Production.Epsilon))
                                 newItem = newItem with { Position = 1 };
 
                             if (closure.Add(newItem))
@@ -158,12 +158,12 @@ namespace SyntaxAnalyzer
             Dictionary<HashSet<ProductionItem>, int> IdTable = new(HashSetComparer<ProductionItem>.Default); // ID 表
             IdTable[I_0] = 0;
 
-            Dictionary<(int state, Terminal t), List<ActionItem>> Action = new(); // ACTION 表
-            List<ActionItem> GetActionItemList((int state, Terminal t) key)
+            Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
+            HashSet<ActionItem> GetActionItemList((int state, Terminal t) key)
             {
                 if (!Action.TryGetValue(key, out var list))
                 {
-                    list = new List<ActionItem>();
+                    list = new HashSet<ActionItem>();
                     Action[key] = list;
                 }
                 return list;

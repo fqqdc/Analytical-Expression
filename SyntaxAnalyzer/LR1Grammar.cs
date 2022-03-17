@@ -9,9 +9,9 @@ namespace SyntaxAnalyzer
     /// <summary>
     /// SLR文法
     /// </summary>
-    public class SLRGrammar : Grammar
+    public class LR1Grammar : Grammar
     {
-        private SLRGrammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
+        private LR1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
             Dictionary<(int state, Terminal t), HashSet<ActionItem>> mapAction,
             Dictionary<(int state, NonTerminal t), int> mapGoto
             ) : base(allProduction, startNonTerminal)
@@ -24,16 +24,16 @@ namespace SyntaxAnalyzer
 
         public Dictionary<(int state, Terminal t), List<ActionItem>> GetAction()
         {
-            return mapAction.ToDictionary(i => i.Key, i => i.Value);
+            return mapAction.ToDictionary(i => i.Key, i => i.Value.ToList());
         }
         public Dictionary<(int state, NonTerminal t), int> GetGoto()
         {
             return mapGoto.ToDictionary(i => i.Key, i => i.Value);
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out SLRGrammar slrGrammar, out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LR1Grammar lr1Grammar, out string errorMsg)
         {
-            slrGrammar = null;
+            lr1Grammar = null;
             errorMsg = string.Empty;
             StringBuilder sbErrorMsg = new();
 
@@ -64,7 +64,7 @@ namespace SyntaxAnalyzer
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
             if (result)
-                slrGrammar = new(P, S_Ex, Action, Goto);
+                lr1Grammar = new(P, S_Ex, Action, Goto);
             return result;
         }
 
@@ -73,13 +73,14 @@ namespace SyntaxAnalyzer
         {
             var V = Vn.Cast<Symbol>().Union(Vt);
             var startProduction = P.Single(p => p.Left == S);
+            var mapFirst = Grammar.CalcFirsts(P);
 
             // ================
 
-            HashSet<ProductionItem> Closure(IEnumerable<ProductionItem> I)
+            HashSet<ProductionItem_1> Closure(IEnumerable<ProductionItem_1> I)
             {
-                HashSet<ProductionItem> closure = new(I);
-                Queue<ProductionItem> queueWork = new(I);
+                HashSet<ProductionItem_1> closure = new(I);
+                Queue<ProductionItem_1> queueWork = new(I);
 
                 while (queueWork.Count > 0)
                 {
@@ -87,15 +88,20 @@ namespace SyntaxAnalyzer
                     var symbol = item.Production.Right.ElementAtOrDefault(item.Position);
                     if (symbol != null && symbol is NonTerminal nonTerminal)
                     {
-                        foreach (var p in P.Where(p => p.Left == nonTerminal))
+                        var tail = item.Production.Right.Skip(item.Position + 1).Append(item.Follow);
+                        var fisrtSet = Grammar.CalcFirst(tail, mapFirst);
+                        foreach (var first in fisrtSet)
                         {
-                            var newItem = new ProductionItem(p, 0);
-                            // N -> eps  =>  N -> eps []
-                            // 如果产生式为空，则生成归约项目
-                            if (p.Right.SequenceEqual(Production.Epsilon))
-                                newItem = newItem with { Position = 1 };
-                            if (closure.Add(newItem))
-                                queueWork.Enqueue(newItem);
+                            foreach (var p in P.Where(p => p.Left == nonTerminal))
+                            {
+                                var newItem = new ProductionItem_1(p, 0, first);
+                                // N -> eps  =>  N -> eps []
+                                // 如果产生式为空，则生成归约项目
+                                if (p.Right.SequenceEqual(Production.Epsilon))
+                                    newItem = newItem with { Position = 1 };
+                                if (closure.Add(newItem))
+                                    queueWork.Enqueue(newItem);
+                            }
                         }
                     }
                 }
@@ -103,13 +109,13 @@ namespace SyntaxAnalyzer
                 return closure;
             }
 
-            Dictionary<(HashSet<ProductionItem> I, Symbol X), HashSet<ProductionItem>> GoCache = new(HashSetComparer<ProductionItem, Symbol>.Default);
+            Dictionary<(HashSet<ProductionItem_1> I, Symbol X), HashSet<ProductionItem_1>> GoCache = new(HashSetComparer<ProductionItem_1, Symbol>.Default);
 
-            HashSet<ProductionItem> Go(HashSet<ProductionItem> I, Symbol X)
+            HashSet<ProductionItem_1> Go(HashSet<ProductionItem_1> I, Symbol X)
             {
                 if (!GoCache.TryGetValue((I, X), out var closureJ))
                 {
-                    var J = new HashSet<ProductionItem>();
+                    var J = new HashSet<ProductionItem_1>();
                     foreach (var item in I)
                     {
                         var symbol = item.Production.Right.ElementAtOrDefault(item.Position);
@@ -126,10 +132,10 @@ namespace SyntaxAnalyzer
 
             // =================
 
-            HashSet<HashSet<ProductionItem>> C = new(HashSetComparer<ProductionItem>.Default);
-            Queue<HashSet<ProductionItem>> queueWork = new();
+            HashSet<HashSet<ProductionItem_1>> C = new(HashSetComparer<ProductionItem_1>.Default);
+            Queue<HashSet<ProductionItem_1>> queueWork = new();
 
-            var I_0 = Closure(new ProductionItem[] { new(startProduction, 0) }); // 初态项目集
+            var I_0 = Closure(new ProductionItem_1[] { new(startProduction, 0, Terminal.EndTerminal) }); // 初态项目集
 
             C.Add(I_0);
             queueWork.Enqueue(I_0);
@@ -153,27 +159,25 @@ namespace SyntaxAnalyzer
             }
 
             // =================
-            Dictionary<HashSet<ProductionItem>, int> IdTable = new(HashSetComparer<ProductionItem>.Default); // ID 表
+            Dictionary<HashSet<ProductionItem_1>, int> IdTable = new(HashSetComparer<ProductionItem_1>.Default); // ID 表
             IdTable[I_0] = 0;
 
             Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
-            HashSet<ActionItem> GetActionItemList((int state, Terminal t) key)
+            HashSet<ActionItem> GetActionItemSet((int state, Terminal t) key)
             {
-                if (!Action.TryGetValue(key, out var list))
+                if (!Action.TryGetValue(key, out var set))
                 {
-                    list = new HashSet<ActionItem>();
-                    Action[key] = list;
+                    set = new();
+                    Action[key] = set;
                 }
-                return list;
+                return set;
             }
             Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
 
-            var accept = new ProductionItem(startProduction, 1);
-            var mapFirst = Grammar.CalcFirsts(P);
-            var mapFollow = Grammar.CalcFollows(P, mapFirst, S);
+            var accept = new ProductionItem_1(startProduction, 1, Terminal.EndTerminal);
 
             queueWork = new();
-            HashSet<HashSet<ProductionItem>> visited = new(HashSetComparer<ProductionItem>.Default);
+            HashSet<HashSet<ProductionItem_1>> visited = new(HashSetComparer<ProductionItem_1>.Default);
 
             queueWork.Enqueue(I_0);
             visited.Add(I_0);
@@ -186,23 +190,19 @@ namespace SyntaxAnalyzer
                 {
                     if (item == accept)
                     {
-                        var list = GetActionItemList((IdTable[I], Terminal.EndTerminal));
+                        var list = GetActionItemSet((IdTable[I], Terminal.EndTerminal));
                         list.Add(new AcceptItem());
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
-                        var follow = mapFollow[item.Production.Left];
-                        foreach (var t in follow)
-                        {
-                            var list = GetActionItemList((IdTable[I], t));
-                            list.Add(new ReduceItem(item.Production));
-                        }
+                        var list = GetActionItemSet((IdTable[I], item.Follow));
+                        list.Add(new ReduceItem(item.Production));
                     }
                     else
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
                         var J = Go(I, symbol);
-                        if (!C.Contains(J))
+                        if (J.Count == 0)
                             continue;
 
                         if (!IdTable.TryGetValue(J, out var id_J))
@@ -219,7 +219,7 @@ namespace SyntaxAnalyzer
 
                         if (symbol is Terminal terminal)
                         {
-                            var list = GetActionItemList((IdTable[I], terminal));
+                            var list = GetActionItemSet((IdTable[I], terminal));
                             list.Add(new ShiftItem(id_J));
                         }
                         else if (symbol is NonTerminal nonTerminal)
