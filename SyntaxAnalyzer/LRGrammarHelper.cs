@@ -81,7 +81,7 @@ namespace SyntaxAnalyzer
                             }
                             else if (symbol is NonTerminal n)
                             {
-                                if (Goto.TryGetValue((i, n), out var state))
+                                if (Goto.TryGetValue((states[i - 1], n), out var state))
                                 {
                                     sbMatrix[i, j].Append($"{state}");
                                 }

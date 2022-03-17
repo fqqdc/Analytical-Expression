@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -201,8 +202,8 @@ namespace SyntaxAnalyzer
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
                         var J = Go(I, symbol);
-                        if (J.Count == 0)
-                            continue;
+
+                        Debug.Assert(J.Count != 0);
 
                         if (!IdTable.TryGetValue(J, out var id_J))
                         {
@@ -228,17 +229,17 @@ namespace SyntaxAnalyzer
                     }
                 }
 
-                foreach (var n in Vn)
-                {
-                    var J = Go(I, n);
-                    if (J.Count > 0)
-                    {
-                        if (!IdTable.TryGetValue(J, out var id_J))
-                            id_J = IdTable.Count;
-                        IdTable[J] = id_J;
-                        Goto[(IdTable[I], n)] = id_J;
-                    }
-                }
+                //foreach (var n in Vn)
+                //{
+                //    var J = Go(I, n);
+                //    if (J.Count > 0)
+                //    {
+                //        if (!IdTable.TryGetValue(J, out var id_J))
+                //            id_J = IdTable.Count;
+                //        IdTable[J] = id_J;
+                //        Goto[(IdTable[I], n)] = id_J;
+                //    }
+                //}
             }
 
             // 打印项目集

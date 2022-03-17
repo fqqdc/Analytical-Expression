@@ -229,17 +229,17 @@ namespace SyntaxAnalyzer
                     }
                 }
 
-                foreach (var n in Vn)
-                {
-                    var J = Go(I, n);
-                    if (J.Count > 0)
-                    {
-                        if (!IdTable.TryGetValue(J, out var id_J))
-                            id_J = IdTable.Count;
-                        IdTable[J] = id_J;
-                        Goto[(IdTable[I], n)] = id_J;
-                    }
-                }
+                //foreach (var n in Vn)
+                //{
+                //    var J = Go(I, n);
+                //    if (J.Count > 0)
+                //    {
+                //        if (!IdTable.TryGetValue(J, out var id_J))
+                //            id_J = IdTable.Count;
+                //        IdTable[J] = id_J;
+                //        Goto[(IdTable[I], n)] = id_J;
+                //    }
+                //}
             }
 
             // 打印项目集

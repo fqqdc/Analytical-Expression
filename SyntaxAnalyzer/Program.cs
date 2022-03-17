@@ -12,27 +12,33 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            //listProduction.AddRange(Production.Create("S", "a A d|b B d|a B e|b A e"));
-            //listProduction.AddRange(Production.Create("A", "c"));
-            //listProduction.AddRange(Production.Create("B", "c"));
-            listProduction.AddRange(Production.Create("S", "L = R|R"));
-            listProduction.AddRange(Production.Create("L", "* R|i"));
-            listProduction.AddRange(Production.Create("R", "L"));
+            listProduction.AddRange(Production.Create("S", "A a|b A c|B c|b B a"));
+            listProduction.AddRange(Production.Create("A", "d"));
+            listProduction.AddRange(Production.Create("B", "d"));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
 
-            if (!LR1Grammar.TryCreate(grammar, out var newGrammar2, out var msg1))
+            if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
             {
-                Console.WriteLine($"LR1Grammar:\n{msg1}");
+                Console.WriteLine();
+                Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
             }
-            else Console.WriteLine(newGrammar2);
+            else Console.WriteLine(lr1Grammar);
 
-            if (!LALRGrammar.TryCreate(grammar, out var newGrammar, out var msg))
+            if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
             {
-                Console.WriteLine($"LALRGrammar:\n{msg}");
+                Console.WriteLine();
+                Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
             }
-            else Console.WriteLine(newGrammar);
+            else Console.WriteLine(lalrGrammar);
+
+            //if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LR0Grammar Error:\n{rl0Msg}");
+            //}
+            //else Console.WriteLine(rl0Grammar);
 
             return;
 

@@ -42,7 +42,6 @@ namespace SyntaxAnalyzer
 
         bool IEqualityComparer<(HashSet<T>, X)>.Equals((HashSet<T>, X) x, (HashSet<T>, X) y)
         {
-
             return x.Item2 != null
                 && x.Item2.Equals(y.Item2)
                 && x.Item1.SetEquals(y.Item1);
@@ -51,14 +50,14 @@ namespace SyntaxAnalyzer
         int IEqualityComparer<(HashSet<T>, X)>.GetHashCode((HashSet<T>, X) obj)
         {
             var code = 0;
+            if (obj.Item2 != null)
+                code = code ^ obj.Item2.GetHashCode();
             foreach (var item in obj.Item1)
             {
                 if (item == null)
                     continue;
                 code = code ^ item.GetHashCode();
-            }
-            if (obj.Item2 != null)
-                code = code ^ obj.Item2.GetHashCode();
+            }            
             return code;
         }
     }

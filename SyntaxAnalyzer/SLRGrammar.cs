@@ -58,7 +58,7 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：{string.Join("; ", item.Value)}");
             }
 
             errorMsg = sbErrorMsg.ToString();

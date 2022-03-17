@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -29,6 +30,33 @@ namespace SyntaxAnalyzer
         public Dictionary<(int state, NonTerminal t), int> GetGoto()
         {
             return mapGoto.ToDictionary(i => i.Key, i => i.Value);
+        }
+
+        public static bool TryCreate(LR1Grammar grammar, [MaybeNullWhen(false)] out LALRGrammar lalrGrammar, out string errorMsg)
+        {
+            lalrGrammar = null;
+            errorMsg = string.Empty;
+            StringBuilder sbErrorMsg = new();
+
+            var S = grammar.S;
+            var P = grammar.P.ToHashSet();
+            var Vn = grammar.Vn.ToHashSet();
+
+            var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S);
+
+            LRGrammarHelper.PrintTable(grammar, Action, Goto);
+
+            foreach (var item in Action)
+            {
+                if (item.Value.Count() > 1)
+                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+            }
+
+            errorMsg = sbErrorMsg.ToString();
+            var result = string.IsNullOrWhiteSpace(errorMsg);
+            if (result)
+                lalrGrammar = new(P, S, Action, Goto);
+            return result;
         }
 
         public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LALRGrammar lalrGrammar, out string errorMsg)
@@ -109,8 +137,8 @@ namespace SyntaxAnalyzer
                 return closure;
             }
 
-            Dictionary<(HashSet<ProductionItem_1> I, Symbol X), HashSet<ProductionItem_1>> GoCache = new(HashSetComparer<ProductionItem_1, Symbol>.Default);
-
+            Dictionary<(HashSet<ProductionItem_1> I, Symbol X), HashSet<ProductionItem_1>> GoCache =
+                new(HashSetComparer<ProductionItem_1, Symbol>.Default);
             HashSet<ProductionItem_1> Go(HashSet<ProductionItem_1> I, Symbol X)
             {
                 if (!GoCache.TryGetValue((I, X), out var closureJ))
@@ -130,12 +158,26 @@ namespace SyntaxAnalyzer
                 return closureJ;
             }
 
+            HashSet<HashSet<ProductionItem_1>> C = new(HashSetComparer<ProductionItem_1>.Default);
+            HashSet<ProductionItem_1> GoEx(HashSet<ProductionItem_1> I, Symbol X)
+            {
+                var J = Go(I, X);
+                if(J.Count == 0) 
+                    return J;
+                J = C.First(set =>
+                {
+                    var comparer = (IEqualityComparer<HashSet<ProductionItem_1>>)LALRGrammarComparer.Default;
+                    return comparer.Equals(set, J);
+                });
+                Debug.Assert(C.Contains(J));
+                return J;
+            }
+
             // =================
 
-            HashSet<HashSet<ProductionItem_1>> C = new(HashSetComparer<ProductionItem_1>.Default);
+            // 项目集队列及初始化
             Queue<HashSet<ProductionItem_1>> queueWork = new();
-
-            var initItem = new ProductionItem_1(startProduction, 0, Terminal.EndTerminal);
+            var initItem = new ProductionItem_1(startProduction, 0, Terminal.EndTerminal); // 开始项目
             var I_0 = Closure(new ProductionItem_1[] { initItem }); // 初态项目集
 
             C.Add(I_0);
@@ -160,16 +202,27 @@ namespace SyntaxAnalyzer
             }
 
             // 合并同心集
-            C = C.GroupBy(set => set, LALRGrammarComparer.Default)
-                .Select(g => g.SelectMany(set => set)
-                    .ToHashSet())
-                .ToHashSet();
+            var groups = C.GroupBy(set => set, LALRGrammarComparer.Default);
+            var newC = new HashSet<HashSet<ProductionItem_1>>(HashSetComparer<ProductionItem_1>.Default);
+            var mapRecord = new Dictionary<HashSet<ProductionItem_1>, HashSet<ProductionItem_1>[]>
+                (HashSetComparer<ProductionItem_1>.Default);
+            foreach (var group in groups)
+            {
+                var newSet = group.SelectMany(set => set).ToHashSet();
+                mapRecord[newSet] = group.ToArray();
+            }
+            newC.UnionWith(mapRecord.Keys);
+            C = newC;
+            //UpdateGoCache();
 
+            // 开始集
             I_0 = C.Single(I => I.Contains(initItem));
 
+            // 分配集合ID
             Dictionary<HashSet<ProductionItem_1>, int> IdTable = new(HashSetComparer<ProductionItem_1>.Default); // ID 表
             IdTable[I_0] = 0;
 
+            // Action
             Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
             HashSet<ActionItem> GetActionItemSet((int state, Terminal t) key)
             {
@@ -180,13 +233,19 @@ namespace SyntaxAnalyzer
                 }
                 return set;
             }
+
+            // Goto
             Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
 
+            // 接受项目
             var accept = new ProductionItem_1(startProduction, 1, Terminal.EndTerminal);
 
+            // 遍历队列
             queueWork = new();
+            // 已遍历集合
             HashSet<HashSet<ProductionItem_1>> visited = new(HashSetComparer<ProductionItem_1>.Default);
 
+            // 初始化遍历队列
             queueWork.Enqueue(I_0);
             visited.Add(I_0);
 
@@ -209,11 +268,8 @@ namespace SyntaxAnalyzer
                     else
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
-                        var J = Go(I, symbol);
-                        if (!C.Contains(J))
-                            throw new Exception();
-                        if (J.Count == 0)
-                            continue;
+                        var J = GoEx(I, symbol);
+                        Debug.Assert(J.Count != 0);
 
                         if (!IdTable.TryGetValue(J, out var id_J))
                         {
@@ -238,20 +294,6 @@ namespace SyntaxAnalyzer
                         }
                     }
                 }
-
-                foreach (var n in Vn)
-                {
-                    var J = Go(I, n);
-                    if (!C.Contains(J))
-                        throw new Exception();
-                    if (J.Count > 0)
-                    {
-                        if (!IdTable.TryGetValue(J, out var id_J))
-                            id_J = IdTable.Count;
-                        IdTable[J] = id_J;
-                        Goto[(IdTable[I], n)] = id_J;
-                    }
-                }
             }
 
             // 打印项目集
@@ -265,7 +307,7 @@ namespace SyntaxAnalyzer
                 }
                 foreach (var symbol in V)
                 {
-                    var J = Go(I, symbol);
+                    var J = GoEx(I, symbol);
                     if (J.Count > 0)
                     {
                         var id_J = IdTable[J];
