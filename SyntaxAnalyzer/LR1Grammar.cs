@@ -7,11 +7,11 @@ using System.Text;
 namespace SyntaxAnalyzer
 {
     /// <summary>
-    /// SLR文法
+    /// LR1文法
     /// </summary>
     public class LR1Grammar : Grammar
     {
-        private LR1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
+        protected LR1Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal,
             Dictionary<(int state, Terminal t), HashSet<ActionItem>> mapAction,
             Dictionary<(int state, NonTerminal t), int> mapGoto
             ) : base(allProduction, startNonTerminal)
@@ -140,7 +140,7 @@ namespace SyntaxAnalyzer
             C.Add(I_0);
             queueWork.Enqueue(I_0);
 
-            // 构造LR(0)项目集规范族
+            // 构造LR(1)项目集规范族
             while (queueWork.Count > 0)
             {
                 var I = queueWork.Dequeue();

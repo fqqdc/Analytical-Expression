@@ -20,7 +20,7 @@ namespace SyntaxAnalyzer
 
             var rows = states.Length + 1;
             var cols = symbols.Length + 1;
-            int[] lengthCol = new int[cols];
+            int[] colWidth = new int[cols];
 
             var sbMatrix = new StringBuilder[rows, cols];
 
@@ -29,14 +29,14 @@ namespace SyntaxAnalyzer
                 for (int j = 0; j < cols; j++)
                 {
                     sbMatrix[i, j] = new();
-                    var symbol = symbols[j - 1];
 
                     // 首行
                     if (i == 0)
                     {
                         // 首列
                         if (j == 0)
-                            continue;                        
+                            continue;
+                        var symbol = symbols[j - 1];
                         var strSymbol = symbol.ToString();
                         if (symbol == Terminal.EndTerminal)
                             strSymbol = "#";
@@ -51,9 +51,10 @@ namespace SyntaxAnalyzer
                         }
                         else
                         {
+                            var symbol = symbols[j - 1];
                             if (symbol is Terminal t)
                             {
-                                if (Action.TryGetValue((i, t), out var list))
+                                if (Action.TryGetValue((states[i - 1], t), out var list))
                                 {
                                     foreach (var item in list)
                                     {
@@ -76,6 +77,7 @@ namespace SyntaxAnalyzer
                                         }
                                     }
                                 }
+                                else sbMatrix[i, j].Append("+");
                             }
                             else if (symbol is NonTerminal n)
                             {
@@ -83,19 +85,27 @@ namespace SyntaxAnalyzer
                                 {
                                     sbMatrix[i, j].Append($"{state}");
                                 }
+                                else sbMatrix[i, j].Append("+");
                             }
                         }
                     }
 
-                    lengthCol[j] = Math.Max(lengthCol[j], sbMatrix[i, j].Length);
+                    colWidth[j] = Math.Max(colWidth[j], sbMatrix[i, j].Length);
                 }
             }
 
-            
-           
-
-
-            Console.WriteLine(sbMatrix.ToString());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < cols; j++)
+                {
+                    if(i == 0)
+                        sb.Append($"{sbMatrix[i, j].ToString().PadRight(colWidth[j])} ");
+                    else sb.Append($"{sbMatrix[i, j].ToString().PadRight(colWidth[j], '-')} ");
+                }
+                if (i + 1 < rows) sb.AppendLine();
+            }
+            Console.WriteLine(sb.ToString());
         }
     }
 }

@@ -201,7 +201,7 @@ namespace SyntaxAnalyzer
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
                         var J = Go(I, symbol);
-                        if (!C.Contains(J))
+                        if (J.Count == 0)
                             continue;
 
                         if (!IdTable.TryGetValue(J, out var id_J))

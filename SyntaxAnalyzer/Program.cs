@@ -12,24 +12,27 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "A a A b|B b B a"));
-            listProduction.AddRange(Production.Create("A", ""));
-            listProduction.AddRange(Production.Create("B", ""));
+            //listProduction.AddRange(Production.Create("S", "a A d|b B d|a B e|b A e"));
+            //listProduction.AddRange(Production.Create("A", "c"));
+            //listProduction.AddRange(Production.Create("B", "c"));
+            listProduction.AddRange(Production.Create("S", "L = R|R"));
+            listProduction.AddRange(Production.Create("L", "* R|i"));
+            listProduction.AddRange(Production.Create("R", "L"));
 
             Grammar grammar = new Grammar(listProduction, new("S"));
             Console.WriteLine(grammar);
-
-            if (!LR0Grammar.TryCreate(grammar, out var newGrammar, out var msg))
-            {
-                Console.WriteLine($"LR1Grammar:\n{msg}");
-            }
-            else Console.WriteLine(newGrammar);
 
             if (!LR1Grammar.TryCreate(grammar, out var newGrammar2, out var msg1))
             {
                 Console.WriteLine($"LR1Grammar:\n{msg1}");
             }
             else Console.WriteLine(newGrammar2);
+
+            if (!LALRGrammar.TryCreate(grammar, out var newGrammar, out var msg))
+            {
+                Console.WriteLine($"LALRGrammar:\n{msg}");
+            }
+            else Console.WriteLine(newGrammar);
 
             return;
 
