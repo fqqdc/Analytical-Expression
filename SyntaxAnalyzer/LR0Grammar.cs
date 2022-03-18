@@ -72,7 +72,7 @@ namespace SyntaxAnalyzer
         protected static (Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
             CreateItemSets(IEnumerable<Production> P, IEnumerable<Terminal> Vt, IEnumerable<NonTerminal> Vn, NonTerminal S)
         {
-            var V = Vn.Cast<Symbol>().Union(Vt);
+            var V = Vn.Cast<Symbol>().Union(Vt).Append(Terminal.EndTerminal);
             var startProduction = P.Single(p => p.Left == S);
 
             // ================
@@ -192,7 +192,7 @@ namespace SyntaxAnalyzer
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
-                        foreach (var t in Vt)
+                        foreach (var t in Vt.Append(Terminal.EndTerminal))
                         {
                             var list = GetActionItemList((IdTable[I], t));
                             list.Add(new ReduceItem(item.Production));
@@ -228,18 +228,6 @@ namespace SyntaxAnalyzer
                         }
                     }
                 }
-
-                //foreach (var n in Vn)
-                //{
-                //    var J = Go(I, n);
-                //    if (J.Count > 0)
-                //    {
-                //        if (!IdTable.TryGetValue(J, out var id_J))
-                //            id_J = IdTable.Count;
-                //        IdTable[J] = id_J;
-                //        Goto[(IdTable[I], n)] = id_J;
-                //    }
-                //}
             }
 
             // 打印项目集

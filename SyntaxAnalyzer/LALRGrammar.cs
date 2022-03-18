@@ -99,7 +99,7 @@ namespace SyntaxAnalyzer
         private static (Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
             CreateItemSets(IEnumerable<Production> P, IEnumerable<Terminal> Vt, IEnumerable<NonTerminal> Vn, NonTerminal S)
         {
-            var V = Vn.Cast<Symbol>().Union(Vt);
+            var V = Vn.Cast<Symbol>().Union(Vt).Append(Terminal.EndTerminal);
             var startProduction = P.Single(p => p.Left == S);
             var mapFirst = Grammar.CalcFirsts(P);
 

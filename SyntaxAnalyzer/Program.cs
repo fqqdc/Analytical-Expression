@@ -12,12 +12,24 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("S", "A a|b A c|B c|b B a"));
-            listProduction.AddRange(Production.Create("A", "d"));
-            listProduction.AddRange(Production.Create("B", "d"));
+            listProduction.AddRange(Production.Create("E", "E E +|E E *|a"));
 
-            Grammar grammar = new Grammar(listProduction, new("S"));
+            Grammar grammar = new Grammar(listProduction, new("E"));
             Console.WriteLine(grammar);
+
+            if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"LR0Grammar Error:\n{rl0Msg}");
+            }
+            else Console.WriteLine(rl0Grammar);
+
+            if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
+            }
+            else Console.WriteLine(slrGrammar);
 
             if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
             {
@@ -33,12 +45,7 @@ namespace SyntaxAnalyzer
             }
             else Console.WriteLine(lalrGrammar);
 
-            //if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"LR0Grammar Error:\n{rl0Msg}");
-            //}
-            //else Console.WriteLine(rl0Grammar);
+
 
             return;
 
