@@ -12,9 +12,10 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Phrase", "char|char Phrase"));
-            listProduction.AddRange(Production.Create("Complex", "char ?|char *|( Phrase ) ?|( Phrase ) *"));
-            listProduction.AddRange(Production.Create("Exp", "Complex|Complex Exp"));
+            listProduction.AddRange(Production.Create("Word", "char|char ?|char *"));
+            listProduction.AddRange(Production.Create("Phrase", "Word|Phrase Word"));
+            listProduction.AddRange(Production.Create("Complex", "Phrase|( Phrase ) ?|( Phrase ) *"));
+            listProduction.AddRange(Production.Create("Exp", "Complex|Exp Complex"));
 
             Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
@@ -33,12 +34,20 @@ namespace SyntaxAnalyzer
             //}
             //else Console.WriteLine(slrGrammar);
 
-            if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
-            {
-                Console.WriteLine();
-                Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
-            }
-            else Console.WriteLine(lr1Grammar);
+            var clr1Grammar = CLR1Grammar.Create(grammar);
+
+            Console.WriteLine();
+            Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
+
+            Console.WriteLine(clr1Grammar);
+
+            //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
+            //    return;
+            //}
+            //else Console.WriteLine(lr1Grammar);
 
             //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
             //{
@@ -48,10 +57,9 @@ namespace SyntaxAnalyzer
             //else Console.WriteLine(lalrGrammar);
 
 
-
             return;
 
-            string strInput = "var i , i : char";
+            string strInput = "a b ( c * d ) ?";
             int index = 0;
 
             SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
@@ -76,7 +84,7 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            //OPGSyntaxAnalyzer analyzer = new(newGrammar, p);
+            //LR1SyntaxAnalyzer analyzer = new(lr1Grammar, p);
 
             //analyzer.Analyzer();
             Console.WriteLine("OK");

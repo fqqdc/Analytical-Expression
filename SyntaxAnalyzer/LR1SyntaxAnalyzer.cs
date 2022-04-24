@@ -15,9 +15,52 @@ namespace SyntaxAnalyzer
         private AdvanceProcedure advanceProcedure;
         private Terminal sym = Terminal.Epsilon;
         private Dictionary<Symbol, int> symbolIndex = new();
-        private List<Symbol> stackAnalysis = new();
+
+        private Symbol[] symbolStack;
+        private int[] stateStack;
+        private int topStack = 0;
+
         private Dictionary<(int state, Terminal t), List<ActionItem>> actionTable;
         private Dictionary<(int state, NonTerminal t), int> gotoTable;
+
+        private void InitStack()
+        {
+            symbolStack = new Symbol[8];
+            stateStack = new int[8];
+            topStack = -1;
+        }
+
+        private void Push(int state, Symbol symbol)
+        {
+            if (topStack + 1 == stateStack.Length)
+            {
+                int nextSize = stateStack.Length * 2;
+                Array.Resize(ref stateStack, nextSize);
+                Array.Resize(ref symbolStack, nextSize);
+            }
+
+            topStack++;
+            stateStack[topStack] = state;
+            symbolStack[topStack] = symbol;
+        }
+
+        private void Reduce(Production p)
+        {
+            var length = p.Right.Count();
+            if (p.Right.SequenceEqual(Production.Epsilon))
+                length = 0;
+            topStack -= length;
+            var state = stateStack[topStack];
+
+            if (!gotoTable.TryGetValue((state, p.Left), out var nextState))
+                Error();
+            else
+            {
+                //Console.WriteLine($"Reduce:{p}");
+                Push(nextState, p.Left);
+            }
+        }
+
         public LR1SyntaxAnalyzer(LR1Grammar grammar, AdvanceProcedure advanceProcedure)
         {
             this.grammar = grammar;
@@ -26,101 +69,50 @@ namespace SyntaxAnalyzer
             this.gotoTable = grammar.GetGoto();
         }
 
-        private char GetPredictiveChar(Symbol left, Symbol right)
-        {
-            if (!predictiveTable.TryGetValue((left, right), out var value))
-                value = '\0';
-            return value;
-        }
-
-
         private void Advance()
         {
             advanceProcedure(out this.sym);
-            Console.WriteLine($"input:{this.sym}");
+            //Console.WriteLine($"input:{this.sym}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
         private void ProcedureInit()
         {
-            stackAnalysis.Clear();
-            stackAnalysis.Add(Terminal.EndTerminal);
+            InitStack();
+            Push(0, Terminal.EndTerminal);
         }
 
         private void Procedure()
         {
-            do
+            Advance();
+            while (true)
             {
-                Advance();
-                int indexT = stackAnalysis.Count - 1;
-                if (stackAnalysis[indexT] is not Terminal)
-                    indexT = indexT - 1;
+                var strState = string.Join(" ", stateStack.Take(topStack + 1));
+                var strSymbol = string.Join(" ", symbolStack.Take(topStack + 1));
+                Console.WriteLine($"{strState}, {strSymbol}, {sym}");
 
-                while (GetPredictiveChar(stackAnalysis[indexT], sym) == '>') // 素短语归约可能做多次
-                {
-                    // 寻找素短语的头部
-                    Symbol symbol;
-                    do
-                    {
-                        symbol = stackAnalysis[indexT];
-                        if (stackAnalysis[indexT - 1] is Terminal)
-                            indexT = indexT - 1;
-                        else
-                            indexT = indexT - 2;
-                    } while (GetPredictiveChar(stackAnalysis[indexT], symbol) != '<');
-
-                    //寻找对应的产生式进行规约
-                    var pPhrase = stackAnalysis.Skip(indexT + 1).ToArray();
-                    bool hasReduced = false; // 是否成功归约
-                    foreach (var p in grammar.P)
-                    {
-                        // 素短语与等长产生式右部比较
-                        var pRight = p.Right.ToArray();
-                        if (pPhrase.Length != pRight.Length)
-                            continue;
-                        bool isEqual = false;
-                        for (int i = 0; i < pPhrase.Length; i++)
-                        {
-                            if (pPhrase[i] is Terminal && pRight[i] is Terminal
-                                && pPhrase[i] == pRight[i])
-                            {
-                                if (i + 1 == pPhrase.Length)
-                                    isEqual = true;
-                                continue;
-                            }
-
-                            if (pPhrase[i] is NonTerminal && pRight[i] is NonTerminal)
-                            {
-                                if (i + 1 == pPhrase.Length)
-                                    isEqual = true;
-                                continue;
-                            }
-
-                            break;
-                        }
-                        if (isEqual)
-                        {
-                            // 找到对应产生式后进行规约
-                            stackAnalysis.RemoveRange(indexT + 1, pPhrase.Length);
-                            stackAnalysis.Add(p.Left);
-                            hasReduced = true;
-                            Console.WriteLine(p);
-                            break;
-                        }
-                    }
-
-                    if (!hasReduced)
-                        Error(); // 找不到相应的产生式归约，则出错
-                }
-
-                // 移进                
-                if (GetPredictiveChar(stackAnalysis[indexT], sym) == '\0')
+                actionTable.TryGetValue((stateStack[topStack], sym), out var actionItems);
+                if (actionItems == null || actionItems.Count == 0)
                     Error();
-                else stackAnalysis.Add(sym);
-
-            } while (sym != Terminal.EndTerminal);
-
-            // 识别成功
+                else
+                {
+                    if (actionItems[0] is ShiftItem shiftItem)
+                    {
+                        Push(shiftItem.State, sym);
+                        Advance();
+                    }
+                    else if (actionItems[0] is ReduceItem reduceItem)
+                    {
+                        Reduce(reduceItem.Production);
+                    }
+                    else if (actionItems[0] is AcceptItem)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (sym != Terminal.EndTerminal)
+                Error();
         }
 
         public void Analyzer()
