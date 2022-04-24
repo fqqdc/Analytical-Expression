@@ -12,12 +12,16 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Word", "char|char ?|char *"));
+            listProduction.AddRange(Production.Create("Word", "char"));
             listProduction.AddRange(Production.Create("Phrase", "Word|Phrase Word"));
-            listProduction.AddRange(Production.Create("Complex", "Phrase|( Phrase ) ?|( Phrase ) *"));
-            listProduction.AddRange(Production.Create("Exp", "Complex|Exp Complex"));
+            listProduction.AddRange(Production.Create("Group", "( Phrase )|( Array )"));
+            listProduction.AddRange(Production.Create("Array", "Word ?|Word *|Group ?|Group *"));
+            //listProduction.AddRange(Production.Create("Groups", "Group|Groups Group"));
+            //listProduction.AddRange(Production.Create("ExpGroups", "Phrase|Phrase Group"));
+            //listProduction.AddRange(Production.Create("Groups", "Group|Groups Group|Groups Phrase"));
+            //listProduction.AddRange(Production.Create("Exp", "Groups|Exp Groups|Exp ExpPhrase"));
 
-            Grammar grammar = new Grammar(listProduction, new("Exp"));
+            Grammar grammar = new Grammar(listProduction, new("Group"));
             Console.WriteLine(grammar);
 
             //if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
