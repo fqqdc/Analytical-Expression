@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using LexicalAnalyzer;
+using System;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace LexicalAnalyzer
+namespace LexicalAnalyzerTest
 {
     public class Program
     {
@@ -24,11 +22,13 @@ namespace LexicalAnalyzer
             // (a | b) * (aa | bb)(a | b) *
             // var nfa = aob.Closure().Join(aa.Or(bb)).Join(aob.Closure());
 
-            
+
             var digit = NFA.CreateRange('0', '3');
             var letter = NFA.CreateRange('a', 'c');
             // [a-z]([a-z]|[0-9])*
-            var nfa = letter.Join(letter.Or(digit));
+            //var nfa = letter.UnionNFA(letter.Or(digit));
+
+            var nfa = aa.UnionNFA(bb);
 
             Console.WriteLine(nfa);
             var dfa = DFA.CreateFrom(nfa);
