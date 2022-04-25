@@ -12,16 +12,13 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Word", "char"));
-            listProduction.AddRange(Production.Create("Phrase", "Word|Phrase Word"));
-            listProduction.AddRange(Production.Create("Group", "( Phrase )|( Array )"));
-            listProduction.AddRange(Production.Create("Array", "Word ?|Word *|Group ?|Group *"));
-            //listProduction.AddRange(Production.Create("Groups", "Group|Groups Group"));
-            //listProduction.AddRange(Production.Create("ExpGroups", "Phrase|Phrase Group"));
-            //listProduction.AddRange(Production.Create("Groups", "Group|Groups Group|Groups Phrase"));
-            //listProduction.AddRange(Production.Create("Exp", "Groups|Exp Groups|Exp ExpPhrase"));
+            listProduction.AddRange(Production.Create("Group", "( Exp )|char|[ char - char ]"));
+            listProduction.AddRange(Production.Create("Array", "Group ?|Group *|Group +"));
+            listProduction.AddRange(Production.Create("JoinExp", "Group|Array|JoinExp Group|JoinExp Array"));
+            listProduction.AddRange(Production.Create("OrExp", "JoinExp|OrExp or JoinExp"));
+            listProduction.AddRange(Production.Create("Exp", "OrExp"));
 
-            Grammar grammar = new Grammar(listProduction, new("Group"));
+            Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
 
             //if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
@@ -38,20 +35,20 @@ namespace SyntaxAnalyzer
             //}
             //else Console.WriteLine(slrGrammar);
 
-            var clr1Grammar = CLR1Grammar.Create(grammar);
+            //var clr1Grammar = CLR1Grammar.Create(grammar);
 
-            Console.WriteLine();
-            Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
+            //Console.WriteLine();
+            //Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
 
-            Console.WriteLine(clr1Grammar);
+            //Console.WriteLine(clr1Grammar);
 
-            //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
-            //    return;
-            //}
-            //else Console.WriteLine(lr1Grammar);
+            if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
+                return;
+            }
+            else Console.WriteLine(lr1Grammar);
 
             //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
             //{
@@ -60,10 +57,7 @@ namespace SyntaxAnalyzer
             //}
             //else Console.WriteLine(lalrGrammar);
 
-
-            return;
-
-            string strInput = "a b ( c * d ) ?";
+            string strInput = "[ a - z ] * ( b | c ) z z z ( c * d ) ? | a b c";
             int index = 0;
 
             SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
@@ -72,14 +66,27 @@ namespace SyntaxAnalyzer
                 if (index < input.Length)
                 {
                     var c = input[index];
-                    if (c != "*" && c != "?" && c != "(" && c != ")")
+
+                    switch (c)
                     {
-                        sym = new Terminal("char");
+                        case "(":
+                        case ")":
+                        case "?":
+                        case "+":
+                        case "*":
+                        case "[":
+                        case "-":
+                        case "]":
+                            sym = new Terminal(c.ToString()); ;
+                            break;
+                        case "|":
+                            sym = new Terminal("or"); ;
+                            break;
+                        default:
+                            sym = new CharTerminal(Char.Parse(c));
+                            break;
                     }
-                    else
-                    {
-                        sym = new Terminal(c.ToString()); ;
-                    }
+
                     index = index + 1;
                 }
                 else
@@ -88,9 +95,10 @@ namespace SyntaxAnalyzer
                 }
             };
 
-            //LR1SyntaxAnalyzer analyzer = new(lr1Grammar, p);
+            LR1SyntaxAnalyzer analyzer = new(lr1Grammar, p);
 
-            //analyzer.Analyzer();
+            Console.WriteLine(strInput);
+            analyzer.Analyzer();
             Console.WriteLine("OK");
         }
 

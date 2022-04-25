@@ -91,7 +91,11 @@ namespace SyntaxAnalyzer
                 var strSymbol = string.Join(" ", symbolStack.Take(topStack + 1));
                 Console.WriteLine($"{strState}, {strSymbol}, {sym}");
 
-                actionTable.TryGetValue((stateStack[topStack], sym), out var actionItems);
+                var key = sym;
+                if (sym is CharTerminal)
+                    key = new Terminal(sym.Name);
+
+                actionTable.TryGetValue((stateStack[topStack], key), out var actionItems);
                 if (actionItems == null || actionItems.Count == 0)
                     Error();
                 else
