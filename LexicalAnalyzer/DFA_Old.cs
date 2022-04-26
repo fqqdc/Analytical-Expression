@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace LexicalAnalyzer
 {
-    public class DFA2 : FA
+    public class DFA_Old : FA
     {
-        public DFA2(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
+        public DFA_Old(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
             : base(S, Sigma, MappingTable, Z) { this.S_0 = S_0; }
         public int S_0 { get; private set; }
 
@@ -17,13 +17,10 @@ namespace LexicalAnalyzer
             builder.Append(PRE).Append($"S_0 : {S_0}").AppendLine();
         }
 
-
-
-
-        public static DFA2 CreateFrom(NFA nfa)
+        public static DFA_Old CreateFrom(NFA nfa)
         {
-            // 初始化，添加唯一的初态x，返回(x, 新NFA)
-            static (int x, NFA newNfa) InitNfa(NFA dig)
+            // 初始化，添加唯一的初态x，唯一的终态y，返回(x, 新NFA, y)
+            static (int x, NFA newNfa, int y) InitNfa(NFA dig)
             {
                 //S
                 var S = new HashSet<int>();
@@ -31,6 +28,8 @@ namespace LexicalAnalyzer
                 S.Add(x);
                 var base_id = S.Count;
                 S.UnionWith(dig.S.Select(s => base_id + s));
+                int y = S.Count;
+                S.Add(y);
 
                 //Sigma
                 var Sigma = new HashSet<char>();
@@ -42,7 +41,7 @@ namespace LexicalAnalyzer
 
                 //Z
                 var Z = new HashSet<int>();
-                Z.UnionWith(dig.Z.Select(s => base_id + s));
+                Z.Add(y);
 
                 //S_0
                 var S_0 = new HashSet<int>();
@@ -50,8 +49,9 @@ namespace LexicalAnalyzer
 
                 //Init
                 MappingTable.UnionWith(dig.S_0.Select(s => (x, FA.CHAR_Epsilon, base_id + s)));
+                MappingTable.UnionWith(dig.Z.Select(z => (base_id + z, FA.CHAR_Epsilon, y)));
 
-                return (x, new(S, Sigma, MappingTable, S_0, Z));
+                return (x, new(S, Sigma, MappingTable, S_0, Z), y);
             }
             static HashSet<int> EpsilonClosureSingle(IEnumerable<(int s1, char c, int s2)> nfaMappingTable, int s)
             {
@@ -95,7 +95,7 @@ namespace LexicalAnalyzer
             }
 
             Dictionary<HashSet<int>, int> Set2Id = new(HashSetComparer<int>.Default);
-            (var x, nfa) = InitNfa(nfa); // 初始化
+            (var x, nfa, var y) = InitNfa(nfa); // 初始化
             var nfaMappingTable = nfa.MappingTable;
             var Q = new HashSet<HashSet<int>>(HashSetComparer<int>.Default);
             var workQ = new Queue<HashSet<int>>();
@@ -132,22 +132,7 @@ namespace LexicalAnalyzer
             var Sigma = nfa.Sigma.ToArray();
 
             //Z
-            Console.WriteLine(nfa);
-
-            var Z = Q.Where(s =>
-            {
-                var result = s.Intersect(nfa.Z).Any();
-                return result;
-            })
-                .Select(s =>
-                {
-                    var id = Set2Id[s];
-                    Console.WriteLine($"{id}:{string.Join(" ", s)}");
-                    return id;
-                })
-                .ToArray();
-
-            Console.WriteLine();
+            var Z = Q.Where(s => s.Contains(y)).Select(s => Set2Id[s]).ToArray();
 
             //S_0
             var S_0 = Q.Where(s => s.Contains(x)).Select(s => Set2Id[s]).Single();
@@ -155,7 +140,7 @@ namespace LexicalAnalyzer
             return new(S, Sigma, MappingTable, S_0, Z);
         }
 
-        public DFA2 Minimize()
+        public DFA_Old Minimize()
         {
             // 分割 非终态集合、终态集合
             var Q = S.GroupBy(s => Z.Contains(s)).Select(g => g.ToHashSet())
@@ -173,10 +158,22 @@ namespace LexicalAnalyzer
                     foreach (var c in Sigma)
                     {
                         // 分割
-                        var arrI = MappingTable.Where(i => I.Contains(i.s1) && i.c == c)
-                            .GroupBy(i => Q.Single(sI => sI.Contains(i.s2)), HashSetComparer<int>.Default)
-                            .Select(g => g.Select(i => i.s1).ToHashSet())
-                            .ToArray();
+                        // 查找所有状态转移记录
+                        var e1 = MappingTable.Where(i => I.Contains(i.s1) && i.c == c); 
+#if DEBUG
+                        // 左连接，I中各个元素的状态转移结果
+                        var e2 = I.GroupJoin(e1, out_i => out_i, in_i => in_i.s1,
+                            (out_i, in_arr) => new { s1 = out_i, I = in_arr.Any() ? Q.Single(I => I.Contains(in_arr.Single().s2)) : null });
+#else
+                        var e2 = I.GroupJoin(e1, out_i => out_i, in_i => in_i.s1,
+                            (out_i, in_arr) => new { s1 = out_i, I = in_arr.Any() ? Q.First(I => I.Contains(in_arr.First().s2)) : null });
+#endif
+
+                        // 根据转移结果分组
+                        var e3 = e2.GroupBy(i => i.I)
+                            .Select(g => g.Select(i => i.s1).ToHashSet());
+                        var arrI = e3.ToArray();
+
 
                         if (arrI.Length > 1)
                         {
@@ -240,7 +237,7 @@ namespace LexicalAnalyzer
         }
     }
 
-    public static class DFA2Helper
+    public static class DFAHelper
     {
 
     }

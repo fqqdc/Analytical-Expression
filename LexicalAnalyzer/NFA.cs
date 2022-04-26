@@ -13,6 +13,8 @@ namespace LexicalAnalyzer
             _S_0 = S_0.ToHashSet();
         }
 
+        public NFA(FA fa, IEnumerable<int> S_0) : this(fa.S, fa.Sigma, fa.MappingTable, S_0, fa.Z) { }
+
         protected HashSet<int> _S_0;
 
         public IEnumerable<int> S_0 { get => _S_0.AsEnumerable(); }

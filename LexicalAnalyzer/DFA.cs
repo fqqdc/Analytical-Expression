@@ -9,7 +9,12 @@ namespace LexicalAnalyzer
     public class DFA : FA
     {
         public DFA(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
-            : base(S, Sigma, MappingTable, Z) { this.S_0 = S_0; }
+            : base(S, Sigma, MappingTable, Z)
+        {
+            this.S_0 = S_0;
+            this._ZNfaNodes = new();
+        }
+
         public int S_0 { get; private set; }
 
         protected override void S0ToString(StringBuilder builder)
@@ -17,19 +22,38 @@ namespace LexicalAnalyzer
             builder.Append(PRE).Append($"S_0 : {S_0}").AppendLine();
         }
 
-        public static DFA CreateFrom(NFA nfa)
+        protected void NfaNodesToString(StringBuilder builder)
         {
-            // 初始化，添加唯一的初态x，唯一的终态y，返回(x, 新NFA, y)
-            static (int x, NFA newNfa, int y) InitNfa(NFA dig)
+            builder.Append($"NfaNodesToString :").AppendLine();
+            foreach (var s in _Z)
+            {
+                builder.Append(PRE).Append($"{s} : {string.Join(" ", _ZNfaNodes[s].OrderBy(i => i))}").AppendLine();
+            }
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new();
+            builder.AppendLine(base.ToString());
+            NfaNodesToString(builder);
+            return builder.ToString();
+        }
+
+        private Dictionary<int, HashSet<int>> _ZNfaNodes;
+        public Dictionary<int, HashSet<int>> ZNfaNodes
+        {
+            get { return _ZNfaNodes.ToDictionary(i => i.Key, i => i.Value.ToHashSet()); }
+        }
+
+        private static DFA CreateFrom(NFA nfa)
+        {
+            // 初始化，添加唯一的初态x，返回(x, 新NFA)
+            static (int x, NFA newNfa) InitNfa(NFA dig)
             {
                 //S
-                var S = new HashSet<int>();
-                int x = 0;
+                var S = new HashSet<int>(dig.S);
+                int x = S.Count;
                 S.Add(x);
-                var base_id = S.Count;
-                S.UnionWith(dig.S.Select(s => base_id + s));
-                int y = S.Count;
-                S.Add(y);
 
                 //Sigma
                 var Sigma = new HashSet<char>();
@@ -37,21 +61,20 @@ namespace LexicalAnalyzer
 
                 //Mapping
                 var MappingTable = new HashSet<(int s1, char c, int s2)>();
-                MappingTable.UnionWith(dig.MappingTable.Select(i => (base_id + i.s1, i.c, base_id + i.s2)));
+                MappingTable.UnionWith(dig.MappingTable);
 
                 //Z
                 var Z = new HashSet<int>();
-                Z.Add(y);
+                Z.UnionWith(dig.Z);
 
                 //S_0
                 var S_0 = new HashSet<int>();
                 S_0.Add(x);
 
                 //Init
-                MappingTable.UnionWith(dig.S_0.Select(s => (x, FA.CHAR_Epsilon, base_id + s)));
-                MappingTable.UnionWith(dig.Z.Select(z => (base_id + z, FA.CHAR_Epsilon, y)));
+                MappingTable.UnionWith(dig.S_0.Select(s => (x, FA.CHAR_Epsilon, s)));
 
-                return (x, new(S, Sigma, MappingTable, S_0, Z), y);
+                return (x, new(S, Sigma, MappingTable, S_0, Z));
             }
             static HashSet<int> EpsilonClosureSingle(IEnumerable<(int s1, char c, int s2)> nfaMappingTable, int s)
             {
@@ -95,7 +118,7 @@ namespace LexicalAnalyzer
             }
 
             Dictionary<HashSet<int>, int> Set2Id = new(HashSetComparer<int>.Default);
-            (var x, nfa, var y) = InitNfa(nfa); // 初始化
+            (var x, nfa) = InitNfa(nfa); // 初始化
             var nfaMappingTable = nfa.MappingTable;
             var Q = new HashSet<HashSet<int>>(HashSetComparer<int>.Default);
             var workQ = new Queue<HashSet<int>>();
@@ -132,20 +155,46 @@ namespace LexicalAnalyzer
             var Sigma = nfa.Sigma.ToArray();
 
             //Z
-            var Z = Q.Where(s => s.Contains(y)).Select(s => Set2Id[s]).ToArray();
+            var Qz = Q.Where(s => s.Intersect(nfa.Z).Any());
+            var Z = Qz.Select(s => Set2Id[s]).ToArray();
+
+            //ZNfaNodes
+            var nfaNodes = Qz.ToDictionary(I => Set2Id[I], I => I.Intersect(nfa.Z).ToHashSet());
 
             //S_0
             var S_0 = Q.Where(s => s.Contains(x)).Select(s => Set2Id[s]).Single();
 
-            return new(S, Sigma, MappingTable, S_0, Z);
+            return new(S, Sigma, MappingTable, S_0, Z) { _ZNfaNodes = nfaNodes };
         }
 
-        public DFA Minimize()
+        /// <summary>
+        /// 分割集合
+        /// 按 非终态集合、终态集合 分割
+        /// </summary>
+        private HashSet<HashSet<int>> SplitSet()
         {
-            // 分割 非终态集合、终态集合
-            var Q = S.GroupBy(s => Z.Contains(s)).Select(g => g.ToHashSet())
+            return S.GroupBy(s => Z.Contains(s)).Select(g => g.ToHashSet())
                 .ToHashSet(HashSetComparer<int>.Default);
+        }
 
+        /// <summary>
+        /// 分割集合
+        /// 按 非终态集合、终态集合 分割
+        /// 其中 终态集合 按原NFA中的终态情况分割
+        /// </summary>
+        private HashSet<HashSet<int>> SplitSetByNfa()
+        {
+            return S.GroupJoin(Z,
+                    s => s,
+                    z => z,
+                    (s, arrZ) => new { s, nfaNodes = arrZ.SelectMany(z => _ZNfaNodes[z]).ToHashSet() })
+                .GroupBy(i => i.nfaNodes, HashSetComparer<int>.Default)
+                .Select(g => g.Select(i => i.s).ToHashSet())
+                .ToHashSet(HashSetComparer<int>.Default);
+        }
+
+        public DFA MinimizeProcess(HashSet<HashSet<int>> Q)
+        {
             // 分割 子集
             bool isChanged = true;
             while (isChanged)
@@ -158,20 +207,21 @@ namespace LexicalAnalyzer
                     foreach (var c in Sigma)
                     {
                         // 分割
-                        var arrI = MappingTable.Where(i => I.Contains(i.s1) && i.c == c)
-                            .GroupBy(i => Q.Single(sI => sI.Contains(i.s2)), HashSetComparer<int>.Default)
-                            .Select(g => g.Select(i => i.s1).ToHashSet())
-                            .ToArray();
-
-                        throw new NotImplementedException();
-
-                        var e1 = MappingTable.Where(i => c == c);
+                        // 查找所有状态转移记录
+                        var e1 = MappingTable.Where(i => I.Contains(i.s1) && i.c == c);
+#if DEBUG
+                        // 左连接，I中各个元素的状态转移结果
                         var e2 = I.GroupJoin(e1, out_i => out_i, in_i => in_i.s1,
-                            (out_i, in_arr) => new { out_i, });
-                        //var e2 = e1.GroupBy(i => Q.Single(sI => sI.Contains(i.s2)), HashSetComparer<int>.Default);
-                        //var e3 = e2.Select(g => g.Select(i => i.s1).ToHashSet());
-                        //var arrI = e3.ToArray();
+                            (out_i, in_arr) => new { s1 = out_i, I = in_arr.Any() ? Q.Single(I => I.Contains(in_arr.Single().s2)) : null });
+#else
+                        var e2 = I.GroupJoin(e1, out_i => out_i, in_i => in_i.s1,
+                            (out_i, in_arr) => new { s1 = out_i, I = in_arr.Any() ? Q.First(I => I.Contains(in_arr.First().s2)) : null });
+#endif
 
+                        // 根据转移结果分组
+                        var e3 = e2.GroupBy(i => i.I)
+                            .Select(g => g.Select(i => i.s1).ToHashSet());
+                        var arrI = e3.ToArray();
 
                         if (arrI.Length > 1)
                         {
@@ -223,15 +273,32 @@ namespace LexicalAnalyzer
             var Z_I = Q.Where(I => I.Any(s => Z.Contains(s)));
             var newZ = Z_I.Select(I => Set2Id[I]).ToArray();
 
+            //NfaNodes
+            var nfaNodes = Z_I.ToDictionary(I => Set2Id[I], I => I.SelectMany(s => _ZNfaNodes[s]).ToHashSet());
+
             //S_0
             var newS_0 = Set2Id[I_0];
 
-            return new(newS, newSigma, newMappingTable, newS_0, newZ);
+            return new(newS, newSigma, newMappingTable, newS_0, newZ) { _ZNfaNodes = nfaNodes };
+        }
+
+        public DFA Minimize()
+        {
+            return MinimizeProcess(SplitSet());
+        }
+
+        public DFA MinimizeByNfaFinal()
+        {
+            return MinimizeProcess(SplitSetByNfa());
         }
 
         public NFA ToNFA()
         {
-            return new(S, Sigma, MappingTable, new int[] { S_0 }, Z);
+            bool addTail = _Z.Count > 1;
+            var nfa = new NFA(S, Sigma, MappingTable, new int[] { S_0 }, Z);
+            if (addTail)
+                nfa = nfa.Join(NFA.CreateEpsilon());
+            return nfa;
         }
     }
 
