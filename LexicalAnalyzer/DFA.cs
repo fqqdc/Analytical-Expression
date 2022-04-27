@@ -45,7 +45,7 @@ namespace LexicalAnalyzer
             get { return _ZNfaNodes.ToDictionary(i => i.Key, i => i.Value.ToHashSet()); }
         }
 
-        private static DFA CreateFrom(NFA nfa)
+        public static DFA CreateFrom(NFA nfa)
         {
             // 初始化，添加唯一的初态x，返回(x, 新NFA)
             static (int x, NFA newNfa) InitNfa(NFA dig)
@@ -271,7 +271,7 @@ namespace LexicalAnalyzer
 
             //Z
             var Z_I = Q.Where(I => I.Any(s => Z.Contains(s)));
-            var newZ = Z_I.Select(I => Set2Id[I]).ToArray();
+            var newZ = Z_I.Select(I => Set2Id[I]).OrderBy(i => i).ToArray();
 
             //NfaNodes
             var nfaNodes = Z_I.ToDictionary(I => Set2Id[I], I => I.SelectMany(s => _ZNfaNodes[s]).ToHashSet());
@@ -300,10 +300,5 @@ namespace LexicalAnalyzer
                 nfa = nfa.Join(NFA.CreateEpsilon());
             return nfa;
         }
-    }
-
-    public static class DFAHelper
-    {
-
     }
 }

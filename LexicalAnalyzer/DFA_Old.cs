@@ -236,9 +236,4 @@ namespace LexicalAnalyzer
             return new(S, Sigma, MappingTable, new int[] { S_0 }, Z);
         }
     }
-
-    public static class DFAHelper
-    {
-
-    }
 }
