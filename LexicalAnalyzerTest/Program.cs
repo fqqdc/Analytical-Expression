@@ -54,6 +54,7 @@ namespace LexicalAnalyzerTest
             list.Add((nfa1, new Terminal("char")));
             list.Add((escapeCharGroup, new Terminal("charGroup")));
             list.Add((nfaSkip, new Terminal("skip")));
+
             List<Terminal> skipTerminals = new();
             skipTerminals.Add(new Terminal("skip"));
 

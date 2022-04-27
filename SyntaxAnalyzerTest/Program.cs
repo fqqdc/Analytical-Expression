@@ -1,18 +1,19 @@
-﻿using System;
+﻿using SyntaxAnalyzer;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SyntaxAnalyzer
+namespace SyntaxAnalyzerTest
 {
     public class Program
     {
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Group", "( Exp )|char|charGroup|[ CharGroup ]"));            
+            listProduction.AddRange(Production.Create("Group", "( Exp )|char|charGroup|[ CharGroup ]"));
             listProduction.AddRange(Production.Create("CharGroup", "char - char|char|CharGroup char - char|CharGroup char"));
             listProduction.AddRange(Production.Create("Array", "Group ?|Group *|Group +"));
             listProduction.AddRange(Production.Create("JoinExp", "Group|Array|JoinExp Group|JoinExp Array"));
@@ -61,7 +62,7 @@ namespace SyntaxAnalyzer
             string strInput = "[ a - c A B C x - z ] * ( b | c ) z z z ( c * d ) ? | a b c";
             int index = 0;
 
-            SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
+            SyntaxAnalyzer.SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
             {
                 var input = strInput.Split(' ');
                 if (index < input.Length)
@@ -84,7 +85,7 @@ namespace SyntaxAnalyzer
                             sym = new Terminal("or"); ;
                             break;
                         default:
-                            sym = new CharTerminal(Char.Parse(c));
+                            sym = new CharTerminal(char.Parse(c));
                             break;
                     }
 
