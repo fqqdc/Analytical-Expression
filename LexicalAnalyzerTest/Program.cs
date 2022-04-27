@@ -26,33 +26,20 @@ namespace LexicalAnalyzerTest
             // (a | b) * (aa | bb)(a | b) *
             var nfa1 = aob.Closure().Join(aa.Or(bb)).Join(aob.Closure());
 
-            var digit = NFA.CreateRange('0', '6');
-            var letter = NFA.CreateRange('a', 'f');
+            var digit = NFA.CreateRange('0', '9');
+            var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
+            char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
+            var escape = NFA.CreateFromString("\\\\",
+                "\\|", "\\?", "\\*", "\\+", "\\.", "\\(", "\\)", "\\[", "\\]", "\\-");
+            var escapeCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
             // [a-c]([a-c]|[0-9])*
             var nfa2 = letter.Join(letter.Or(digit).Closure());
 
-            nfa1 = letter.Join(digit.Or(letter).Closure());
-            nfa2 = digit.Join(digit.Closure());
-            var nfa3 = digit.Or(letter).Join(digit.Or(letter).Closure());
+            nfa1 = digit.Or(letter).Or(escape);
+
             var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
 
-            //var dfa1 = DFA.CreateFrom(nfa1);
-            //var minDfa1 = dfa1.Minimize();
-            //nfa1 = minDfa1.ToNFA();
-            //var dfa2 = DFA.CreateFrom(nfa2);
-            //var minDfa2 = dfa2.Minimize();
-            //nfa2 = minDfa2.ToNFA();
-            //var dfa3 = DFA.CreateFrom(nfa3);
-            //var minDfa3 = dfa3.Minimize();
-            //nfa3 = minDfa3.ToNFA();
-
-
-            //Console.WriteLine(nfa1);
-            //Console.WriteLine(nfa2);
-            //Console.WriteLine(nfa3);
-
-            //var nfa = nfa1.UnionNFA(nfa2).UnionNFA(nfaSpace);
-            ////var nfa = nfa3;
+            //var nfa = escape;
 
             //Console.WriteLine(nfa);
             //var dfa = DFA.CreateFrom(nfa);
@@ -64,21 +51,24 @@ namespace LexicalAnalyzerTest
 
 
             List<(NFA, Terminal)> list = new();
-            //list.Add((nfa1, new Terminal("id")));
-            list.Add((nfa2, new Terminal("int")));
-            list.Add((nfa3, new Terminal("other")));
+            list.Add((nfa1, new Terminal("char")));
+            list.Add((escapeCharGroup, new Terminal("charGroup")));
             list.Add((nfaSkip, new Terminal("skip")));
             List<Terminal> skipTerminals = new();
             skipTerminals.Add(new Terminal("skip"));
 
+            foreach (var cOpt in opts)
+            {
+                list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
+            }
+
             StringBuilder stringToRead = new StringBuilder();
-            stringToRead.AppendLine("abc abc123");
-            stringToRead.AppendLine("456 456edf");
+            stringToRead.AppendLine("[abc]+\\d*\\s?.*");
             using var reader = new StringReader(stringToRead.ToString());
             LexicalAnalyzer.LexicalAnalyzer analyzer = new(list, skipTerminals);
             foreach (var item in analyzer.GetEnumerator(reader))
             {
-                Console.WriteLine(item);
+                Console.WriteLine($"({item.terminal}, {item.token.Escape()})");
             }
 
 

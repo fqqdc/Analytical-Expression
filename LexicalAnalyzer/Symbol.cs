@@ -6,7 +6,12 @@ namespace LexicalAnalyzer
     {
         public override string ToString()
         {
-            return $"{Name}";
+            StringBuilder builder = new();
+            foreach (var c in Name)
+            {
+                builder.Append(c.Escape());
+            }
+            return builder.ToString();
         }
     }
     public record Terminal(string Name) : Symbol(Name)

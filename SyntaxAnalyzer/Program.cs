@@ -12,7 +12,8 @@ namespace SyntaxAnalyzer
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Group", "( Exp )|char|[ char - char ]"));
+            listProduction.AddRange(Production.Create("Group", "( Exp )|char|charGroup|[ CharGroup ]"));            
+            listProduction.AddRange(Production.Create("CharGroup", "char - char|char|CharGroup char - char|CharGroup char"));
             listProduction.AddRange(Production.Create("Array", "Group ?|Group *|Group +"));
             listProduction.AddRange(Production.Create("JoinExp", "Group|Array|JoinExp Group|JoinExp Array"));
             listProduction.AddRange(Production.Create("OrExp", "JoinExp|OrExp or JoinExp"));
@@ -57,7 +58,7 @@ namespace SyntaxAnalyzer
             //}
             //else Console.WriteLine(lalrGrammar);
 
-            string strInput = "[ a - z ] * ( b | c ) z z z ( c * d ) ? | a b c";
+            string strInput = "[ a - c A B C x - z ] * ( b | c ) z z z ( c * d ) ? | a b c";
             int index = 0;
 
             SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>

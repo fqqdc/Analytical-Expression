@@ -63,7 +63,7 @@ namespace LexicalAnalyzer
             builder.Append(PRE).Append($"Sigma : {{");
             foreach (var t in Sigma)
             {
-                builder.Append($" {t},");
+                builder.Append($" {t.Escape()},");
             }
             builder.Length -= 1;
             builder.Append(" }").AppendLine();
@@ -77,7 +77,7 @@ namespace LexicalAnalyzer
                 builder.Append(PRE).Append(PRE);
                 foreach (var p in pGroup.OrderBy(p => p.c).ThenBy(p => p.s2))
                 {
-                    string strChar = p.c.ToString();
+                    string strChar = p.c.Escape();
                     if (p.c == CHAR_Epsilon)
                         strChar = STRING_Epsilon;
 

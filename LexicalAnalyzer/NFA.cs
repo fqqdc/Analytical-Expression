@@ -50,6 +50,26 @@ namespace LexicalAnalyzer
             return new(S, Sigma, MappingTable, S_0, Z);
         }
 
+        public static NFA CreateFrom(params char[] chars)
+        {
+            NFA dig = CreateEpsilon();
+            foreach (var c in chars)
+            {
+                dig = dig.Or(CreateFrom(c));
+            }
+            return dig;
+        }
+        public static NFA[] CreateArrayFrom(params char[] chars)
+        {
+            NFA[] arrNFA = new NFA[chars.Length];
+            for(int i = 0; i < arrNFA.Length; i++)
+            {
+                arrNFA[i] = NFA.CreateFrom(chars[i]);
+            }
+            return arrNFA;
+        }
+
+
         //{eps}
         public static NFA CreateEpsilon()
         {
@@ -111,6 +131,16 @@ namespace LexicalAnalyzer
             foreach (var c in str)
             {
                 dig = dig.Join(CreateFrom(c));
+            }
+            return dig;
+        }
+
+        public static NFA CreateFromString(params string[] arr)
+        {
+            NFA dig = CreateEpsilon();
+            foreach (var str in arr)
+            {
+                dig = dig.Or(CreateFromString(str));
             }
             return dig;
         }
