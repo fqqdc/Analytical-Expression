@@ -81,13 +81,10 @@ namespace LexicalAnalyzer
             return (unionDFA, z2TerminalTable);
         }
 
-        public IEnumerable<(Terminal terminal, string token)> GetEnumerator(TextReader reader)
+        public IEnumerator<(Terminal terminal, string token)> GetEnumerator(TextReader reader)
         {
             var (dfa, table) = UnionNFA();
-            var enumerator = new LexicalAnalyzerEnumerator(reader, dfa, table, skipTerminals);
-
-            while (enumerator.MoveNext())
-                yield return enumerator.Current;
+            return new LexicalAnalyzerEnumerator(reader, dfa, table, skipTerminals);
         }
 
         public LexicalAnalyzer(IEnumerable<(NFA nfa, Terminal terminal)> nfaList,

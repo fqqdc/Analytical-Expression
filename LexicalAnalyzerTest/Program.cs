@@ -67,8 +67,10 @@ namespace LexicalAnalyzerTest
             stringToRead.AppendLine("[abc]+\\d*\\s?.*");
             using var reader = new StringReader(stringToRead.ToString());
             LexicalAnalyzer.LexicalAnalyzer analyzer = new(list, skipTerminals);
-            foreach (var item in analyzer.GetEnumerator(reader))
+            var e = analyzer.GetEnumerator(reader);
+            while (e.MoveNext())
             {
+                var item = e.Current;
                 Console.WriteLine($"({item.terminal}, {item.token.Escape()})");
             }
 

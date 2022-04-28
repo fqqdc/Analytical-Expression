@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LexicalAnalyzer;
+using System.IO;
 
 namespace SyntaxAnalyzerTest
 {
@@ -22,6 +24,7 @@ namespace SyntaxAnalyzerTest
 
             Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
+
 
             //if (!LR0Grammar.TryCreate(grammar, out var rl0Grammar, out var rl0Msg))
             //{
@@ -59,48 +62,39 @@ namespace SyntaxAnalyzerTest
             //}
             //else Console.WriteLine(lalrGrammar);
 
-            string strInput = "[ a - c A B C x - z ] * ( b | c ) z z z ( c * d ) ? | a b c";
-            int index = 0;
+            var digit = NFA.CreateRange('0', '9');
+            var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
+            char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
+            var escape = NFA.CreateFromString("\\\\",
+                "\\|", "\\?", "\\*", "\\+", "\\.", "\\(", "\\)", "\\[", "\\]", "\\-");
+            var escapeCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
 
-            SyntaxAnalyzer.SyntaxAnalyzer.AdvanceProcedure p = (out Terminal sym) =>
+            var nfaChar = digit.Or(letter).Or(escape);
+            var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
+
+            List<(NFA, Terminal)> list = new();
+            list.Add((nfaChar, new Terminal("char")));
+            list.Add((escapeCharGroup, new Terminal("charGroup")));
+            list.Add((nfaSkip, new Terminal("skip")));
+
+            List<Terminal> skipTerminals = new();
+            skipTerminals.Add(new Terminal("skip"));
+
+            foreach (var cOpt in opts)
             {
-                var input = strInput.Split(' ');
-                if (index < input.Length)
-                {
-                    var c = input[index];
+                list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
+            }
 
-                    switch (c)
-                    {
-                        case "(":
-                        case ")":
-                        case "?":
-                        case "+":
-                        case "*":
-                        case "[":
-                        case "-":
-                        case "]":
-                            sym = new Terminal(c.ToString()); ;
-                            break;
-                        case "|":
-                            sym = new Terminal("or"); ;
-                            break;
-                        default:
-                            sym = new CharTerminal(char.Parse(c));
-                            break;
-                    }
+            LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(list, skipTerminals);
 
-                    index = index + 1;
-                }
-                else
-                {
-                    sym = Terminal.EndTerminal;
-                }
-            };
+            StringBuilder stringToRead = new();
+            stringToRead.AppendLine("[a-cA-C]+\\d*(ef)?\\*");
+            using var reader = new StringReader(stringToRead.ToString());
 
-            LR1SyntaxAnalyzer analyzer = new(lr1Grammar, p);
+            RegularLRSyntaxAnalyzer analyzer = new(lr1Grammar.GetAction(), lr1Grammar.GetGoto(), lexicalAnalyzer.GetEnumerator(reader));
 
-            Console.WriteLine(strInput);
             analyzer.Analyzer();
+            Console.WriteLine(DFA.CreateFrom(analyzer.RegularNFA).Minimize());
             Console.WriteLine("OK");
         }
 

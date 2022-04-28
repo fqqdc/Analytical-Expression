@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LexicalAnalyzer;
 
 namespace SyntaxAnalyzer
 {
     /// <summary>
     /// LR1分析器
     /// </summary>
-    public class LR1SyntaxAnalyzer : SyntaxAnalyzer
+    public class LRSyntaxAnalyzer : SyntaxAnalyzer
     {
-        private LR1Grammar grammar;
-        private AdvanceProcedure advanceProcedure;
+        private IEnumerator<(Terminal sym, string symToken)> symEnumerator;
         private Terminal sym = Terminal.Epsilon;
-        private Dictionary<Symbol, int> symbolIndex = new();
+        private string symToken = string.Empty;
 
-        private Symbol[] symbolStack;
-        private int[] stateStack;
+        private Symbol[] symbolStack = new Symbol[0];
+        private int[] stateStack = new int[0];
         private int topStack = 0;
 
         private Dictionary<(int state, Terminal t), List<ActionItem>> actionTable;
@@ -51,6 +51,7 @@ namespace SyntaxAnalyzer
                 length = 0;
             topStack -= length;
             var state = stateStack[topStack];
+            var right = symbolStack.Skip(topStack + 1).Take(length).ToArray();
 
             if (!gotoTable.TryGetValue((state, p.Left), out var nextState))
                 Error();
@@ -60,19 +61,34 @@ namespace SyntaxAnalyzer
                 Push(nextState, p.Left);
             }
         }
+        protected virtual void OnShiftItem(Terminal terminal, String terminalToken) { }
+        protected virtual void OnReduceItem(Production production) { }
+        protected virtual void OnAcceptItem() { }
 
-        public LR1SyntaxAnalyzer(LR1Grammar grammar, AdvanceProcedure advanceProcedure)
+        public LRSyntaxAnalyzer(
+            Dictionary<(int state, Terminal t), List<ActionItem>> actionTable,
+            Dictionary<(int state, NonTerminal t), int> gotoTable,
+            IEnumerator<(Terminal sym, string symToken)> symEnumerator)
         {
-            this.grammar = grammar;
-            this.advanceProcedure = advanceProcedure;
-            this.actionTable = grammar.GetAction();
-            this.gotoTable = grammar.GetGoto();
+            this.symEnumerator = symEnumerator;
+            this.actionTable = actionTable;
+            this.gotoTable = gotoTable;
         }
 
         private void Advance()
         {
-            advanceProcedure(out this.sym);
-            //Console.WriteLine($"input:{this.sym}");
+            if (symEnumerator.MoveNext())
+            {
+                var item = symEnumerator.Current;
+                sym = item.sym;
+                symToken = item.symToken;
+            }
+            else
+            {
+                sym = Terminal.EndTerminal;
+                symToken = String.Empty;
+            }
+            Console.WriteLine($"input:{sym},{symToken}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
@@ -91,26 +107,25 @@ namespace SyntaxAnalyzer
                 var strSymbol = string.Join(" ", symbolStack.Take(topStack + 1));
                 Console.WriteLine($"{strState}, {strSymbol}, {sym}");
 
-                var key = sym;
-                if (sym is CharTerminal)
-                    key = new Terminal(sym.Name);
-
-                actionTable.TryGetValue((stateStack[topStack], key), out var actionItems);
+                actionTable.TryGetValue((stateStack[topStack], sym), out var actionItems);
                 if (actionItems == null || actionItems.Count == 0)
                     Error();
                 else
                 {
                     if (actionItems[0] is ShiftItem shiftItem)
                     {
-                        Push(shiftItem.State, sym);
+                        Push(shiftItem.State, sym);                        
+                        OnShiftItem(sym, symToken);
                         Advance();
                     }
                     else if (actionItems[0] is ReduceItem reduceItem)
                     {
                         Reduce(reduceItem.Production);
+                        OnReduceItem(reduceItem.Production);
                     }
                     else if (actionItems[0] is AcceptItem)
                     {
+                        OnAcceptItem();
                         break;
                     }
                 }
