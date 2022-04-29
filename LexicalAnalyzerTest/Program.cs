@@ -49,7 +49,6 @@ namespace LexicalAnalyzerTest
             //dfa = dfa.Minimize();
             //Console.WriteLine(dfa);
 
-
             List<(NFA, Terminal)> list = new();
             list.Add((nfa1, new Terminal("char")));
             list.Add((escapeCharGroup, new Terminal("charGroup")));
@@ -63,10 +62,27 @@ namespace LexicalAnalyzerTest
                 list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
             }
 
+            LexicalAnalyzer.LexicalAnalyzer analyzer = new(list, skipTerminals);
+
+            FileInfo fileInfo = new FileInfo("escapeLexer.tokens");
+            using (var fs = fileInfo.Open(FileMode.Create))
+            using (var bw = new BinaryWriter(fs))
+            {
+                analyzer.Save(bw);
+            }
+            if (fileInfo.Exists)
+            {
+                using (var fs = fileInfo.Open(FileMode.Open))
+                using (var br = new BinaryReader(fs))
+                {
+                    analyzer = new(br);
+                }
+            }
+
             StringBuilder stringToRead = new StringBuilder();
             stringToRead.AppendLine("[abc]+\\d*\\s?.*");
             using var reader = new StringReader(stringToRead.ToString());
-            LexicalAnalyzer.LexicalAnalyzer analyzer = new(list, skipTerminals);
+            
             var e = analyzer.GetEnumerator(reader);
             while (e.MoveNext())
             {

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -18,6 +19,48 @@ namespace LexicalAnalyzer
         protected HashSet<int> _S_0;
 
         public IEnumerable<int> S_0 { get => _S_0.AsEnumerable(); }
+
+        public void Save(BinaryWriter bw)
+        {
+            var s0_size = _S_0.Count();
+            bw.Write(s0_size);
+            for (int j = 0; j < s0_size; j++)
+                bw.Write(_S_0.ElementAt(j));
+            var z_size = _Z.Count();
+            bw.Write(z_size);
+            for (int j = 0; j < z_size; j++)
+                bw.Write(_Z.ElementAt(j));
+            var table_size = _MappingTable.Count();
+            bw.Write(table_size);
+            for (int j = 0; j < table_size; j++)
+            {
+                var item = _MappingTable.ElementAt(j);
+                bw.Write(item.s1);
+                bw.Write(item.c);
+                bw.Write(item.s2);
+            }
+        }
+
+        public static NFA Load(BinaryReader br)
+        {
+            var s0_size = br.ReadInt32();
+            var s0 = new int[s0_size];
+            for (int i = 0; i < s0_size; i++)
+                s0[i] = br.ReadInt32();
+            var z_size = br.ReadInt32();
+            var z = new int[z_size];
+            for (int i = 0; i < z_size; i++)
+                z[i] = br.ReadInt32();
+            var table_size = br.ReadInt32();
+            var table = new (int s1, char c, int s2)[table_size];
+            for (int i = 0; i < table_size; i++)
+            {
+                table[i] = (br.ReadInt32(), br.ReadChar(), br.ReadInt32());
+            }
+            return new(table.Select(i => i.s1).Union(table.Select(i => i.s2)),
+                table.Select(i => i.c).Where(c => c != FA.CHAR_Epsilon),
+                table, s0, z);
+        }
 
         //{t}
         public static NFA CreateFrom(char c)

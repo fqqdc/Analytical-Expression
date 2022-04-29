@@ -15,8 +15,8 @@ namespace SyntaxAnalyzerTest
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("Group", "( Exp )|char|charGroup|[ CharGroup ]"));
-            listProduction.AddRange(Production.Create("CharGroup", "char - char|char|CharGroup char - char|CharGroup char"));
+            listProduction.AddRange(Production.Create("Optional", "char - char|char|Optional char - char|Optional char"));
+            listProduction.AddRange(Production.Create("Group", "( Exp )|char|charGroup|[ Optional ]"));            
             listProduction.AddRange(Production.Create("Array", "Group ?|Group *|Group +"));
             listProduction.AddRange(Production.Create("JoinExp", "Group|Array|JoinExp Group|JoinExp Array"));
             listProduction.AddRange(Production.Create("OrExp", "JoinExp|OrExp or JoinExp"));

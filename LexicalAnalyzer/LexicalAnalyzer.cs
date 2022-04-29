@@ -97,6 +97,43 @@ namespace LexicalAnalyzer
                 Register(item.nfa, item.terminal);
             }
         }
+
+        public LexicalAnalyzer(BinaryReader br)
+        {
+            registerTable = new();
+            var nfa_size = br.ReadInt32();
+            for (int i = 0; i < nfa_size; i++)
+            {
+                var nfa = NFA.Load(br);
+                registerTable.Add(nfa, new Terminal(br.ReadString()));
+            }
+            var skip_size = br.ReadInt32();
+            skipTerminals = new Terminal[skip_size];
+            for (int i = 0; i < skip_size; i++)
+            {
+                skipTerminals[i] = new(br.ReadString());
+            }
+        }
+
+        public void Save(BinaryWriter bw)
+        {
+            var nfa_size = registerTable.Count;
+            bw.Write(nfa_size);
+            for (int i = 0; i < nfa_size; i++)
+            {
+                var nfa = registerTable.ElementAt(i).Key;
+                Console.WriteLine(nfa);
+                nfa.Save(bw);
+                bw.Write(registerTable.ElementAt(i).Value.Name);
+            }
+            var skip_size = skipTerminals.Length;
+            bw.Write(skip_size);
+            for (int i = 0; i < skip_size; i++)
+            {
+                bw.Write(skipTerminals[i].Name);
+            }
+
+        }
     }
 
     class LexicalAnalyzerEnumerator : IEnumerator<(Terminal terminal, string token)>
@@ -219,7 +256,7 @@ namespace LexicalAnalyzer
                 }
             }
 
-            
+
         }
 
         public bool MoveNext()

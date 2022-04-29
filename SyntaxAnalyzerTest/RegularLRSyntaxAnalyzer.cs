@@ -81,8 +81,8 @@ namespace SyntaxAnalyzerTest
                 case "Group":
                     Action_Group(production);
                     break;
-                case "CharGroup":
-                    Action_CharGroup(production);
+                case "Optional":
+                    Action_Optional(production);
                     break;
                 case "Array":
                     Action_Array(production);
@@ -147,7 +147,7 @@ namespace SyntaxAnalyzerTest
             }
         }
 
-        private void Action_CharGroup(Production production)
+        private void Action_Optional(Production production)
         {
             if (production.Right.First().Name == "char")
             {
@@ -167,7 +167,7 @@ namespace SyntaxAnalyzerTest
 
 
             }
-            else if (production.Right.First().Name == "CharGroup")
+            else if (production.Right.First().Name == "Optional")
             {
                 var str1 = (string)nfaStack.Pop();
                 if (production.Right.Count() == 2)
