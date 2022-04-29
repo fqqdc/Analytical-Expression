@@ -33,12 +33,37 @@ namespace SyntaxAnalyzerTest
             //}
             //else Console.WriteLine(rl0Grammar);
 
-            //if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
-            //}
-            //else Console.WriteLine(slrGrammar);
+            if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
+                return;
+            }
+            else Console.WriteLine(slrGrammar);
+
+            var actionTable = slrGrammar.GetAction();
+            var gotoTable = slrGrammar.GetGoto();
+            FileInfo fileInfo = new("Regular.tokens");
+            using (var fs = fileInfo.Open(FileMode.Create))
+            using (var bw = new BinaryWriter(fs))
+            {
+                actionTable.Save(bw);
+                gotoTable.Save(bw);
+            }
+
+            actionTable = null;
+            gotoTable = null;
+            if (fileInfo.Exists)
+            {
+                using (var fs = fileInfo.Open(FileMode.Open))
+                using (var br = new BinaryReader(fs))
+                {
+                    actionTable = LRSyntaxAnalyzerHelper.LoadActionTable(br);
+                    Console.WriteLine(actionTable.ToFullString());
+                    gotoTable = LRSyntaxAnalyzerHelper.LoadGotoTable(br);
+                    Console.WriteLine(gotoTable.ToFullString());
+                }
+            }
 
             //var clr1Grammar = CLR1Grammar.Create(grammar);
 
@@ -47,13 +72,13 @@ namespace SyntaxAnalyzerTest
 
             //Console.WriteLine(clr1Grammar);
 
-            if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
-            {
-                Console.WriteLine();
-                Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
-                return;
-            }
-            else Console.WriteLine(lr1Grammar);
+            //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
+            //    return;
+            //}
+            //else Console.WriteLine(lr1Grammar);
 
             //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
             //{
@@ -61,6 +86,8 @@ namespace SyntaxAnalyzerTest
             //    Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
             //}
             //else Console.WriteLine(lalrGrammar);
+
+            return;
 
             var digit = NFA.CreateRange('0', '9');
             var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
@@ -91,10 +118,10 @@ namespace SyntaxAnalyzerTest
             stringToRead.AppendLine("[a-cA-C]+\\d*(ef)?\\*");
             using var reader = new StringReader(stringToRead.ToString());
 
-            RegularLRSyntaxAnalyzer analyzer = new(lr1Grammar.GetAction(), lr1Grammar.GetGoto(), lexicalAnalyzer.GetEnumerator(reader));
+            //RegularLRSyntaxAnalyzer analyzer = new(lr1Grammar.GetAction(), lr1Grammar.GetGoto(), lexicalAnalyzer.GetEnumerator(reader));
 
-            analyzer.Analyzer();
-            Console.WriteLine(DFA.CreateFrom(analyzer.RegularNFA).Minimize());
+            //analyzer.Analyzer();
+            //Console.WriteLine(DFA.CreateFrom(analyzer.RegularNFA).Minimize());
             Console.WriteLine("OK");
         }
 
