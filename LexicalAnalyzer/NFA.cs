@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -22,40 +23,47 @@ namespace LexicalAnalyzer
 
         public void Save(BinaryWriter bw)
         {
+            var maxState = S.Max();
+            bw.Write(maxState);
+            var stateWriter = new Writer(bw, maxState);
+
             var s0_size = _S_0.Count();
             bw.Write(s0_size);
             for (int j = 0; j < s0_size; j++)
-                bw.Write(_S_0.ElementAt(j));
+                stateWriter.Write(_S_0.ElementAt(j));
             var z_size = _Z.Count();
             bw.Write(z_size);
             for (int j = 0; j < z_size; j++)
-                bw.Write(_Z.ElementAt(j));
+                stateWriter.Write(_Z.ElementAt(j));
             var table_size = _MappingTable.Count();
             bw.Write(table_size);
             for (int j = 0; j < table_size; j++)
             {
                 var item = _MappingTable.ElementAt(j);
-                bw.Write(item.s1);
+                stateWriter.Write(item.s1);
                 bw.Write(item.c);
-                bw.Write(item.s2);
+                stateWriter.Write(item.s2);
             }
         }
 
         public static NFA Load(BinaryReader br)
         {
+            var maxState = br.ReadInt32();
+            var stateReader = new Reader(br, maxState);
+
             var s0_size = br.ReadInt32();
             var s0 = new int[s0_size];
             for (int i = 0; i < s0_size; i++)
-                s0[i] = br.ReadInt32();
+                s0[i] = stateReader.Read();
             var z_size = br.ReadInt32();
             var z = new int[z_size];
             for (int i = 0; i < z_size; i++)
-                z[i] = br.ReadInt32();
+                z[i] = stateReader.Read();
             var table_size = br.ReadInt32();
             var table = new (int s1, char c, int s2)[table_size];
             for (int i = 0; i < table_size; i++)
             {
-                table[i] = (br.ReadInt32(), br.ReadChar(), br.ReadInt32());
+                table[i] = (stateReader.Read(), br.ReadChar(), stateReader.Read());
             }
             return new(table.Select(i => i.s1).Union(table.Select(i => i.s2)),
                 table.Select(i => i.c).Where(c => c != FA.CHAR_Epsilon),
@@ -186,6 +194,57 @@ namespace LexicalAnalyzer
                 dig = dig.Or(CreateFromString(str));
             }
             return dig;
+        }
+
+        class Writer
+        {
+            private BinaryWriter bw;
+            private int maxValue;
+            public Writer(BinaryWriter bw, int maxValue)
+            {
+                this.bw = bw;
+                this.maxValue = maxValue;
+            }
+
+            public void Write(int value)
+            {
+                switch (maxValue)
+                {
+                    case int x when x <= byte.MaxValue:
+                        bw.Write((byte)value);
+                        break;
+                    case int x when x <= UInt16.MaxValue:
+                        bw.Write((UInt16)value);
+                        break;
+                    default:
+                        bw.Write(value);
+                        break;
+                }
+            }
+        }
+
+        class Reader
+        {
+            private BinaryReader br;
+            private int maxValue;
+            public Reader(BinaryReader br, int maxValue)
+            {
+                this.br = br;
+                this.maxValue = maxValue;
+            }
+
+            public int Read()
+            {
+                switch (maxValue)
+                {
+                    case int x when x <= byte.MaxValue:
+                        return br.ReadByte();
+                    case int x when x <= UInt16.MaxValue:
+                        return br.ReadUInt16();
+                    default:
+                        return br.Read();
+                }
+            }
         }
     }
 

@@ -49,27 +49,29 @@ namespace LexicalAnalyzerTest
             //dfa = dfa.Minimize();
             //Console.WriteLine(dfa);
 
-            List<(NFA, Terminal)> list = new();
-            list.Add((nfa1, new Terminal("char")));
-            list.Add((escapeCharGroup, new Terminal("charGroup")));
-            list.Add((nfaSkip, new Terminal("skip")));
+            FileInfo fileInfo = new FileInfo("Regular.lexical");
+            LexicalAnalyzer.LexicalAnalyzer? analyzer = null;
 
-            List<Terminal> skipTerminals = new();
-            skipTerminals.Add(new Terminal("skip"));
+            //List<(NFA, Terminal)> list = new();
+            //list.Add((nfa1, new Terminal("char")));
+            //list.Add((escapeCharGroup, new Terminal("charGroup")));
+            //list.Add((nfaSkip, new Terminal("skip")));
 
-            foreach (var cOpt in opts)
-            {
-                list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
-            }
+            //List<Terminal> skipTerminals = new();
+            //skipTerminals.Add(new Terminal("skip"));
 
-            LexicalAnalyzer.LexicalAnalyzer analyzer = new(list, skipTerminals);
+            //foreach (var cOpt in opts)
+            //{
+            //    list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
+            //}
 
-            FileInfo fileInfo = new FileInfo("escapeLexer.tokens");
-            using (var fs = fileInfo.Open(FileMode.Create))
-            using (var bw = new BinaryWriter(fs))
-            {
-                analyzer.Save(bw);
-            }
+            //analyzer = new(list, skipTerminals);            
+            //using (var fs = fileInfo.Open(FileMode.Create))
+            //using (var bw = new BinaryWriter(fs))
+            //{
+            //    analyzer.Save(bw);
+            //}
+
             if (fileInfo.Exists)
             {
                 using (var fs = fileInfo.Open(FileMode.Open))
@@ -82,15 +84,16 @@ namespace LexicalAnalyzerTest
             StringBuilder stringToRead = new StringBuilder();
             stringToRead.AppendLine("[abc]+\\d*\\s?.*");
             using var reader = new StringReader(stringToRead.ToString());
-            
-            var e = analyzer.GetEnumerator(reader);
-            while (e.MoveNext())
+
+            if (analyzer != null)
             {
-                var item = e.Current;
-                Console.WriteLine($"({item.terminal}, {item.token.Escape()})");
+                var e = analyzer.GetEnumerator(reader);
+                while (e.MoveNext())
+                {
+                    var item = e.Current;
+                    Console.WriteLine($"({item.terminal}, {item.token.Escape()})");
+                }
             }
-
-
         }
     }
 }

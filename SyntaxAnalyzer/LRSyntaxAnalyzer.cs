@@ -142,6 +142,57 @@ namespace SyntaxAnalyzer
 
     public static class LRSyntaxAnalyzerHelper
     {
+        class Writer
+        {
+            private BinaryWriter bw;
+            private int maxValue;
+            public Writer(BinaryWriter bw, int maxValue)
+            {
+                this.bw = bw;
+                this.maxValue = maxValue;
+            }
+
+            public void Write(int value)
+            {
+                switch (maxValue)
+                {
+                    case int x when x <= byte.MaxValue:
+                        bw.Write((byte)value);
+                        break;
+                    case int x when x <= UInt16.MaxValue:
+                        bw.Write((UInt16)value);
+                        break;
+                    default:
+                        bw.Write(value);
+                        break;
+                }
+            }
+        }
+
+        class Reader
+        {
+            private BinaryReader br;
+            private int maxValue;
+            public Reader(BinaryReader br, int maxValue)
+            {
+                this.br = br;
+                this.maxValue = maxValue;
+            }
+
+            public int Read()
+            {
+                switch (maxValue)
+                {
+                    case int x when x <= byte.MaxValue:
+                        return br.ReadByte();
+                    case int x when x <= UInt16.MaxValue:
+                        return br.ReadUInt16();
+                    default:
+                        return br.Read();
+                }
+            }
+        }
+
         public static void Save(this Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, BinaryWriter bw)
         {
             var listTerminal = actionTable.Select(i => i.Key.t).Distinct().Cast<Symbol>();
@@ -159,6 +210,7 @@ namespace SyntaxAnalyzer
 
             int t2Id_size = s2Id.Count;
             bw.Write(t2Id_size);
+            var symbolWriter = new Writer(bw, t2Id_size);
             foreach (var s in listSymbol)
             {
                 switch (s)
@@ -176,13 +228,23 @@ namespace SyntaxAnalyzer
 
             int table_size = actionTable.Count;
             bw.Write(table_size);
+            var maxState = actionTable.Keys.Select(i => i.state)
+                .Union(actionTable.Values
+                    .SelectMany(lst => lst.Select(i => i is ShiftItem si ? si.State : 0)))
+                .Max();
+            bw.Write(maxState);
+            var stateWriter = new Writer(bw, maxState);
+            var maxActionItemSize = actionTable.Select(i => i.Value.Count).Max();
+            bw.Write(maxActionItemSize);
+            var actionItemSizeWriter = new Writer(bw, maxActionItemSize);
+
             for (int i = 0; i < table_size; i++)
             {
                 var item = actionTable.ElementAt(i);
-                bw.Write(item.Key.state);
-                bw.Write(s2Id[item.Key.t]);
+                stateWriter.Write(item.Key.state);
+                symbolWriter.Write(s2Id[item.Key.t]);
                 var actionItem_size = item.Value.Count;
-                bw.Write(actionItem_size);
+                actionItemSizeWriter.Write(actionItem_size);
                 for (int j = 0; j < actionItem_size; j++)
                 {
                     var actionItem = item.Value[j];
@@ -190,11 +252,11 @@ namespace SyntaxAnalyzer
                     {
                         case ShiftItem shiftItem:
                             bw.Write('s');
-                            bw.Write(shiftItem.State);
+                            stateWriter.Write(shiftItem.State);
                             break;
                         case ReduceItem reduceItem:
                             bw.Write('r');
-                            bw.Write(s2Id[reduceItem.Production.Left]);
+                            symbolWriter.Write(s2Id[reduceItem.Production.Left]);
                             var pRight = reduceItem.Production.Right.ToArray();
                             bw.Write(pRight.Length);
                             for (int k = 0; k < pRight.Length; k++)
@@ -203,11 +265,11 @@ namespace SyntaxAnalyzer
                                 {
                                     case Terminal terminal:
                                         bw.Write('t');
-                                        bw.Write(s2Id[terminal]);
+                                        symbolWriter.Write(s2Id[terminal]);
                                         break;
                                     case NonTerminal nonTerminal:
                                         bw.Write('n');
-                                        bw.Write(s2Id[nonTerminal]);
+                                        symbolWriter.Write(s2Id[nonTerminal]);
                                         break;
                                     default: throw new NotSupportedException();
                                 }
@@ -225,6 +287,7 @@ namespace SyntaxAnalyzer
         public static Dictionary<(int state, Terminal t), List<ActionItem>> LoadActionTable(BinaryReader br)
         {
             int id2S_size = br.ReadInt32();
+            var symbolReader = new Reader(br, id2S_size);
             var id2S = new Dictionary<int, Symbol>();
             for (int i = 0; i < id2S_size; i++)
             {
@@ -246,11 +309,16 @@ namespace SyntaxAnalyzer
             Dictionary<(int state, Terminal t), List<ActionItem>> actionTable = new();
 
             int table_size = br.ReadInt32();
+            var maxState = br.ReadInt32();
+            var stateReader = new Reader(br, maxState);
+            var maxActionItemSize = br.ReadInt32();
+            var actionItemSizeReader = new Reader(br, maxActionItemSize);
+
             for (int i = 0; i < table_size; i++)
             {
-                var key = (br.ReadInt32(), (Terminal)id2S[br.ReadInt32()]);
+                var key = (stateReader.Read(), (Terminal)id2S[symbolReader.Read()]);
                 var value = new List<ActionItem>();
-                var actionItem_size = br.ReadInt32();
+                var actionItem_size = actionItemSizeReader.Read();
                 for (int j = 0; j < actionItem_size; j++)
                 {
                     var actionItemType = br.ReadChar();
@@ -258,10 +326,10 @@ namespace SyntaxAnalyzer
                     switch (actionItemType)
                     {
                         case 's':
-                            actionItem = new ShiftItem(br.ReadInt32());
+                            actionItem = new ShiftItem(stateReader.Read());
                             break;
                         case 'r':
-                            NonTerminal left = (NonTerminal)id2S[br.ReadInt32()];
+                            NonTerminal left = (NonTerminal)id2S[symbolReader.Read()];
                             var pRight = new Symbol[br.ReadInt32()];
                             for (int k = 0; k < pRight.Length; k++)
                             {
@@ -269,10 +337,10 @@ namespace SyntaxAnalyzer
                                 switch (symbolType)
                                 {
                                     case 't':
-                                        pRight[k] = id2S[br.ReadInt32()];
+                                        pRight[k] = id2S[symbolReader.Read()];
                                         break;
                                     case 'n':
-                                        pRight[k] = id2S[br.ReadInt32()];
+                                        pRight[k] = id2S[symbolReader.Read()];
                                         break;
                                     default: throw new NotSupportedException();
                                 }
@@ -301,23 +369,33 @@ namespace SyntaxAnalyzer
 
             int t2Id_size = s2Id.Count;
             bw.Write(t2Id_size);
+            var symbolWriter = new Writer(bw, t2Id_size);
+
             foreach (var s in listNoTerminal)
                 bw.Write(s.Name);
 
             int table_size = gotoTable.Count;
             bw.Write(table_size);
+
+            var maxState = gotoTable.Keys.Select(i => i.state)
+                .Union(gotoTable.Values)
+                .Max();
+            bw.Write(maxState);
+            var stateWriter = new Writer(bw, maxState);
+
             for (int i = 0; i < table_size; i++)
             {
                 var item = gotoTable.ElementAt(i);
-                bw.Write(item.Key.state);
-                bw.Write(s2Id[item.Key.t]);
-                bw.Write(item.Value);
+                stateWriter.Write(item.Key.state);
+                symbolWriter.Write(s2Id[item.Key.t]);
+                stateWriter.Write(item.Value);
             }
         }
 
         public static Dictionary<(int state, NonTerminal t), int> LoadGotoTable(BinaryReader br)
         {
             int id2S_size = br.ReadInt32();
+            var symbolReader = new Reader(br, id2S_size);
             var id2S = new Dictionary<int, NonTerminal>();
             for (int i = 0; i < id2S_size; i++)
             {
@@ -327,10 +405,12 @@ namespace SyntaxAnalyzer
             Dictionary<(int state, NonTerminal t), int> gotoTable = new();
 
             int table_size = br.ReadInt32();
+            var maxState = br.ReadInt32();
+            var stateReader = new Reader(br, maxState);
             for (int i = 0; i < table_size; i++)
             {
-                var key = (br.ReadInt32(), id2S[br.ReadInt32()]);
-                var value = br.ReadInt32();
+                var key = (stateReader.Read(), id2S[symbolReader.Read()]);
+                var value = stateReader.Read();
                 gotoTable[key] = value;
             }
             return gotoTable;

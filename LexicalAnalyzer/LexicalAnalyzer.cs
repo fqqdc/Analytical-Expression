@@ -11,13 +11,10 @@ namespace LexicalAnalyzer
 {
     public class LexicalAnalyzer
     {
-        private Dictionary<NFA, Terminal> registerTable;
+        private Dictionary<NFA, Terminal> registerTable = new();
         private Terminal[] skipTerminals;
-
-        private LexicalAnalyzer()
-        {
-            this.registerTable = new();
-        }
+        private DFA unionNFA;
+        private Dictionary<int, Terminal> z2TerminalTable;
 
         private void Register(NFA nfa, Terminal terminal)
         {
@@ -26,7 +23,7 @@ namespace LexicalAnalyzer
             registerTable[newNfa] = terminal;
         }
 
-        private (DFA unionDFA, Dictionary<int, Terminal> z2TerminalTable) UnionNFA()
+        private (DFA, Dictionary<int, Terminal>) GenerateUnionNFA()
         {
             //S
             var S = new HashSet<int>();
@@ -62,11 +59,8 @@ namespace LexicalAnalyzer
             S_0.Add(head);
 
             var unionNFA = new NFA(S, Sigma, MappingTable, S_0, Z);
-            Console.WriteLine(unionNFA);
             var dfa = DFA.CreateFrom(unionNFA);
-            Console.WriteLine(dfa);
             var unionDFA = dfa.MinimizeByNfaFinal();
-            Console.WriteLine(unionDFA);
 
             var nfaZTable = unionDFA.ZNfaNodes;
             Dictionary<int, Terminal> z2TerminalTable = new();
@@ -83,12 +77,11 @@ namespace LexicalAnalyzer
 
         public IEnumerator<(Terminal terminal, string token)> GetEnumerator(TextReader reader)
         {
-            var (dfa, table) = UnionNFA();
-            return new LexicalAnalyzerEnumerator(reader, dfa, table, skipTerminals);
+            return new LexicalAnalyzerEnumerator(reader, this.unionNFA, this.z2TerminalTable, this.skipTerminals);
         }
 
         public LexicalAnalyzer(IEnumerable<(NFA nfa, Terminal terminal)> nfaList,
-            IEnumerable<Terminal> skipTerminals) : this()
+            IEnumerable<Terminal> skipTerminals)
         {
             this.skipTerminals = skipTerminals.ToArray();
 
@@ -96,11 +89,12 @@ namespace LexicalAnalyzer
             {
                 Register(item.nfa, item.terminal);
             }
+
+            (this.unionNFA, this.z2TerminalTable) = GenerateUnionNFA();
         }
 
         public LexicalAnalyzer(BinaryReader br)
         {
-            registerTable = new();
             var nfa_size = br.ReadInt32();
             for (int i = 0; i < nfa_size; i++)
             {
@@ -113,6 +107,8 @@ namespace LexicalAnalyzer
             {
                 skipTerminals[i] = new(br.ReadString());
             }
+
+            (this.unionNFA, this.z2TerminalTable) = GenerateUnionNFA();
         }
 
         public void Save(BinaryWriter bw)
@@ -122,7 +118,7 @@ namespace LexicalAnalyzer
             for (int i = 0; i < nfa_size; i++)
             {
                 var nfa = registerTable.ElementAt(i).Key;
-                Console.WriteLine(nfa);
+                //Console.WriteLine(nfa);
                 nfa.Save(bw);
                 bw.Write(registerTable.ElementAt(i).Value.Name);
             }
