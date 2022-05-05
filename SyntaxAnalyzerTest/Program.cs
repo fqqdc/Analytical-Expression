@@ -41,6 +41,28 @@ namespace SyntaxAnalyzerTest
             //}
             //else Console.WriteLine(slrGrammar);
 
+            //var clr1Grammar = CLR1Grammar.Create(grammar);
+
+            //Console.WriteLine();
+            //Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
+
+            //Console.WriteLine(clr1Grammar);
+
+            //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
+            //    return;
+            //}
+            //else Console.WriteLine(lr1Grammar);
+
+            //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
+            //}
+            //else Console.WriteLine(lalrGrammar);
+
             Dictionary<(int state, Terminal t), List<ActionItem>>? actionTable = null;
             Dictionary<(int state, NonTerminal t), int>? gotoTable = null;
             FileInfo fileInfo = new("Regular.syntax");
@@ -71,49 +93,26 @@ namespace SyntaxAnalyzerTest
                 throw new FileNotFoundException("找不到语法数据", "Regular.syntax");
             }
 
-            //var clr1Grammar = CLR1Grammar.Create(grammar);
-
-            //Console.WriteLine();
-            //Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
-
-            //Console.WriteLine(clr1Grammar);
-
-            //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"LR1Grammar Error:\n{lr1Msg}");
-            //    return;
-            //}
-            //else Console.WriteLine(lr1Grammar);
-
-            //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
-            //}
-            //else Console.WriteLine(lalrGrammar);
-
-
             //var digit = NFA.CreateRange('0', '9');
             //var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
             //var escape = NFA.CreateFromString("\\\\",
             //    "\\|", "\\?", "\\*", "\\+", "\\.", "\\(", "\\)", "\\[", "\\]", "\\-");
-            //var nfaChar = digit.Or(letter).Or(escape);
-
-            //char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
-            
-            //var nfaCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
-            
-            //var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
 
             //List<(NFA, Terminal)> list = new();
+
+            //var nfaChar = digit.Or(letter).Or(escape);
             //list.Add((nfaChar, new Terminal("char")));
+
+            //var nfaCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
             //list.Add((nfaCharGroup, new Terminal("charGroup")));
+
+            //var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
             //list.Add((nfaSkip, new Terminal("skip")));
 
             //List<Terminal> skipTerminals = new();
             //skipTerminals.Add(new Terminal("skip"));
 
+            //char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
             //foreach (var cOpt in opts)
             //{
             //    list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
@@ -137,6 +136,10 @@ namespace SyntaxAnalyzerTest
                 {
                     lexicalAnalyzer = new(br);
                 }
+            }
+            else
+            {
+                throw new FileNotFoundException("找不到词法数据", "Regular.lexical");
             }
 
             StringBuilder stringToRead = new();
