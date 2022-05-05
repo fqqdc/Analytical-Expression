@@ -11,7 +11,6 @@ namespace SyntaxAnalyzer
     /// </summary>
     public class LRSyntaxAnalyzer
     {
-        private IEnumerator<(Terminal sym, string symToken)> symEnumerator;
         private Terminal sym = Terminal.Epsilon;
         private string symToken = string.Empty;
 
@@ -21,6 +20,8 @@ namespace SyntaxAnalyzer
 
         private Dictionary<(int state, Terminal t), List<ActionItem>> actionTable;
         private Dictionary<(int state, NonTerminal t), int> gotoTable;
+
+        private IEnumerator<(Terminal sym, string symToken)> symEnumerator;
 
         private void InitStack()
         {
@@ -66,12 +67,12 @@ namespace SyntaxAnalyzer
 
         public LRSyntaxAnalyzer(
             Dictionary<(int state, Terminal t), List<ActionItem>> actionTable,
-            Dictionary<(int state, NonTerminal t), int> gotoTable,
-            IEnumerator<(Terminal sym, string symToken)> symEnumerator)
+            Dictionary<(int state, NonTerminal t), int> gotoTable)
         {
-            this.symEnumerator = symEnumerator;
             this.actionTable = actionTable;
             this.gotoTable = gotoTable;
+
+            this.symEnumerator = Enumerable.Empty<(Terminal sym, string symToken)>().GetEnumerator();
         }
 
         private void Advance()
@@ -87,7 +88,7 @@ namespace SyntaxAnalyzer
                 sym = Terminal.EndTerminal;
                 symToken = String.Empty;
             }
-            Console.WriteLine($"input:{sym},{symToken}");
+            //Console.WriteLine($"input:{sym},{symToken}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
@@ -104,7 +105,7 @@ namespace SyntaxAnalyzer
             {
                 var strState = string.Join(" ", stateStack.Take(topStack + 1));
                 var strSymbol = string.Join(" ", symbolStack.Take(topStack + 1));
-                Console.WriteLine($"{strState}, {strSymbol}, {sym}");
+                //Console.WriteLine($"{strState}, {strSymbol}, {sym}");
 
                 actionTable.TryGetValue((stateStack[topStack], sym), out var actionItems);
                 if (actionItems == null || actionItems.Count == 0)
@@ -132,9 +133,10 @@ namespace SyntaxAnalyzer
             if (sym != Terminal.EndTerminal)
                 Error();
         }
-
-        public void Analyzer()
+        public void Analyzer(IEnumerator<(Terminal sym, string symToken)> symEnumerator)
         {
+            this.symEnumerator = symEnumerator;
+
             ProcedureInit();
             Procedure();
         }

@@ -205,7 +205,7 @@ namespace LexicalAnalyzer
                 if (!items.Any())
                 {
                     if (matchState == -1)
-                        throw new NotImplementedException("匹配错误");
+                        throw new LexicalAnalyzerException(currentToken.ToString() + c);
 
                     //将匹配失败的字符串放回待匹配的队列
                     foreach (var cFallback in currentToken.ToString())
@@ -239,7 +239,7 @@ namespace LexicalAnalyzer
             {
                 if (matchState == -1)
                 {
-                    throw new NotImplementedException("匹配错误");
+                    throw new LexicalAnalyzerException(currentToken.ToString());
                 }
                 else
                 {
@@ -270,5 +270,11 @@ namespace LexicalAnalyzer
         {
             throw new NotSupportedException();
         }
+    }
+
+    public class LexicalAnalyzerException : Exception
+    {
+        public LexicalAnalyzerException(string seq)
+        : base($"匹配错误，当前序列为：{seq}。") { }
     }
 }

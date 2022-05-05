@@ -12,7 +12,7 @@ namespace SyntaxAnalyzerTest
 {
     public class Program
     {
-        static void Main(string[] args)
+        static void Main2(string[] args)
         {
             var listProduction = new List<Production>();
             listProduction.AddRange(Production.Create("Optional", "char - char|char|Optional char - char|Optional char"));
@@ -33,13 +33,13 @@ namespace SyntaxAnalyzerTest
             //}
             //else Console.WriteLine(rl0Grammar);
 
-            //if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
-            //    return;
-            //}
-            //else Console.WriteLine(slrGrammar);
+            if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
+                return;
+            }
+            else Console.WriteLine(slrGrammar);
 
             //var clr1Grammar = CLR1Grammar.Create(grammar);
 
@@ -65,115 +65,71 @@ namespace SyntaxAnalyzerTest
 
             Dictionary<(int state, Terminal t), List<ActionItem>>? actionTable = null;
             Dictionary<(int state, NonTerminal t), int>? gotoTable = null;
-            FileInfo fileInfo = new("Regular.syntax");
-
-            //actionTable = slrGrammar.GetAction();
-            //gotoTable = slrGrammar.GetGoto();
-
-            //using (var fs = fileInfo.Open(FileMode.Create))
-            //using (var bw = new BinaryWriter(fs))
-            //{
-            //    actionTable.Save(bw);
-            //    gotoTable.Save(bw);
-            //}
-
-            if (fileInfo.Exists)
-            {
-                using (var fs = fileInfo.Open(FileMode.Open, FileAccess.Read))
-                using (var br = new BinaryReader(fs))
-                {
-                    actionTable = LRSyntaxAnalyzerHelper.LoadActionTable(br);
-                    Console.WriteLine(actionTable.ToFullString());
-                    gotoTable = LRSyntaxAnalyzerHelper.LoadGotoTable(br);
-                    Console.WriteLine(gotoTable.ToFullString());
-                }
-            }
-            else
-            {
-                throw new FileNotFoundException("找不到语法数据", "Regular.syntax");
-            }
-
-            //var digit = NFA.CreateRange('0', '9');
-            //var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
-            //var escape = NFA.CreateFromString("\\\\",
-            //    "\\|", "\\?", "\\*", "\\+", "\\.", "\\(", "\\)", "\\[", "\\]", "\\-");
-
-            //List<(NFA, Terminal)> list = new();
-
-            //var nfaChar = digit.Or(letter).Or(escape);
-            //list.Add((nfaChar, new Terminal("char")));
-
-            //var nfaCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
-            //list.Add((nfaCharGroup, new Terminal("charGroup")));
-
-            //var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
-            //list.Add((nfaSkip, new Terminal("skip")));
-
-            //List<Terminal> skipTerminals = new();
-            //skipTerminals.Add(new Terminal("skip"));
-
-            //char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
-            //foreach (var cOpt in opts)
-            //{
-            //    list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
-            //}
-
-            fileInfo = new FileInfo("Regular.lexical");
+            FileInfo syntaxFile = new("Regular.syntax");
+            FileInfo lexicalFile = new FileInfo("Regular.lexical");
             LexicalAnalyzer.LexicalAnalyzer? lexicalAnalyzer = null;
 
-            //lexicalAnalyzer = new(list, skipTerminals);
-            //using (var fs = fileInfo.Open(FileMode.Create))
-            //using (var bw = new BinaryWriter(fs))
-            //{
-            //    lexicalAnalyzer.Save(bw);
-            //}
-            //lexicalAnalyzer = null;
+            actionTable = slrGrammar.GetAction();
+            gotoTable = slrGrammar.GetGoto();
 
-            if (fileInfo.Exists)
+            using (var fs = syntaxFile.Open(FileMode.Create))
+            using (var bw = new BinaryWriter(fs))
             {
-                using (var fs = fileInfo.Open(FileMode.Open))
-                using (var br = new BinaryReader(fs))
-                {
-                    lexicalAnalyzer = new(br);
-                }
-            }
-            else
-            {
-                throw new FileNotFoundException("找不到词法数据", "Regular.lexical");
+                actionTable.Save(bw);
+                gotoTable.Save(bw);
             }
 
-            StringBuilder stringToRead = new();
-            stringToRead.AppendLine("[a-cA-C]+\\d*(ef)?\\*");
-            using var reader = new StringReader(stringToRead.ToString());
+            var digit = NFA.CreateRange('0', '9');
+            var letter = NFA.CreateRange('a', 'z').Or(NFA.CreateRange('A', 'Z'));
+            var escape = NFA.CreateFromString("\\\\",
+                "\\|", "\\?", "\\*", "\\+", "\\.", "\\(", "\\)", "\\[", "\\]", "\\-");
 
-            if (lexicalAnalyzer != null)
+            List<(NFA, Terminal)> list = new();
+
+            var nfaChar = digit.Or(letter).Or(escape);
+            list.Add((nfaChar, new Terminal("char")));
+
+            var nfaCharGroup = NFA.CreateFromString(".", "\\w", "\\s", "\\d");
+            list.Add((nfaCharGroup, new Terminal("charGroup")));
+
+            var nfaSkip = NFA.CreateFrom(' ').Or(NFA.CreateFrom('\r')).Or(NFA.CreateFrom('\n'));
+            list.Add((nfaSkip, new Terminal("skip")));
+
+            List<Terminal> skipTerminals = new();
+            skipTerminals.Add(new Terminal("skip"));
+
+            char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
+            foreach (var cOpt in opts)
             {
-                RegularLRSyntaxAnalyzer analyzer = new(actionTable, gotoTable, lexicalAnalyzer.GetEnumerator(reader));
-
-                analyzer.Analyzer();
-                if (analyzer.RegularNFA != null)
-                {
-                    var nfa = analyzer.RegularNFA;
-                    Console.WriteLine(nfa);
-                    var dfa = DFA.CreateFrom(nfa);
-                    Console.WriteLine(dfa);
-                    Console.WriteLine(dfa.Minimize());
-                    Console.WriteLine("OK");
-                }
+                list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
             }
+
+            lexicalAnalyzer = new(list, skipTerminals);
+            using (var fs = lexicalFile.Open(FileMode.Create))
+            using (var bw = new BinaryWriter(fs))
+            {
+                lexicalAnalyzer.Save(bw);
+            }
+
+
         }
 
-        static void Main2(string[] args)
+        static void Main(string[] args)
         {
-            Production p = Production.CreateSingle("S", "a B c");
-            Console.WriteLine(p);
-            foreach (var item in ProductionItem.CreateSet(p))
-            {
-                Console.WriteLine(item);
-            }
+            StringBuilder stringToRead = new();
+            stringToRead.AppendLine("[a-cA-C]+\\d*(ef)?\\*");
 
-            int[] arr = new int[3];
-            Console.WriteLine(arr is ICollection);
+            var analyzer = RegularLRSyntaxAnalyzer.Create();
+            analyzer.Analyzer(stringToRead.ToString());
+            if (analyzer.RegularNFA != null)
+            {
+                var nfa = analyzer.RegularNFA;
+                //Console.WriteLine(nfa);
+                var dfa = DFA.CreateFrom(nfa);
+                //Console.WriteLine(dfa);
+                Console.WriteLine(dfa.Minimize());
+                Console.WriteLine("OK");
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LexicalAnalyzer;
 using SyntaxAnalyzer;
+using System.IO;
 
 namespace SyntaxAnalyzerTest
 {
@@ -12,9 +13,51 @@ namespace SyntaxAnalyzerTest
     {
         public RegularLRSyntaxAnalyzer(
             Dictionary<(int state, Terminal t), List<ActionItem>> actionTable,
-            Dictionary<(int state, NonTerminal t), int> gotoTable,
-            IEnumerator<(Terminal sym, string symToken)> symEnumerator
-            ) : base(actionTable, gotoTable, symEnumerator) { }
+            Dictionary<(int state, NonTerminal t), int> gotoTable
+            ) : base(actionTable, gotoTable) { }
+
+        public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
+        public static RegularLRSyntaxAnalyzer Create(string fileName = "Regular")
+        {
+            FileInfo syntaxFile = new($"{fileName}.syntax");
+            FileInfo lexicalFile = new($"{fileName}.lexical");
+            var symEnumerator = Enumerable.Empty<(Terminal sym, string symToken)>().GetEnumerator();
+
+            Dictionary<(int state, Terminal t), List<ActionItem>>? actionTable = null;
+            Dictionary<(int state, NonTerminal t), int>? gotoTable = null;
+            LexicalAnalyzer.LexicalAnalyzer? lexical = null;
+
+            if (lexicalFile.Exists)
+            {
+                using (var fs = lexicalFile.Open(FileMode.Open))
+                using (var br = new BinaryReader(fs))
+                {
+                    lexical = new(br);
+                }
+            }
+            else
+            {
+                throw new FileNotFoundException("找不到词法数据", "Regular.lexical");
+            }
+
+            if (syntaxFile.Exists)
+            {
+                using (var fs = syntaxFile.Open(FileMode.Open, FileAccess.Read))
+                using (var br = new BinaryReader(fs))
+                {
+                    actionTable = LRSyntaxAnalyzerHelper.LoadActionTable(br);
+                    //Console.WriteLine(actionTable.ToFullString());
+                    gotoTable = LRSyntaxAnalyzerHelper.LoadGotoTable(br);
+                    //Console.WriteLine(gotoTable.ToFullString());
+                }
+            }
+            else
+            {
+                throw new FileNotFoundException("找不到语法数据", "Regular.syntax");
+            }
+
+            return new(actionTable, gotoTable) { LexicalAnalyzer = lexical };
+        }
 
         Stack<Object> nfaStack = new();
 
@@ -149,41 +192,44 @@ namespace SyntaxAnalyzerTest
 
         private void Action_Optional(Production production)
         {
-            if (production.Right.First().Name == "char")
+            var rightLength = production.Right.Count();
+            switch (rightLength)
             {
-                var str1 = (string)nfaStack.Pop();
-                if (production.Right.Count() > 1)
-                {
-                    nfaStack.Pop();
-                    var str2 = (string)nfaStack.Pop();
-                    if (str1[0] > str2[0])
-                        nfaStack.Push(NFA.CreateRange(str2[0], str1[0]));
-                    else throw new NotSupportedException();
-                }
-                else
-                {
-                    nfaStack.Push(NFA.CreateFrom(str1[0]));
-                }
-
-
-            }
-            else if (production.Right.First().Name == "Optional")
-            {
-                var str1 = (string)nfaStack.Pop();
-                if (production.Right.Count() == 2)
-                {
-                    var nfa1 = (NFA)nfaStack.Pop();
-                    nfaStack.Push(nfa1.Join(NFA.CreateFrom(str1[0])));
-                }
-                else
-                {
-                    nfaStack.Pop();
-                    var str2 = (string)nfaStack.Pop();
-                    var nfa1 = (NFA)nfaStack.Pop();
-                    if (str1[0] > str2[0])
-                        nfaStack.Push(nfa1.Or(NFA.CreateRange(str2[0], str1[0])));
-                    else throw new NotSupportedException();
-                }
+                case 1: // char
+                    {
+                        var str1 = (string)nfaStack.Pop();
+                        nfaStack.Push(NFA.CreateFrom(str1[0]));
+                    }
+                    break;
+                case 2: // Optional char
+                    {
+                        var str1 = (string)nfaStack.Pop();
+                        var nfa1 = (NFA)nfaStack.Pop();
+                        nfaStack.Push(nfa1.Join(NFA.CreateFrom(str1[0])));
+                    }
+                    break;
+                case 3: // char - char
+                    {
+                        var str1 = (string)nfaStack.Pop();
+                        nfaStack.Pop();
+                        var str2 = (string)nfaStack.Pop();
+                        if (str1[0] > str2[0])
+                            nfaStack.Push(NFA.CreateRange(str2[0], str1[0]));
+                        else throw new NotSupportedException();
+                    }
+                    break;
+                case 4: // Optional char - char
+                    {
+                        var str1 = (string)nfaStack.Pop();
+                        nfaStack.Pop();
+                        var str2 = (string)nfaStack.Pop();
+                        var nfa1 = (NFA)nfaStack.Pop();
+                        if (str1[0] > str2[0])
+                            nfaStack.Push(nfa1.Or(NFA.CreateRange(str2[0], str1[0])));
+                        else throw new NotSupportedException();
+                    }
+                    break;
+                default: throw new NotSupportedException();
             }
         }
 
@@ -209,6 +255,14 @@ namespace SyntaxAnalyzerTest
             base.OnAcceptItem();
 
             RegularNFA = (NFA)nfaStack.Pop();
+        }
+
+        public void Analyzer(string text)
+        {
+            using var reader = new StringReader(text);
+            if (LexicalAnalyzer == null)
+                throw new ArgumentNullException("LexicalAnalyzer", "词法分析器不能为空");
+            this.Analyzer(LexicalAnalyzer.GetEnumerator(reader));
         }
     }
 }
