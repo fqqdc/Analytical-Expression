@@ -235,14 +235,19 @@ namespace LexicalAnalyzer
                 }
             }
 
-            if (nextValue == null && currentToken.Length != 0)
+            if (nextValue == null)
             {
                 if (matchState == -1)
                 {
-                    throw new LexicalAnalyzerException(currentToken.ToString());
+                    if (currentToken.Length > 0)
+                        throw new LexicalAnalyzerException(currentToken.ToString());
                 }
                 else
                 {
+                    //将匹配失败的字符串放回待匹配的队列
+                    foreach (var cFallback in currentToken.ToString())
+                        qFallback.Enqueue(cFallback);
+
                     Terminal terminal = z2TerminalTable[matchState];
                     string tokenString = matchToken.ToString();
 

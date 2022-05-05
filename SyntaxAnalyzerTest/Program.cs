@@ -12,7 +12,7 @@ namespace SyntaxAnalyzerTest
 {
     public class Program
     {
-        static void Main2(string[] args)
+        static void Main1(string[] args)
         {
             var listProduction = new List<Production>();
             listProduction.AddRange(Production.Create("Optional", "char - char|char|Optional char - char|Optional char"));
@@ -98,7 +98,8 @@ namespace SyntaxAnalyzerTest
             List<Terminal> skipTerminals = new();
             skipTerminals.Add(new Terminal("skip"));
 
-            char[] opts = { '|', '?', '*', '+', '(', ')', '[', ']', '-' };
+            list.Add((NFA.CreateFrom('|'), new Terminal("or")));
+            char[] opts = { '?', '*', '+', '(', ')', '[', ']', '-' };
             foreach (var cOpt in opts)
             {
                 list.Add((NFA.CreateFrom(cOpt), new Terminal(cOpt.ToString())));
@@ -116,20 +117,43 @@ namespace SyntaxAnalyzerTest
 
         static void Main(string[] args)
         {
-            StringBuilder stringToRead = new();
-            stringToRead.AppendLine("[a-cA-C]+\\d*(ef)?\\*");
-
             var analyzer = RegularLRSyntaxAnalyzer.Create();
-            analyzer.Analyzer(stringToRead.ToString());
-            if (analyzer.RegularNFA != null)
+
+            analyzer.Analyzer("\\d+(\\.\\d*)?|\\.\\d+");
+            if(analyzer.RegularNFA != null)
             {
                 var nfa = analyzer.RegularNFA;
                 //Console.WriteLine(nfa);
                 var dfa = DFA.CreateFrom(nfa);
                 //Console.WriteLine(dfa);
                 Console.WriteLine(dfa.Minimize());
+                Console.WriteLine(dfa.Minimize().ToNFA());
                 Console.WriteLine("OK");
             }
+
+
+            //analyzer.Analyzer("ab?c*");
+            //if (analyzer.RegularNFA != null)
+            //{
+            //    var nfa = analyzer.RegularNFA;
+            //    //Console.WriteLine(nfa);
+            //    var dfa = DFA.CreateFrom(nfa);
+            //    //Console.WriteLine(dfa);
+            //    Console.WriteLine(dfa.Minimize());
+            //    Console.WriteLine(dfa.Minimize().ToNFA());
+            //    Console.WriteLine("OK");
+            //}
+
+            //analyzer.Analyzer("ab?c+");
+            //if (analyzer.RegularNFA != null)
+            //{
+            //    var nfa = analyzer.RegularNFA;
+            //    //Console.WriteLine(nfa);
+            //    var dfa = DFA.CreateFrom(nfa);
+            //    //Console.WriteLine(dfa);
+            //    Console.WriteLine(dfa.Minimize().ToNFA());
+            //    Console.WriteLine("OK");
+            //}
         }
     }
 }

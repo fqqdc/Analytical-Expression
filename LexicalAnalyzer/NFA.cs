@@ -120,33 +120,27 @@ namespace LexicalAnalyzer
             return arrNFA;
         }
 
-
-        //{eps}
         public static NFA CreateEpsilon()
         {
             //S
             var S = new HashSet<int>();
             int id = 0;
-            int head = id;
-            S.Add(head);
-            id = S.Count;
-            int tail = id;
-            S.Add(tail);
+            int single = id;
+            S.Add(single);
 
             //Sigma
             var Sigma = new HashSet<char>();
 
             //Mapping
             var MappingTable = new HashSet<(int s1, char c, int s2)>();
-            MappingTable.Add((head, FA.CHAR_Epsilon, tail));
 
             //Z
             var Z = new HashSet<int>();
-            Z.Add(tail);
+            Z.Add(single);
 
             //S_0
             var S_0 = new HashSet<int>();
-            S_0.Add(head);
+            S_0.Add(single);
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
@@ -280,8 +274,8 @@ namespace LexicalAnalyzer
             S_0.UnionWith(fst.S_0);
 
             //Join
-            MappingTable.UnionWith(fst.Z.Select(z => (z, FA.CHAR_Epsilon, mid)));
-            MappingTable.UnionWith(snd.S_0.Select(s => (mid, FA.CHAR_Epsilon, snd_base_id + s)));
+            MappingTable.UnionWith(fst.Z.Select(z => (z, FA.CHAR_Epsilon, mid))); // fst.Z --eps-> mid
+            MappingTable.UnionWith(snd.S_0.Select(s => (mid, FA.CHAR_Epsilon, snd_base_id + s))); // mid --eps-> snd.S_0
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
@@ -361,43 +355,6 @@ namespace LexicalAnalyzer
             MappingTable.UnionWith(dig.Z.Select(z => (dig_base_id + z, FA.CHAR_Epsilon, tail))); // dig.Z --eps-> tail
             MappingTable.UnionWith(dig.Z.Select(z => (tail, FA.CHAR_Epsilon, head))); // tail --eps-> head
             //MappingTable.UnionWith(dig.Z.SelectMany(z => dig.S_0.Select(s => (dig_base_id + z, FA.CHAR_Epsilon, dig_base_id + s)))); // dig.Z --eps-> dig.S_0
-
-            return new(S, Sigma, MappingTable, S_0, Z);
-        }
-
-        public static NFA UnionNFA(this NFA fst, NFA snd)
-        {
-            //S
-            var S = new HashSet<int>();
-            int head = 0;
-            S.Add(head);
-            int fst_base_id = S.Count;
-            S.UnionWith(fst.S.Select(s => fst_base_id + s));
-            int snd_base_id = S.Count;
-            S.UnionWith(snd.S.Select(s => snd_base_id + s));
-
-            //Sigma
-            var Sigma = new HashSet<char>();
-            Sigma.UnionWith(fst.Sigma);
-            Sigma.UnionWith(snd.Sigma);
-
-            //Mapping
-            var MappingTable = new HashSet<(int s1, char c, int s2)>();
-            MappingTable.UnionWith(fst.MappingTable.Select(i => (fst_base_id + i.s1, i.c, fst_base_id + i.s2)));
-            MappingTable.UnionWith(snd.MappingTable.Select(i => (snd_base_id + i.s1, i.c, snd_base_id + i.s2)));
-
-            //Z
-            var Z = new HashSet<int>();
-            Z.UnionWith(fst.Z.Select(s => fst_base_id + s));
-            Z.UnionWith(snd.Z.Select(s => snd_base_id + s));
-
-            //S_0
-            var S_0 = new HashSet<int>();
-            S_0.Add(head);
-
-            //UnionNFA
-            MappingTable.UnionWith(fst.S_0.Select(s => (head, FA.CHAR_Epsilon, fst_base_id + s)));
-            MappingTable.UnionWith(snd.S_0.Select(s => (head, FA.CHAR_Epsilon, snd_base_id + s)));
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }

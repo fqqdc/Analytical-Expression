@@ -88,7 +88,7 @@ namespace SyntaxAnalyzer
                 sym = Terminal.EndTerminal;
                 symToken = String.Empty;
             }
-            //Console.WriteLine($"input:{sym},{symToken}");
+            Console.WriteLine($"input:{sym},{symToken}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
@@ -105,7 +105,7 @@ namespace SyntaxAnalyzer
             {
                 var strState = string.Join(" ", stateStack.Take(topStack + 1));
                 var strSymbol = string.Join(" ", symbolStack.Take(topStack + 1));
-                //Console.WriteLine($"{strState}, {strSymbol}, {sym}");
+                Console.WriteLine($"{strState}, {strSymbol}, {sym}");
 
                 actionTable.TryGetValue((stateStack[topStack], sym), out var actionItems);
                 if (actionItems == null || actionItems.Count == 0)

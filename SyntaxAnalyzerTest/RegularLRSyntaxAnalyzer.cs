@@ -173,17 +173,17 @@ namespace SyntaxAnalyzerTest
         {
             var opt = production.Right.ElementAt(1).Name;
             nfaStack.Pop();
-            var nfa2 = (NFA)nfaStack.Pop();
+            var nfa = (NFA)nfaStack.Pop();
             switch (opt)
             {
                 case "?":
-                    nfaStack.Push(NFA.CreateEpsilon().Or(nfa2));
+                    nfaStack.Push(NFA.CreateEpsilon().Or(nfa));
                     break;
                 case "*":
-                    nfaStack.Push(nfa2.Closure());
+                    nfaStack.Push(nfa.Closure());
                     break;
                 case "+":
-                    nfaStack.Push(nfa2.Join(nfa2.Closure()));
+                    nfaStack.Push(nfa.Join(nfa.Closure()));
                     break;
                 default:
                     throw new NotSupportedException();
