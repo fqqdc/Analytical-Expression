@@ -243,26 +243,29 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            //// 打印项目集
-            //foreach (var I in C)
-            //{
-            //    var id_I = IdTable[I];
-            //    Console.WriteLine($"I_{id_I}");
-            //    foreach (var item in I)
-            //    {
-            //        Console.WriteLine(item);
-            //    }
-            //    foreach (var symbol in V)
-            //    {
-            //        var J = Go(I, symbol);
-            //        if (J.Count > 0)
-            //        {
-            //            var id_J = IdTable[J];
-            //            Console.WriteLine($"{symbol}->{id_J}");
-            //        }
-            //    }
-            //    Console.WriteLine();
-            //}
+            if (CanPrintItems)
+            {
+                // 打印项目集
+                foreach (var I in C.OrderBy(I => IdTable[I]))
+                {
+                    var id_I = IdTable[I];
+                    Console.WriteLine($"I_{id_I}");
+                    foreach (var item in I)
+                    {
+                        Console.WriteLine(item);
+                    }
+                    foreach (var symbol in V)
+                    {
+                        var J = Go(I, symbol);
+                        if (J.Count > 0)
+                        {
+                            var id_J = IdTable[J];
+                            Console.WriteLine($"{symbol}->{id_J}");
+                        }
+                    }
+                    Console.WriteLine();
+                }
+            }
 
             return (Action, Goto);
         }

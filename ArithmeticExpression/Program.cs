@@ -3,6 +3,7 @@ using RegularExpression;
 using SyntaxAnalyzer;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 
 namespace ArithmeticExpression
@@ -28,15 +29,14 @@ namespace ArithmeticExpression
         {
             List<(NFA, Terminal)> nfaList = new();
 
-            var nfaNumber = CreateNFA(@"\d+(\.\d*)?|\.\d+");
-            nfaList.Add((nfaNumber, new("number")));
+            var nfaDecimal = CreateNFA(@"\d+(\.\d*)?|\.\d+");
+            nfaList.Add((nfaDecimal, new("decimal")));
 
-            Console.WriteLine(nfaNumber);
+            var nfaInteger = CreateNFA(@"\d+");
+            nfaList.Add((nfaInteger, new("integer")));
 
             var nfaID = CreateNFA(@"\w(\d|\w)*");
             nfaList.Add((nfaID, new("id")));
-
-            Console.WriteLine(nfaID);
 
             string[] opts = { "(", ")", ".", "[", "]", "^", "*", "/", "%", "+", "-", ">", ">=", "<", "<=", "==", "!=", "&&", };
             foreach (var strOpt in opts)
@@ -54,11 +54,12 @@ namespace ArithmeticExpression
             lexicalAnalyzer.Save(bw);
         }
 
-        static void Main(string[] args)
+        static void Main2(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("ExpValue", "number|id|( Exp )|id . id|id [ Exp ]"));
-            listProduction.AddRange(Production.Create("ExpSquare", "ExpValue|ExpValue ^ ExpSquare"));
+            listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|id|( Exp )"));
+            listProduction.AddRange(Production.Create("ExpValue", "id . id|ExpValue . id|id [ Exp ]|ExpValue [ Exp ]"));
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpAtom|ExpValue|ExpValue ^ ExpSquare"));
             listProduction.AddRange(Production.Create("ExpSign", "ExpSquare|- ExpSquare"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpSign|ExpMulti * ExpSign|ExpMulti / ExpSign|ExpMulti % ExpSign"));
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti|ExpAdd - ExpMulti"));
@@ -71,6 +72,7 @@ namespace ArithmeticExpression
             Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
 
+            SLRGrammar.CanPrintItems = false;
             if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -83,11 +85,62 @@ namespace ArithmeticExpression
             using var br = new BinaryReader(fs);
             LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(br);
 
-            string text = "1+2^3^4";
+            string text = "a[b + c]";
             using var reader = new StringReader(text);
 
             LRSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
             syntaxAnalyzer.Analyzer(lexicalAnalyzer.GetEnumerator(reader));
+        }
+
+        static void Main(string[] args)
+        {
+            dynamic obj = new ExpandoObject();
+            obj.aa = 123;
+            Console.WriteLine(obj.aa);
+        }
+
+        class DClass1 : DynamicObject
+        {
+            Dictionary<string, object?> dictionary = new();
+
+            // This property returns the number of elements
+            // in the inner dictionary.
+            public int Count
+            {
+                get
+                {
+                    return dictionary.Count;
+                }
+            }
+
+            // If you try to get a value of a property
+            // not defined in the class, this method is called.
+            public override bool TryGetMember(
+                GetMemberBinder binder, out object? result)
+            {
+                // Converting the property name to lowercase
+                // so that property names become case-insensitive.
+                string name = binder.Name.ToLower();
+
+                // If the property name is found in a dictionary,
+                // set the result parameter to the property value and return true.
+                // Otherwise, return false.
+                return dictionary.TryGetValue(name, out result);
+            }
+
+            // If you try to set a value of a property that is
+            // not defined in the class, this method is called.
+            public override bool TrySetMember(
+                SetMemberBinder binder, object? value)
+            {
+                // Converting the property name to lowercase
+                // so that property names become case-insensitive.
+                dictionary[binder.Name.ToLower()] = value;
+
+                // You can always add a value to a dictionary,
+                // so this method always returns true.
+                return true;
+            }
         }
     }
 }
