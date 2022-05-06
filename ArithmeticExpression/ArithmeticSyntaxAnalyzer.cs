@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -62,6 +63,9 @@ namespace ArithmeticExpression
             }
         }
 
+        private static MethodInfo? ExpandoObjectGetMethod = typeof(IDictionary<string, object?>).GetMethod("TryGetValue", new[] { typeof(string), typeof(object).MakeByRefType() });
+
+        private Dictionary<string, ParameterExpression> ParameterDict = new();
         private void Action_ExpValue(Production production)
         {
             var rightLength = production.Right.Count();
@@ -74,25 +78,69 @@ namespace ArithmeticExpression
                         {
                             case "id":
                                 {
+                                    if (ExpandoObjectGetMethod == null)
+                                        throw new NullReferenceException();
+
                                     var exp2 = (ConstantExpression)expStack.Pop();
                                     expStack.Pop();
                                     var exp1 = (ConstantExpression)expStack.Pop();
 
-                                    if(exp1.Value == null || exp2.Value == null)
+                                    if (exp1.Value == null || exp2.Value == null)
                                         throw new NotImplementedException();
 
-                                    var exp = Expression.Parameter(typeof(ExpandoObject), (string)exp1.Value);
-                                    var methodName = (string)exp2.Value;
-                                    var getMethod = typeof(ExpandoObject).GetMethod("TryGetMember");
-                                    throw new NotImplementedException();
+                                    if (!ParameterDict.TryGetValue((string)exp1.Value, out var expParameter))
+                                    {
+                                        expParameter = Expression.Parameter(typeof(ExpandoObject), (string)exp1.Value);
+                                        ParameterDict.Add((string)exp1.Value, expParameter);
+                                    }
+                                    var keyName = (string)exp2.Value;
+
+                                    var expValue = Expression.Variable(typeof(object), "value");
+                                    var exp = Expression.Block(new ParameterExpression[] { expValue },
+                                        Expression.Call(expParameter, ExpandoObjectGetMethod, Expression.Constant(keyName), expValue),
+                                        expValue
+                                        );
+
+                                    expStack.Push(exp);
                                 }
                                 break;
                             case "ExpValue":
+                                {
+                                    if (ExpandoObjectGetMethod == null)
+                                        throw new NullReferenceException();
+
+                                    var exp2 = (ConstantExpression)expStack.Pop();
+                                    expStack.Pop();
+                                    var exp1 = expStack.Pop();
+
+
+                                    if (exp2.Value == null)
+                                        throw new NotImplementedException();
+
+
+                                    var keyName = (string)exp2.Value;
+
+                                    var expValue = Expression.Variable(typeof(object), "value");
+                                    var endLabel = Expression.Label(typeof(object));
+                                    var exp = Expression.Block(new ParameterExpression[] { expValue },
+                                        Expression.Assign(expValue, exp1),
+                                        Expression.IfThen(
+                                            Expression.Equal(expValue, Expression.Constant(null)),
+                                            Expression.Goto(endLabel, expValue)),
+                                        Expression.IfThen(
+                                            Expression.TypeEqual(expValue, typeof(ExpandoObject)),
+                                            Expression.Call(
+                                                Expression.TypeAs(expValue, typeof(ExpandoObject)),
+                                                ExpandoObjectGetMethod,
+                                                Expression.Constant(keyName),
+                                                expValue)
+                                            ),
+                                        Expression.Label(endLabel, expValue));
+                                    expStack.Push(exp);
+                                }
+                                break;
                             default: throw new NotSupportedException();
                         }
-
-
-                        throw new NotImplementedException();
                     }
                     break;
                 case 4:
@@ -122,9 +170,13 @@ namespace ArithmeticExpression
             }
         }
 
+        public (Expression?, IEnumerable<ParameterExpression>) Exp { get; set; }
+
         protected override void OnAcceptItem()
         {
             base.OnAcceptItem();
+
+            Exp = (expStack.Pop(), ParameterDict.OrderBy(i => i.Key).Select(i => i.Value).ToArray());
         }
     }
 }

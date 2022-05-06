@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
+using System.Linq.Expressions;
 
 namespace ArithmeticExpression
 {
@@ -54,12 +55,12 @@ namespace ArithmeticExpression
             lexicalAnalyzer.Save(bw);
         }
 
-        static void Main2(string[] args)
+        static void Main(string[] args)
         {
             var listProduction = new List<Production>();
             listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|id|( Exp )"));
             listProduction.AddRange(Production.Create("ExpValue", "id . id|ExpValue . id|id [ Exp ]|ExpValue [ Exp ]"));
-            listProduction.AddRange(Production.Create("ExpSquare", "ExpAtom|ExpValue|ExpValue ^ ExpSquare"));
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpAtom|ExpAtom ^ ExpSquare|ExpValue|ExpValue ^ ExpSquare"));
             listProduction.AddRange(Production.Create("ExpSign", "ExpSquare|- ExpSquare"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpSign|ExpMulti * ExpSign|ExpMulti / ExpSign|ExpMulti % ExpSign"));
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti|ExpAdd - ExpMulti"));
@@ -85,62 +86,28 @@ namespace ArithmeticExpression
             using var br = new BinaryReader(fs);
             LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(br);
 
-            string text = "a[b + c]";
+            string text = "a.b.cd";
             using var reader = new StringReader(text);
 
-            LRSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
+            ArithmeticSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
             syntaxAnalyzer.Analyzer(lexicalAnalyzer.GetEnumerator(reader));
+
+            var (exp, param) = syntaxAnalyzer.Exp;
+            dynamic obj = new ExpandoObject();
+            //obj.b = 123;
+            obj.b = new ExpandoObject();
+            obj.b.c = 1234;
+            var func = Expression.Lambda<Func<ExpandoObject, object>>(exp, param).Compile();
+            var value = func(obj);
+            Console.WriteLine(value ?? "null");
+
         }
 
-        static void Main(string[] args)
+        static void Main3(string[] args)
         {
             dynamic obj = new ExpandoObject();
             obj.aa = 123;
             Console.WriteLine(obj.aa);
-        }
-
-        class DClass1 : DynamicObject
-        {
-            Dictionary<string, object?> dictionary = new();
-
-            // This property returns the number of elements
-            // in the inner dictionary.
-            public int Count
-            {
-                get
-                {
-                    return dictionary.Count;
-                }
-            }
-
-            // If you try to get a value of a property
-            // not defined in the class, this method is called.
-            public override bool TryGetMember(
-                GetMemberBinder binder, out object? result)
-            {
-                // Converting the property name to lowercase
-                // so that property names become case-insensitive.
-                string name = binder.Name.ToLower();
-
-                // If the property name is found in a dictionary,
-                // set the result parameter to the property value and return true.
-                // Otherwise, return false.
-                return dictionary.TryGetValue(name, out result);
-            }
-
-            // If you try to set a value of a property that is
-            // not defined in the class, this method is called.
-            public override bool TrySetMember(
-                SetMemberBinder binder, object? value)
-            {
-                // Converting the property name to lowercase
-                // so that property names become case-insensitive.
-                dictionary[binder.Name.ToLower()] = value;
-
-                // You can always add a value to a dictionary,
-                // so this method always returns true.
-                return true;
-            }
         }
     }
 }
