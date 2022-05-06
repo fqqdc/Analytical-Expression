@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LexicalAnalyzer;
+﻿using LexicalAnalyzer;
 using SyntaxAnalyzer;
-using System.IO;
 
-namespace SyntaxAnalyzerTest
+namespace RegularExpression
 {
     public class RegularLRSyntaxAnalyzer : LRSyntaxAnalyzer
     {
@@ -17,10 +11,29 @@ namespace SyntaxAnalyzerTest
             ) : base(actionTable, gotoTable) { }
 
         public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
-        public static RegularLRSyntaxAnalyzer Create(string fileName = "Regular")
+        public static RegularLRSyntaxAnalyzer LoadFromFile(string? fileName = null)
         {
+            if (fileName == null)
+                fileName = RegularLRSyntaxBuilder.DefaultFileName;
+
             FileInfo syntaxFile = new($"{fileName}.syntax");
             FileInfo lexicalFile = new($"{fileName}.lexical");
+
+            if (!syntaxFile.Exists || !lexicalFile.Exists)
+            {
+                if (fileName == RegularLRSyntaxBuilder.DefaultFileName)
+                {
+                    RegularLRSyntaxBuilder.CreateRegularFiles();
+                    syntaxFile.Refresh();
+                    if (!syntaxFile.Exists)
+                        throw new FileNotFoundException("文件未找到", syntaxFile.FullName);
+                    lexicalFile.Refresh();
+                    if (!lexicalFile.Exists)
+                        throw new FileNotFoundException("文件未找到", lexicalFile.FullName);
+                }
+            }
+
+
             var symEnumerator = Enumerable.Empty<(Terminal sym, string symToken)>().GetEnumerator();
 
             Dictionary<(int state, Terminal t), List<ActionItem>>? actionTable = null;
@@ -37,7 +50,7 @@ namespace SyntaxAnalyzerTest
             }
             else
             {
-                throw new FileNotFoundException("找不到词法数据", "Regular.lexical");
+                throw new FileNotFoundException("找不到词法数据", lexicalFile.FullName);
             }
 
             if (syntaxFile.Exists)
@@ -53,13 +66,13 @@ namespace SyntaxAnalyzerTest
             }
             else
             {
-                throw new FileNotFoundException("找不到语法数据", "Regular.syntax");
+                throw new FileNotFoundException("找不到语法数据", syntaxFile.FullName);
             }
 
             return new(actionTable, gotoTable) { LexicalAnalyzer = lexical };
         }
 
-        Stack<Object> nfaStack = new();
+        Stack<object> nfaStack = new();
 
         public NFA? RegularNFA { get; set; }
 
@@ -87,7 +100,7 @@ namespace SyntaxAnalyzerTest
                 nfaStack.Push(terminalToken);
             else if (terminalToken.Length == 2 && terminalToken[0] == '\\')
             {
-                nfaStack.Push(terminalToken[1..2]);
+                nfaStack.Push(terminalToken.Substring(1, 1));
             }
             else throw new NotSupportedException();
         }
@@ -262,7 +275,7 @@ namespace SyntaxAnalyzerTest
             using var reader = new StringReader(text);
             if (LexicalAnalyzer == null)
                 throw new ArgumentNullException("LexicalAnalyzer", "词法分析器不能为空");
-            this.Analyzer(LexicalAnalyzer.GetEnumerator(reader));
+            Analyzer(LexicalAnalyzer.GetEnumerator(reader));
         }
     }
 }
