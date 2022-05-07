@@ -13,10 +13,24 @@ namespace ArithmeticExpression
 {
     public class ArithmeticSyntaxAnalyzer : LRSyntaxAnalyzer
     {
+        private static MethodInfo? GetMemberMethod = typeof(ArithmeticHelper).GetMethod("GetMember", new[] { typeof(object), typeof(string) });
+        private static MethodInfo? ParseToNumberMethod = typeof(ArithmeticHelper).GetMethod("ParseToNumber", new[] { typeof(object) });
+
         public ArithmeticSyntaxAnalyzer(Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, Dictionary<(int state, NonTerminal t), int> gotoTable)
             : base(actionTable, gotoTable) { }
 
         private Stack<Expression> expStack = new();
+
+        public ParameterExpression? Parameter { get; private set; }
+        public Expression? Target { get; private set; }
+
+        protected override void OnProcedureInit()
+        {
+            base.OnProcedureInit();
+
+            this.Parameter = Expression.Parameter(typeof(IDictionary<string, object?>), "Parameter");
+            this.Target = null;
+        }
 
         protected override void OnShiftItem(Terminal terminal, string terminalToken)
         {
@@ -31,7 +45,7 @@ namespace ArithmeticExpression
                     break;
                 case "decimal":
                     {
-                        expStack.Push(Expression.Constant(double.Parse(terminalToken), typeof(double)));
+                        expStack.Push(Expression.Constant(decimal.Parse(terminalToken), typeof(decimal)));
                     }
                     break;
                 case "id":
@@ -54,6 +68,9 @@ namespace ArithmeticExpression
                 case "ExpAtom":
                     Action_ExpAtom(production);
                     break;
+                case "ExpObject":
+                    Action_ExpObject(production);
+                    break;
                 case "ExpValue":
                     Action_ExpValue(production);
                     break;
@@ -63,80 +80,76 @@ namespace ArithmeticExpression
             }
         }
 
-        private static MethodInfo? ExpandoObjectGetMethod = typeof(IDictionary<string, object?>).GetMethod("TryGetValue", new[] { typeof(string), typeof(object).MakeByRefType() });
-
-        private Dictionary<string, ParameterExpression> ParameterDict = new();
         private void Action_ExpValue(Production production)
         {
+            return;
+
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 3:
+                case 1:
                     {
                         var fstRight = production.Right.First().Name;
                         switch (fstRight)
                         {
-                            case "id":
+                            default: throw new NotSupportedException();
+                        }
+                    }
+                    break;
+                default: throw new NotSupportedException();
+            }
+        }
+
+
+
+        private void Action_ExpObject(Production production)
+        {
+            var rightLength = production.Right.Count();
+            var fstRight = production.Right.First().Name;
+            switch (rightLength)
+            {
+                case 3:
+                    {
+                        switch (fstRight)
+                        {
+                            case "id": // id_1 . id_2
                                 {
-                                    if (ExpandoObjectGetMethod == null)
+                                    if (GetMemberMethod == null || Parameter == null)
                                         throw new NullReferenceException();
 
-                                    var exp2 = (ConstantExpression)expStack.Pop();
+                                    var expId_2 = (ConstantExpression)expStack.Pop();
                                     expStack.Pop();
-                                    var exp1 = (ConstantExpression)expStack.Pop();
+                                    var expId_1 = (ConstantExpression)expStack.Pop();
 
-                                    if (exp1.Value == null || exp2.Value == null)
+                                    if (expId_1.Value == null || expId_2.Value == null)
                                         throw new NotImplementedException();
 
-                                    if (!ParameterDict.TryGetValue((string)exp1.Value, out var expParameter))
-                                    {
-                                        expParameter = Expression.Parameter(typeof(ExpandoObject), (string)exp1.Value);
-                                        ParameterDict.Add((string)exp1.Value, expParameter);
-                                    }
-                                    var keyName = (string)exp2.Value;
+                                    var key1 = (string)expId_1.Value;
+                                    var expValue1 = Expression.Call(GetMemberMethod, Parameter, Expression.Constant(key1));
 
-                                    var expValue = Expression.Variable(typeof(object), "value");
-                                    var exp = Expression.Block(new ParameterExpression[] { expValue },
-                                        Expression.Call(expParameter, ExpandoObjectGetMethod, Expression.Constant(keyName), expValue),
-                                        expValue
-                                        );
+                                    var key2 = (string)expId_2.Value;
+                                    var expValue2 = Expression.Call(GetMemberMethod, expValue1, Expression.Constant(key2));
 
-                                    expStack.Push(exp);
+
+                                    expStack.Push(expValue2);
                                 }
                                 break;
-                            case "ExpValue":
+                            case "ExpObject": // ExpObject . id
                                 {
-                                    if (ExpandoObjectGetMethod == null)
+                                    if (GetMemberMethod == null || Parameter == null)
                                         throw new NullReferenceException();
 
-                                    var exp2 = (ConstantExpression)expStack.Pop();
+                                    var expId = (ConstantExpression)expStack.Pop();
                                     expStack.Pop();
-                                    var exp1 = expStack.Pop();
+                                    var expExpObject = expStack.Pop();
 
-
-                                    if (exp2.Value == null)
+                                    if (expId.Value == null)
                                         throw new NotImplementedException();
 
+                                    var key2 = (string)expId.Value;
+                                    var expValue2 = Expression.Call(GetMemberMethod, expExpObject, Expression.Constant(key2));
 
-                                    var keyName = (string)exp2.Value;
-
-                                    var expValue = Expression.Variable(typeof(object), "value");
-                                    var endLabel = Expression.Label(typeof(object));
-                                    var exp = Expression.Block(new ParameterExpression[] { expValue },
-                                        Expression.Assign(expValue, exp1),
-                                        Expression.IfThen(
-                                            Expression.Equal(expValue, Expression.Constant(null)),
-                                            Expression.Goto(endLabel, expValue)),
-                                        Expression.IfThen(
-                                            Expression.TypeEqual(expValue, typeof(ExpandoObject)),
-                                            Expression.Call(
-                                                Expression.TypeAs(expValue, typeof(ExpandoObject)),
-                                                ExpandoObjectGetMethod,
-                                                Expression.Constant(keyName),
-                                                expValue)
-                                            ),
-                                        Expression.Label(endLabel, expValue));
-                                    expStack.Push(exp);
+                                    expStack.Push(expValue2);
                                 }
                                 break;
                             default: throw new NotSupportedException();
@@ -145,7 +158,18 @@ namespace ArithmeticExpression
                     break;
                 case 4:
                     {
-                        throw new NotImplementedException();
+                        switch (fstRight)
+                        {
+                            case "id": // id [ Exp ]
+                                { 
+                                    expStack.Pop();
+                                    var exp = expStack.Pop();
+                                    expStack.Pop();
+                                    var expId = expStack.Pop();
+                                }
+                                break;
+                            default: throw new NotSupportedException();
+                        }
                     }
                     break;
                 default: throw new NotSupportedException();
@@ -157,8 +181,31 @@ namespace ArithmeticExpression
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: break;
-                case 3:
+                case 1:
+                    {
+                        var fstRight = production.Right.First().Name;
+                        switch (fstRight)
+                        {
+                            case "id":
+                                {
+                                    if (ParseToNumberMethod == null || GetMemberMethod == null || Parameter == null)
+                                        throw new NullReferenceException();
+
+                                    var exp = (ConstantExpression)expStack.Pop();
+                                    if (exp.Value == null) throw new NullReferenceException();
+
+                                    var key = (string)exp.Value;
+                                    var expValue = Expression.Call(GetMemberMethod, Parameter, Expression.Constant(key));
+                                    var expNumber = Expression.Call(ParseToNumberMethod, expValue);
+
+                                    expStack.Push(expNumber);
+                                }
+                                break;
+                            default: break;
+                        }
+                    }
+                    break;
+                case 3: // ( Exp )
                     {
                         expStack.Pop();
                         var exp = expStack.Pop();
@@ -170,13 +217,13 @@ namespace ArithmeticExpression
             }
         }
 
-        public (Expression?, IEnumerable<ParameterExpression>) Exp { get; set; }
+
 
         protected override void OnAcceptItem()
         {
             base.OnAcceptItem();
 
-            Exp = (expStack.Pop(), ParameterDict.OrderBy(i => i.Key).Select(i => i.Value).ToArray());
+            Target = expStack.Pop();
         }
     }
 }

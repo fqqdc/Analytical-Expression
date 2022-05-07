@@ -59,9 +59,11 @@ namespace ArithmeticExpression
         {
             var listProduction = new List<Production>();
             listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|id|( Exp )"));
-            listProduction.AddRange(Production.Create("ExpValue", "id . id|ExpValue . id|id [ Exp ]|ExpValue [ Exp ]"));
-            listProduction.AddRange(Production.Create("ExpSquare", "ExpAtom|ExpAtom ^ ExpSquare|ExpValue|ExpValue ^ ExpSquare"));
-            listProduction.AddRange(Production.Create("ExpSign", "ExpSquare|- ExpSquare"));
+            listProduction.AddRange(Production.Create("ExpObject", "id . ExpAtom|ExpObject . ExpAtom"));
+            listProduction.AddRange(Production.Create("ExpObject", "id [ ExpAtom ]|ExpObject [ ExpAtom ]"));
+            listProduction.AddRange(Production.Create("ExpValue", "ExpAtom|ExpObject"));
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpValue|ExpValue ^ ExpSquare"));
+            listProduction.AddRange(Production.Create("ExpSign", "ExpValue|- ExpValue"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpSign|ExpMulti * ExpSign|ExpMulti / ExpSign|ExpMulti % ExpSign"));
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti|ExpAdd - ExpMulti"));
             listProduction.AddRange(Production.Create("ExpCompare", "ExpAdd|ExpAdd > ExpAdd|ExpAdd >= ExpAdd|ExpAdd < ExpAdd|ExpAdd <= ExpAdd"));
@@ -82,32 +84,48 @@ namespace ArithmeticExpression
             }
             else Console.WriteLine(slrGrammar);
 
+            return;
+
             using var fs = File.OpenRead($"{DefaultFileName}.lexical");
             using var br = new BinaryReader(fs);
             LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(br);
 
-            string text = "a.b.cd";
+            string text = "a.b.d.f2";
             using var reader = new StringReader(text);
 
             ArithmeticSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
             syntaxAnalyzer.Analyzer(lexicalAnalyzer.GetEnumerator(reader));
 
-            var (exp, param) = syntaxAnalyzer.Exp;
+            if (syntaxAnalyzer.Target == null || syntaxAnalyzer.Parameter == null)
+                throw new NullReferenceException();
+
+            var func = Expression.Lambda<Func<IDictionary<string, object?>, object>>(syntaxAnalyzer.Target, syntaxAnalyzer.Parameter).Compile();
+
             dynamic obj = new ExpandoObject();
-            //obj.b = 123;
+            obj.a = new { b = new { c = 666 } };
             obj.b = new ExpandoObject();
             obj.b.c = 1234;
-            var func = Expression.Lambda<Func<ExpandoObject, object>>(exp, param).Compile();
+            obj.b.d = new ExpandoObject();
+            obj.b.d.e = 12345;
+
             var value = func(obj);
-            Console.WriteLine(value ?? "null");
+            Console.WriteLine($"value:{value ?? "null"}");
 
         }
 
-        static void Main3(string[] args)
+        class TestClass
         {
-            dynamic obj = new ExpandoObject();
-            obj.aa = 123;
-            Console.WriteLine(obj.aa);
+            public int IntValue { get; set; }
+        }
+
+
+        static void Main2(string[] args)
+        {
+            string[] arr = { "1", "2", "3" };
+            List<TestClass> list = new() { new() { IntValue = 1 }, new() { IntValue = 12 }, new() { IntValue = 123 } };
+
+            var value = ArithmeticHelper.GetIndex(list, 1.0d);
+            Console.WriteLine(((TestClass)value).IntValue);
         }
     }
 }

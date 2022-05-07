@@ -61,6 +61,8 @@ namespace SyntaxAnalyzer
                 Push(nextState, p.Left);
             }
         }
+
+        protected virtual void OnProcedureInit() { }
         protected virtual void OnShiftItem(Terminal terminal, String terminalToken) { }
         protected virtual void OnReduceItem(Production production) { }
         protected virtual void OnAcceptItem() { }
@@ -94,6 +96,7 @@ namespace SyntaxAnalyzer
 
         private void ProcedureInit()
         {
+            OnProcedureInit();
             InitStack();
             Push(0, Terminal.EndTerminal);
         }
