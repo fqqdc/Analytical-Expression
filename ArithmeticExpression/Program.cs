@@ -31,11 +31,11 @@ namespace ArithmeticExpression
             List<(NFA, Terminal)> nfaList = new();
 
 
-            var nfaInteger = CreateNFA(@"\d+");
-            nfaList.Add((nfaInteger, new("integer")));
+            //var nfaInteger = CreateNFA(@"\d+");
+            //nfaList.Add((nfaInteger, new("integer")));
 
-            var nfaDecimal = CreateNFA(@"\d+(\.\d*)?|\.\d+");
-            nfaList.Add((nfaDecimal, new("decimal")));            
+            var nfaDecimal = CreateNFA(@"\d+(\.\d+)?|\.\d+");
+            nfaList.Add((nfaDecimal, new("number")));
 
             var nfaID = CreateNFA(@"\w(\d|\w)*");
             nfaList.Add((nfaID, new("id")));
@@ -59,16 +59,16 @@ namespace ArithmeticExpression
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|( Exp )|id"));
+            listProduction.AddRange(Production.Create("ExpAtom", "number|( Exp )|id"));
             listProduction.AddRange(Production.Create("ExpObject", "id . id|ExpObject . id"));
-            listProduction.AddRange(Production.Create("ExpObject", "id [ ExpAtom ]|ExpObject [ ExpAtom ]"));
+            listProduction.AddRange(Production.Create("ExpObject", "id [ Exp ]|ExpObject [ Exp ]"));
             listProduction.AddRange(Production.Create("ExpValue", "ExpAtom|ExpObject"));
             listProduction.AddRange(Production.Create("ExpSquare", "ExpValue|ExpValue ^ ExpSquare"));
             listProduction.AddRange(Production.Create("ExpSign", "ExpSquare|- ExpSign"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpSign|ExpMulti * ExpSign|ExpMulti / ExpSign|ExpMulti % ExpSign"));
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti|ExpAdd - ExpMulti"));
             listProduction.AddRange(Production.Create("ExpCompare", "ExpAdd|ExpAdd > ExpAdd|ExpAdd >= ExpAdd|ExpAdd < ExpAdd|ExpAdd <= ExpAdd"));
-            listProduction.AddRange(Production.Create("ExpLogicEqual", "ExpCompare|ExpLogicEqual == ExpCompare|ExpLogicEqual != ExpCompare"));
+            listProduction.AddRange(Production.Create("ExpLogicEqual", "ExpCompare|ExpCompare == ExpCompare|ExpCompare != ExpCompare"));
             listProduction.AddRange(Production.Create("ExpLogicOr", "ExpLogicEqual|ExpLogicOr or ExpLogicEqual"));
             listProduction.AddRange(Production.Create("ExpLogicAnd", "ExpLogicOr|ExpLogicAnd && ExpLogicOr"));
             listProduction.AddRange(Production.Create("Exp", "ExpLogicAnd"));
@@ -89,35 +89,50 @@ namespace ArithmeticExpression
             using var br = new BinaryReader(fs);
             LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(br);
 
-            string text = "--b.b[(2^2)]";
-            using var reader = new StringReader(text);
+            //string text = "--b.b[(2^2)]^2";
+            string text = "v2 <= v3 || 0";
 
             ArithmeticSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
-            syntaxAnalyzer.Analyzer(lexicalAnalyzer.GetEnumerator(reader));
+            Func<IDictionary<string, object?>, object> GetDelegate(string text)
+            {
+                using var reader = new StringReader(text);
+                
+                syntaxAnalyzer.Analyzer(lexicalAnalyzer.GetEnumerator(reader));
 
-            if (syntaxAnalyzer.Target == null || syntaxAnalyzer.Parameter == null)
-                throw new NullReferenceException();
+                if (syntaxAnalyzer.Target == null || syntaxAnalyzer.Parameter == null)
+                    throw new NullReferenceException();
 
-            var func = Expression.Lambda<Func<IDictionary<string, object?>, object>>(syntaxAnalyzer.Target, syntaxAnalyzer.Parameter).Compile();
+                var func = Expression.Lambda<Func<IDictionary<string, object?>, object>>(syntaxAnalyzer.Target, syntaxAnalyzer.Parameter).Compile();
+
+                return func;
+            }
 
             dynamic obj = new ExpandoObject();
             obj.a = new { b = new { c = 666 } };
             obj.b = new ExpandoObject();
-            obj.b.b = new int[] { 1, 2, 3, 4, 5 };
-            obj.b.c = 1234;
-            obj.b.d = new ExpandoObject();
-            obj.b.d.e = "777";
-            obj.b.d.f = "abc";
+            obj.b.c = new int[] { 100, 101, 102, 103, 104, 105 };
+            obj.b.d = 1234;
+            obj.b.e = new ExpandoObject();
+            obj.b.e.f = "100";
+            obj.b.e.g = "200";
+            obj.b.e.h = "abc";
+            obj.v2 = 4;
+            obj.v3 = 3;
 
-            object? value = func(obj);
-
-            Console.WriteLine();
-            Console.WriteLine($"value:{value ?? "null"}");
-            Console.WriteLine(value?.GetType());
+            //text = "a.b.c";
+            //Console.WriteLine($"{text} = {GetDelegate(text)(obj) ?? "null"}");
+            //text = "b[c][3]";
+            //Console.WriteLine($"{text} = {GetDelegate(text)(obj) ?? "null"}");
+            //text = "b.e.f + b.e.g";
+            //Console.WriteLine($"{text} = {GetDelegate(text)(obj) ?? "null"}");
+            //text = "b.e.h"; 
+            //Console.WriteLine($"{text} = {GetDelegate(text)(obj) ?? "null"}");
+            text = "v2";
+            Console.WriteLine($"{text} = {GetDelegate(text)(obj) ?? "null"}");
 
         }
 
-        class TestClass 
+        class TestClass
         {
             public int IntValue { get; set; }
         }
@@ -125,8 +140,8 @@ namespace ArithmeticExpression
 
         static void Main3(string[] args)
         {
-            object d = 123.2m;
-            Console.WriteLine(int.Parse(d.ToString()));
+            int[] arr = new int[] { 1, 2, 3 };
+            Console.WriteLine(arr[2 + 1]);
         }
     }
 }
