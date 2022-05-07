@@ -58,8 +58,8 @@ namespace ArithmeticExpression
         static void Main(string[] args)
         {
             var listProduction = new List<Production>();
-            listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|id|( Exp )"));
-            listProduction.AddRange(Production.Create("ExpObject", "id . ExpAtom|ExpObject . ExpAtom"));
+            listProduction.AddRange(Production.Create("ExpAtom", "integer|decimal|( Exp )|id"));
+            listProduction.AddRange(Production.Create("ExpObject", "id . id|ExpObject . id"));
             listProduction.AddRange(Production.Create("ExpObject", "id [ ExpAtom ]|ExpObject [ ExpAtom ]"));
             listProduction.AddRange(Production.Create("ExpValue", "ExpAtom|ExpObject"));
             listProduction.AddRange(Production.Create("ExpSquare", "ExpValue|ExpValue ^ ExpSquare"));
@@ -75,7 +75,7 @@ namespace ArithmeticExpression
             Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
 
-            SLRGrammar.CanPrintItems = false;
+            SLRGrammar.CanPrintItems = true;
             if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
             {
                 Console.WriteLine();
