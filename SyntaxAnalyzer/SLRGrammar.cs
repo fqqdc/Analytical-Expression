@@ -54,7 +54,7 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            LRGrammarHelper.PrintTable(grammar, Action, Goto);
+            //LRGrammarHelper.PrintTable(grammar, Action, Goto);
 
             foreach (var item in Action)
             {

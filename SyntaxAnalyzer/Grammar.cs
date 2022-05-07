@@ -167,7 +167,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            Console.WriteLine(mapFirst.ToString("First Sets:"));
+            //Console.WriteLine(mapFirst.ToString("First Sets:"));
             return mapFirst;
         }
 
@@ -266,7 +266,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            Console.WriteLine(mapFollow.ToString("Follow Sets:"));
+            //Console.WriteLine(mapFollow.ToString("Follow Sets:"));
             return mapFollow;
         }
     }

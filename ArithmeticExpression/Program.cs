@@ -30,11 +30,12 @@ namespace ArithmeticExpression
         {
             List<(NFA, Terminal)> nfaList = new();
 
-            var nfaDecimal = CreateNFA(@"\d+(\.\d*)?|\.\d+");
-            nfaList.Add((nfaDecimal, new("decimal")));
 
             var nfaInteger = CreateNFA(@"\d+");
             nfaList.Add((nfaInteger, new("integer")));
+
+            var nfaDecimal = CreateNFA(@"\d+(\.\d*)?|\.\d+");
+            nfaList.Add((nfaDecimal, new("decimal")));            
 
             var nfaID = CreateNFA(@"\w(\d|\w)*");
             nfaList.Add((nfaID, new("id")));
@@ -63,7 +64,7 @@ namespace ArithmeticExpression
             listProduction.AddRange(Production.Create("ExpObject", "id [ ExpAtom ]|ExpObject [ ExpAtom ]"));
             listProduction.AddRange(Production.Create("ExpValue", "ExpAtom|ExpObject"));
             listProduction.AddRange(Production.Create("ExpSquare", "ExpValue|ExpValue ^ ExpSquare"));
-            listProduction.AddRange(Production.Create("ExpSign", "ExpValue|- ExpValue"));
+            listProduction.AddRange(Production.Create("ExpSign", "ExpSquare|- ExpSign"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpSign|ExpMulti * ExpSign|ExpMulti / ExpSign|ExpMulti % ExpSign"));
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti|ExpAdd - ExpMulti"));
             listProduction.AddRange(Production.Create("ExpCompare", "ExpAdd|ExpAdd > ExpAdd|ExpAdd >= ExpAdd|ExpAdd < ExpAdd|ExpAdd <= ExpAdd"));
@@ -73,9 +74,9 @@ namespace ArithmeticExpression
             listProduction.AddRange(Production.Create("Exp", "ExpLogicAnd"));
 
             Grammar grammar = new Grammar(listProduction, new("Exp"));
-            Console.WriteLine(grammar);
+            //Console.WriteLine(grammar);
 
-            SLRGrammar.CanPrintItems = true;
+            SLRGrammar.CanPrintItems = false;
             if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -84,13 +85,11 @@ namespace ArithmeticExpression
             }
             else Console.WriteLine(slrGrammar);
 
-            return;
-
             using var fs = File.OpenRead($"{DefaultFileName}.lexical");
             using var br = new BinaryReader(fs);
             LexicalAnalyzer.LexicalAnalyzer lexicalAnalyzer = new(br);
 
-            string text = "a.b.d.f2";
+            string text = "--b.b[(2^2)]";
             using var reader = new StringReader(text);
 
             ArithmeticSyntaxAnalyzer syntaxAnalyzer = new(slrGrammar.GetAction(), slrGrammar.GetGoto());
@@ -104,28 +103,30 @@ namespace ArithmeticExpression
             dynamic obj = new ExpandoObject();
             obj.a = new { b = new { c = 666 } };
             obj.b = new ExpandoObject();
+            obj.b.b = new int[] { 1, 2, 3, 4, 5 };
             obj.b.c = 1234;
             obj.b.d = new ExpandoObject();
-            obj.b.d.e = 12345;
+            obj.b.d.e = "777";
+            obj.b.d.f = "abc";
 
-            var value = func(obj);
+            object? value = func(obj);
+
+            Console.WriteLine();
             Console.WriteLine($"value:{value ?? "null"}");
+            Console.WriteLine(value?.GetType());
 
         }
 
-        class TestClass
+        class TestClass 
         {
             public int IntValue { get; set; }
         }
 
 
-        static void Main2(string[] args)
+        static void Main3(string[] args)
         {
-            string[] arr = { "1", "2", "3" };
-            List<TestClass> list = new() { new() { IntValue = 1 }, new() { IntValue = 12 }, new() { IntValue = 123 } };
-
-            var value = ArithmeticHelper.GetIndex(list, 1.0d);
-            Console.WriteLine(((TestClass)value).IntValue);
+            object d = 123.2m;
+            Console.WriteLine(int.Parse(d.ToString()));
         }
     }
 }

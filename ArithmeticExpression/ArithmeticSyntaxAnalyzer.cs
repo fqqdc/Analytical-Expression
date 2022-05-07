@@ -14,7 +14,9 @@ namespace ArithmeticExpression
     public class ArithmeticSyntaxAnalyzer : LRSyntaxAnalyzer
     {
         private static MethodInfo? GetMemberMethod = typeof(ArithmeticHelper).GetMethod("GetMember", new[] { typeof(object), typeof(string) });
+        private static MethodInfo? GetIndexMethod = typeof(ArithmeticHelper).GetMethod("GetIndex", new[] { typeof(object), typeof(object) });
         private static MethodInfo? ParseToNumberMethod = typeof(ArithmeticHelper).GetMethod("ParseToNumber", new[] { typeof(object) });
+        private static MethodInfo? NegateMethod = typeof(ArithmeticHelper).GetMethod("Negate", new[] { typeof(object) });
 
         public ArithmeticSyntaxAnalyzer(Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, Dictionary<(int state, NonTerminal t), int> gotoTable)
             : base(actionTable, gotoTable) { }
@@ -45,7 +47,7 @@ namespace ArithmeticExpression
                     break;
                 case "decimal":
                     {
-                        expStack.Push(Expression.Constant(decimal.Parse(terminalToken), typeof(decimal)));
+                        expStack.Push(Expression.Constant(double.Parse(terminalToken), typeof(double)));
                     }
                     break;
                 case "id":
@@ -74,24 +76,83 @@ namespace ArithmeticExpression
                 case "ExpValue":
                     Action_ExpValue(production);
                     break;
-
+                case "ExpSquare":
+                    Action_ExpSquare(production);
+                    break;
+                case "ExpSign":
+                    Action_ExpSign(production);
+                    break;
                 default:
                     break;
             }
         }
 
+        private void Action_ExpSign(Production production)
+        {
+            var rightLength = production.Right.Count();
+            switch (rightLength)
+            {
+                case 1: // ExpSquare
+                    break;
+                case 2: // - ExpSign
+                    {
+                        if (NegateMethod == null) throw new NullReferenceException();
+
+                        var expSign = expStack.Pop();
+                        expStack.Pop();
+
+                        var exp = Expression.Negate(expSign, NegateMethod);
+                        expStack.Push(exp);
+                    }
+                    break;
+                default: throw new NotSupportedException();
+            }
+        }
+
+        private void Action_ExpSquare(Production production)
+        {
+            var rightLength = production.Right.Count();
+            switch (rightLength)
+            {
+                case 1: // ExpValue
+                    break;
+                case 3: // ExpValue ^ ExpSquare
+                    {
+                        var expSquare = expStack.Pop();
+                        expStack.Pop();
+                        var expValue = expStack.Pop();
+
+                        var castVar1ToDouble = Expression.Convert(expValue, typeof(double));
+                        var castVar2ToDouble = Expression.Convert(expSquare, typeof(double));
+                        var exp = Expression.Power(castVar1ToDouble, castVar2ToDouble);
+                        expStack.Push(exp);
+                    }
+                    break;
+                default: throw new NotSupportedException();
+            }
+        }
+
         private void Action_ExpValue(Production production)
         {
-            return;
-
             var rightLength = production.Right.Count();
+            var fstRight = production.Right.First().Name;
             switch (rightLength)
             {
                 case 1:
                     {
-                        var fstRight = production.Right.First().Name;
                         switch (fstRight)
                         {
+                            case "ExpAtom": break;
+                            case "ExpObject":
+                                {
+                                    if (ParseToNumberMethod == null) throw new NullReferenceException();
+
+                                    var expObject = expStack.Pop();
+                                    var expValue = Expression.Call(ParseToNumberMethod, expObject);
+
+                                    expStack.Push(expValue);
+                                }
+                                break;
                             default: throw new NotSupportedException();
                         }
                     }
@@ -130,7 +191,6 @@ namespace ArithmeticExpression
                                     var key2 = (string)expId_2.Value;
                                     var expValue2 = Expression.Call(GetMemberMethod, expValue1, Expression.Constant(key2));
 
-
                                     expStack.Push(expValue2);
                                 }
                                 break;
@@ -160,12 +220,35 @@ namespace ArithmeticExpression
                     {
                         switch (fstRight)
                         {
-                            case "id": // id [ Exp ]
-                                { 
+                            case "id": // id [ ExpAtom ]
+                                {
+                                    if (GetIndexMethod == null || Parameter == null)
+                                        throw new NullReferenceException();
+
                                     expStack.Pop();
-                                    var exp = expStack.Pop();
+                                    var expAtom = expStack.Pop();
                                     expStack.Pop();
-                                    var expId = expStack.Pop();
+                                    var exp_Id = (ConstantExpression)expStack.Pop();
+
+                                    var expValue1 = Expression.Call(GetIndexMethod, Parameter, Expression.Constant(exp_Id.Value));
+                                    var expValue2 = Expression.Call(GetIndexMethod, expValue1, expAtom);
+
+                                    expStack.Push(expValue2);
+                                }
+                                break;
+                            case "ExpObject": // ExpObject [ ExpAtom ]
+                                {
+                                    if (GetIndexMethod == null || Parameter == null)
+                                        throw new NullReferenceException();
+
+                                    expStack.Pop();
+                                    var expAtom = expStack.Pop();
+                                    expStack.Pop();
+                                    var expObject = expStack.Pop();
+
+                                    var expValue = Expression.Call(GetIndexMethod, expObject, Expression.Convert(expAtom, typeof(object)));
+
+                                    expStack.Push(expValue);
                                 }
                                 break;
                             default: throw new NotSupportedException();
@@ -179,29 +262,17 @@ namespace ArithmeticExpression
         private void Action_ExpAtom(Production production)
         {
             var rightLength = production.Right.Count();
+            var fstRight = production.Right.First().Name;
             switch (rightLength)
             {
                 case 1:
                     {
-                        var fstRight = production.Right.First().Name;
                         switch (fstRight)
                         {
-                            case "id":
-                                {
-                                    if (ParseToNumberMethod == null || GetMemberMethod == null || Parameter == null)
-                                        throw new NullReferenceException();
-
-                                    var exp = (ConstantExpression)expStack.Pop();
-                                    if (exp.Value == null) throw new NullReferenceException();
-
-                                    var key = (string)exp.Value;
-                                    var expValue = Expression.Call(GetMemberMethod, Parameter, Expression.Constant(key));
-                                    var expNumber = Expression.Call(ParseToNumberMethod, expValue);
-
-                                    expStack.Push(expNumber);
-                                }
-                                break;
-                            default: break;
+                            case "integer":
+                            case "decimal":
+                            case "id": break;
+                            default: throw new NotSupportedException();
                         }
                     }
                     break;
@@ -223,7 +294,7 @@ namespace ArithmeticExpression
         {
             base.OnAcceptItem();
 
-            Target = expStack.Pop();
+            Target = Expression.Convert(expStack.Pop(), typeof(object));
         }
     }
 }
