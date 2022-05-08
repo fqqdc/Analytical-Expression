@@ -12,7 +12,7 @@ namespace ArithmeticExpression
     {
         public static object? GetMember(object? instance, string memberName)
         {
-            if (instance == null) return null;            
+            if (instance == null) return null;
 
             var getProperty = instance.GetType().GetProperty(memberName);
             if (getProperty != null && getProperty.CanRead)
@@ -53,13 +53,10 @@ namespace ArithmeticExpression
 
         public static double ParseToNumber(object? instance)
         {
-            if (instance == null) return 0;
-
-            if (double.TryParse(instance.ToString(), out var d))
+            if (instance != null && double.TryParse(instance.ToString(), out var d))
                 return d;
 
-            return 0;
-
+            throw new FormatException($"{ (instance == null ? "null" : instance.ToString() ?? "null") } 无法表示成一个数值。");
         }
     }
 }

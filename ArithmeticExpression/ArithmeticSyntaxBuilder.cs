@@ -55,10 +55,47 @@ namespace ArithmeticExpression
             listProduction.AddRange(Production.Create("ExpNumber", "( ExpArith )")); //
             listProduction.AddRange(Production.Create("ExpNumber", "number")); // 数值
 
-            listProduction.AddRange(Production.Create("ExpObject", "ExpObject [ ExpArith ]")); // 读取数组 (未测试)
+            listProduction.AddRange(Production.Create("ExpObject", "ExpObject [ ExpArith ]")); // 读取数组
             listProduction.AddRange(Production.Create("ExpObject", "ExpObject . id")); // 读取对象、字典(<string,object>)
 
             listProduction.AddRange(Production.Create("ExpObject", "id|null")); // 对象
+
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject != ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith != ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject == ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith == ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith <= ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith < ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith >= ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpArith")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpArith > ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpObject")); // 比较数值
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpMulti")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd - ExpObject")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpObject")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpMulti")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd + ExpObject")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpObject")); // 加法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpSign")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti % ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpSign")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti / ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpSign")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti * ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpObject")); // 乘法
+            listProduction.AddRange(Production.Create("ExpSign", "- ExpObject")); // 取反
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpObject ^ ExpSquare")); // 开方
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpNumber ^ ExpObject")); // 开方
+            listProduction.AddRange(Production.Create("ExpSquare", "ExpObject ^ ExpObject")); // 开方
+            listProduction.AddRange(Production.Create("ExpObject", "ExpObject [ ExpObject ]")); // 读取数组
 
             Grammar grammar = new Grammar(listProduction, new("Exp"));
             Console.WriteLine(grammar);
