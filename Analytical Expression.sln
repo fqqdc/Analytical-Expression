@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Analytical Expression", "Analytical Expression\Analytical Expression.csproj", "{93345FA4-63B8-4659-8101-A6860DF56E69}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D753D21B-AB95-4016-A3C4-A10FCBC64477}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -18,11 +16,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LexicalAnalyzerTest", "Lexi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SyntaxAnalyzerTest", "SyntaxAnalyzerTest\SyntaxAnalyzerTest.csproj", "{FAA0025A-30C1-4FD9-B406-0E2E1F7754E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegularExpression", "RegularExpression\RegularExpression.csproj", "{7EAE4213-DF3D-44E7-8638-661E27CC5347}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegularExpression", "RegularExpression\RegularExpression.csproj", "{7EAE4213-DF3D-44E7-8638-661E27CC5347}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegularExpressionTest", "RegularExpressionTest\RegularExpressionTest.csproj", "{2960052A-CA8F-4602-8DC7-5600D211A79D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegularExpressionTest", "RegularExpressionTest\RegularExpressionTest.csproj", "{2960052A-CA8F-4602-8DC7-5600D211A79D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArithmeticExpression", "ArithmeticExpression\ArithmeticExpression.csproj", "{FD94EAB6-16E8-4A94-AB5D-22618F364B58}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArithmeticExpression", "ArithmeticExpression\ArithmeticExpression.csproj", "{FD94EAB6-16E8-4A94-AB5D-22618F364B58}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArithmeticExpressionTest", "ArithmeticExpressionTest\ArithmeticExpressionTest.csproj", "{E6187813-999C-4421-8D96-BC4639504D1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,10 +30,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{93345FA4-63B8-4659-8101-A6860DF56E69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{93345FA4-63B8-4659-8101-A6860DF56E69}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{93345FA4-63B8-4659-8101-A6860DF56E69}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{93345FA4-63B8-4659-8101-A6860DF56E69}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9F12B22C-288D-423E-B16B-DFF81682EC48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9F12B22C-288D-423E-B16B-DFF81682EC48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F12B22C-288D-423E-B16B-DFF81682EC48}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -62,6 +58,10 @@ Global
 		{FD94EAB6-16E8-4A94-AB5D-22618F364B58}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD94EAB6-16E8-4A94-AB5D-22618F364B58}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD94EAB6-16E8-4A94-AB5D-22618F364B58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6187813-999C-4421-8D96-BC4639504D1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6187813-999C-4421-8D96-BC4639504D1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6187813-999C-4421-8D96-BC4639504D1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6187813-999C-4421-8D96-BC4639504D1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

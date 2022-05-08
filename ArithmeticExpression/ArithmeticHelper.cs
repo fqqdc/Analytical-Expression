@@ -12,16 +12,10 @@ namespace ArithmeticExpression
     {
         public static object? GetMember(object? instance, string memberName)
         {
-            if (instance == null) return null;
-
-            var dict = instance as IDictionary<string, object?>;
-            if (dict != null && dict.TryGetValue(memberName, out object? value))
-            {
-                return value;
-            }
+            if (instance == null) return null;            
 
             var getProperty = instance.GetType().GetProperty(memberName);
-            if (getProperty != null)
+            if (getProperty != null && getProperty.CanRead)
             {
                 return getProperty.GetValue(instance);
             }
@@ -32,27 +26,20 @@ namespace ArithmeticExpression
                 return getField.GetValue(instance);
             }
 
-            return null;
-        }
-
-        public static object? GetIndex(object? instance, object? key)
-        {
-            if (instance == null || key == null) return null;
-
-            string? keyString = key.ToString();
-            if (keyString == null) return null;
-
             var dict = instance as IDictionary<string, object?>;
-            if (dict != null && dict.TryGetValue(keyString, out object? value))
-                return value;
-
-            if (double.TryParse(keyString, out double doubleValue))
+            if (dict != null && dict.TryGetValue(memberName, out object? value))
             {
-                value = GetIndex(instance, (int)doubleValue);
-                if (value != null) return value;
+                return value;
             }
 
             return null;
+        }
+
+        public static object? GetIndex(object? instance, double index)
+        {
+            if (instance == null) return null;
+
+            return GetIndex(instance, (int)index);
         }
 
         public static object? GetIndex(object? instance, int index)
@@ -64,7 +51,7 @@ namespace ArithmeticExpression
             return null;
         }
 
-        public static object ParseToNumber(object? instance)
+        public static double ParseToNumber(object? instance)
         {
             if (instance == null) return 0;
 

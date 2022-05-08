@@ -3,6 +3,7 @@ using SyntaxAnalyzer;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -14,7 +15,7 @@ namespace ArithmeticExpression
     public class ArithmeticSyntaxAnalyzer : LRSyntaxAnalyzer
     {
         private static MethodInfo? GetMemberMethod = typeof(ArithmeticHelper).GetMethod("GetMember", new[] { typeof(object), typeof(string) });
-        private static MethodInfo? GetIndexMethod = typeof(ArithmeticHelper).GetMethod("GetIndex", new[] { typeof(object), typeof(object) });
+        private static MethodInfo? GetIndexMethod = typeof(ArithmeticHelper).GetMethod("GetIndex", new[] { typeof(object), typeof(double) });
         private static MethodInfo? ParseToNumberMethod = typeof(ArithmeticHelper).GetMethod("ParseToNumber", new[] { typeof(object) });
 
         public ArithmeticSyntaxAnalyzer(Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, Dictionary<(int state, NonTerminal t), int> gotoTable)
@@ -29,7 +30,7 @@ namespace ArithmeticExpression
         {
             base.OnProcedureInit();
 
-            this.Parameter = Expression.Parameter(typeof(IDictionary<string, object?>), "Parameter");
+            this.Parameter = Expression.Parameter(typeof(object), "Parameter");
             this.Target = null;
         }
 
@@ -42,6 +43,16 @@ namespace ArithmeticExpression
                 case "number":
                     {
                         expStack.Push(Expression.Constant(double.Parse(terminalToken), typeof(double)));
+                    }
+                    break;
+                case "bool":
+                    {
+                        expStack.Push(Expression.Constant(bool.Parse(terminalToken), typeof(bool)));
+                    }
+                    break;
+                case "null":
+                    {
+                        expStack.Push(Expression.Constant(null, typeof(object)));
                     }
                     break;
                 case "id":
@@ -61,14 +72,11 @@ namespace ArithmeticExpression
 
             switch (leftName)
             {
-                case "ExpAtom":
-                    Action_ExpAtom(production);
-                    break;
                 case "ExpObject":
                     Action_ExpObject(production);
                     break;
-                case "ExpValue":
-                    Action_ExpValue(production);
+                case "ExpNumber":
+                    Action_ExpNumber(production);
                     break;
                 case "ExpSquare":
                     Action_ExpSquare(production);
@@ -82,54 +90,37 @@ namespace ArithmeticExpression
                 case "ExpAdd":
                     Action_ExpAdd(production);
                     break;
-                case "ExpCompare":
-                    Action_ExpCompare(production);
+                case "ExpBool":
+                    Action_ExpBool(production);
                     break;
-                case "ExpLogicEqual":
-                    Action_ExpLogicEqual(production);
+                case "ExpEqual":
+                    Action_ExpEqual(production);
                     break;
-                case "ExpLogicOr":
-                    Action_ExpLogicOr(production);
+                case "ExpOr":
+                    Action_ExpOr(production);
                     break;
-                case "ExpLogicAnd":
-                    Action_ExpLogicAnd(production);
+                case "ExpAnd":
+                    Action_ExpAnd(production);
                     break;
                 default:
                     break;
             }
         }
 
-        private void Action_ExpLogicAnd(Production production)
+        private void Action_ExpAnd(Production production)
         {
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: // ExpLogicOr
+                case 1: // ExpOr
                     break;
-                case 3: // ExpLogicAnd && ExpLogicOr
+                case 3: // ExpAnd && ExpOr
                     {
-                        var ExpLogicOr = expStack.Pop();
-                        var expOp = (ConstantExpression)expStack.Pop();
-                        var ExpLogicAnd = expStack.Pop();
+                        var expOr = expStack.Pop();
+                        expStack.Pop();
+                        var expAnd = expStack.Pop();
 
-                        if (expOp.Value == null)
-                            throw new NullReferenceException();
-
-                        Expression castExpLogicAndToDouble;
-                        if (ExpLogicAnd.Type != typeof(double))
-                            castExpLogicAndToDouble = Expression.Convert(ExpLogicAnd, typeof(double));
-                        else castExpLogicAndToDouble = ExpLogicAnd;
-
-                        Expression castExpLogicOrToDouble;
-                        if (ExpLogicOr.Type != typeof(double))
-                            castExpLogicOrToDouble = Expression.Convert(ExpLogicOr, typeof(double));
-                        else castExpLogicOrToDouble = ExpLogicOr;
-
-                        var compare = Expression.And(
-                            Expression.GreaterThan(castExpLogicAndToDouble, Expression.Constant(0d)),
-                           Expression.GreaterThan(castExpLogicOrToDouble, Expression.Constant(0d)));
-
-                        var exp = Expression.Condition(compare, Expression.Constant(1d), Expression.Constant(0d));
+                        var exp = Expression.And(expAnd, expOr);
                         expStack.Push(exp);
                     }
                     break;
@@ -137,37 +128,20 @@ namespace ArithmeticExpression
             }
         }
 
-        private void Action_ExpLogicOr(Production production)
+        private void Action_ExpOr(Production production)
         {
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: // ExpLogicEqual
+                case 1: // ExpEqual
                     break;
-                case 3: // ExpLogicOr or ExpLogicEqual
+                case 3: // ExpOr or ExpEqual
                     {
-                        var ExpLogicEqual = expStack.Pop();
-                        var expOp = (ConstantExpression)expStack.Pop();
-                        var ExpLogicOr = expStack.Pop();
+                        var expEqual = expStack.Pop();
+                        expStack.Pop();
+                        var ExpOr = expStack.Pop();
 
-                        if (expOp.Value == null)
-                            throw new NullReferenceException();
-
-                        Expression castExpLogicOrToDouble;
-                        if (ExpLogicOr.Type != typeof(double))
-                            castExpLogicOrToDouble = Expression.Convert(ExpLogicOr, typeof(double));
-                        else castExpLogicOrToDouble = ExpLogicOr;
-
-                        Expression castExpLogicEqualToDouble;
-                        if (ExpLogicEqual.Type != typeof(double))
-                            castExpLogicEqualToDouble = Expression.Convert(ExpLogicEqual, typeof(double));
-                        else castExpLogicEqualToDouble = ExpLogicEqual;
-
-                        var compare = Expression.Or(
-                            Expression.GreaterThan(castExpLogicOrToDouble, Expression.Constant(0d)),
-                           Expression.GreaterThan(castExpLogicEqualToDouble, Expression.Constant(0d)));
-
-                        var exp = Expression.Condition(compare, Expression.Constant(1d), Expression.Constant(0d));
+                        var exp = Expression.Or(ExpOr, expEqual);
                         expStack.Push(exp);
                     }
                     break;
@@ -175,112 +149,128 @@ namespace ArithmeticExpression
             }
         }
 
-        private void Action_ExpLogicEqual(Production production)
+        private void Action_ExpEqual(Production production)
         {
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: // ExpCompare
+                case 1: // ExpBool
                     break;
-                case 3: // ExpCompare == ExpCompare|ExpCompare != ExpCompare
+                case 3: // ExpEqual == ExpBool|ExpEqual != ExpBool
                     {
-                        var ExpCompare_2 = expStack.Pop();
-                        var expOp = (ConstantExpression)expStack.Pop();
-                        var ExpCompare_1 = expStack.Pop();
+                        var t1 = production.Right.ElementAt(1).Name;
 
-                        if (expOp.Value == null)
-                            throw new NullReferenceException();
-
-                        Expression castExpCompare2ToDouble;
-                        if (ExpCompare_2.Type != typeof(double))
-                            castExpCompare2ToDouble = Expression.Convert(ExpCompare_2, typeof(double));
-                        else castExpCompare2ToDouble = ExpCompare_2;
-
-                        Expression castExpCompare1ToDouble;
-                        if (ExpCompare_1.Type != typeof(double))
-                            castExpCompare1ToDouble = Expression.Convert(ExpCompare_1, typeof(double));
-                        else castExpCompare1ToDouble = ExpCompare_1;
-
-
-                        Expression compare;
-                        switch (expOp.Value)
+                        var expBool = expStack.Pop();
+                        expStack.Pop();
+                        var expEqual = expStack.Pop();
+                        switch (t1)
                         {
                             case "==":
                                 {
-                                    compare = Expression.Equal(castExpCompare1ToDouble, castExpCompare2ToDouble);
+                                    var exp = Expression.Equal(expEqual, expBool);
+                                    expStack.Push(exp);
                                 }
                                 break;
                             case "!=":
                                 {
-                                    compare = Expression.NotEqual(castExpCompare1ToDouble, castExpCompare2ToDouble);
+                                    var exp = Expression.NotEqual(expEqual, expBool);
+                                    expStack.Push(exp);
                                 }
                                 break;
                             default: throw new NotSupportedException();
                         }
-
-                        var exp = Expression.Condition(compare, Expression.Constant(1d), Expression.Constant(0d));
-                        expStack.Push(exp);
                     }
                     break;
                 default: throw new NotSupportedException();
             }
         }
 
-        private void Action_ExpCompare(Production production)
+        private void Action_ExpBool(Production production)
         {
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: // ExpAdd
+                case 1: // bool
                     break;
                 case 3: // ExpAdd > ExpAdd|ExpAdd >= ExpAdd|ExpAdd < ExpAdd|ExpAdd <= ExpAdd
                     {
-                        var ExpAdd_2 = expStack.Pop();
-                        var expOp = (ConstantExpression)expStack.Pop();
-                        var ExpAdd_1 = expStack.Pop();
-
-                        if (expOp.Value == null)
-                            throw new NullReferenceException();
-
-                        Expression castExpAdd2ToDouble;
-                        if (ExpAdd_2.Type != typeof(double))
-                            castExpAdd2ToDouble = Expression.Convert(ExpAdd_2, typeof(double));
-                        else castExpAdd2ToDouble = ExpAdd_2;
-
-                        Expression castExpAdd1ToDouble;
-                        if (ExpAdd_1.Type != typeof(double))
-                            castExpAdd1ToDouble = Expression.Convert(ExpAdd_1, typeof(double));
-                        else castExpAdd1ToDouble = ExpAdd_1;
-
-
-                        Expression compare;
-                        switch (expOp.Value)
+                        var t0 = production.Right.ElementAt(0).Name;
+                        switch (t0)
                         {
-                            case ">":
+                            case "(": // ( ExpLogic )
                                 {
-                                    compare = Expression.GreaterThan(castExpAdd1ToDouble, castExpAdd2ToDouble);
+                                    expStack.Pop();
+                                    var expLogic = expStack.Pop();
+                                    expStack.Pop();
+
+                                    expStack.Push(expLogic);
                                 }
                                 break;
-                            case ">=":
+                            case "ExpObject": // ExpObject == ExpObject
                                 {
-                                    compare = Expression.GreaterThanOrEqual(castExpAdd1ToDouble, castExpAdd2ToDouble);
+                                    var expObject2 = expStack.Pop();
+                                    expStack.Pop();
+                                    var expObject1 = expStack.Pop();
+
+                                    var exp = Expression.Equal(expObject1, expObject2);
+                                    expStack.Push(exp);
                                 }
                                 break;
-                            case "<":
+                            case "ExpArith":
                                 {
-                                    compare = Expression.LessThan(castExpAdd1ToDouble, castExpAdd2ToDouble);
-                                }
-                                break;
-                            case "<=":
-                                {
-                                    compare = Expression.LessThanOrEqual(castExpAdd1ToDouble, castExpAdd2ToDouble);
+                                    var t1 = production.Right.ElementAt(1).Name;
+
+                                    // ExpArith > ExpArith|ExpArith >= ExpArith|ExpArith < ExpArith|ExpArith <= ExpArith"
+                                    // ExpArith == ExpArith|ExpArith != ExpArith
+                                    var expArith2 = expStack.Pop();
+                                    expStack.Pop();
+                                    var expArith1 = expStack.Pop();
+                                    switch (t1)
+                                    {
+
+                                        case ">":
+                                            {
+                                                var exp = Expression.GreaterThan(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+                                        case ">=":
+                                            {
+                                                var exp = Expression.GreaterThanOrEqual(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+                                        case "<":
+                                            {
+                                                var exp = Expression.LessThan(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+                                        case "<=":
+                                            {
+                                                var exp = Expression.LessThanOrEqual(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+
+                                        case "==":
+                                            {
+                                                var exp = Expression.Equal(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+                                        case "!=":
+                                            {
+                                                var exp = Expression.NotEqual(expArith1, expArith2);
+                                                expStack.Push(exp);
+                                            }
+                                            break;
+                                        default: throw new NotSupportedException();
+                                    }
                                 }
                                 break;
                             default: throw new NotSupportedException();
                         }
-
-                        var exp = Expression.Condition(compare, Expression.Constant(1d), Expression.Constant(0d));
-                        expStack.Push(exp);
                     }
                     break;
                 default: throw new NotSupportedException();
@@ -294,7 +284,7 @@ namespace ArithmeticExpression
             {
                 case 1: // ExpMulti
                     break;
-                case 3: // ExpAdd + ExpMulti|ExpAdd - ExpMulti"
+                case 3: // ExpAdd + ExpMulti|ExpAdd - ExpMulti
                     {
                         var ExpMulti = expStack.Pop();
                         var expOp = (ConstantExpression)expStack.Pop();
@@ -303,28 +293,17 @@ namespace ArithmeticExpression
                         if (expOp.Value == null)
                             throw new NullReferenceException();
 
-                        Expression castExpSignToDouble;
-                        if (ExpMulti.Type != typeof(double))
-                            castExpSignToDouble = Expression.Convert(ExpMulti, typeof(double));
-                        else castExpSignToDouble = ExpMulti;
-
-                        Expression castExpMultiToDouble;
-                        if (ExpAdd.Type != typeof(double))
-                            castExpMultiToDouble = Expression.Convert(ExpAdd, typeof(double));
-                        else castExpMultiToDouble = ExpAdd;
-
-
                         Expression exp;
                         switch (expOp.Value)
                         {
                             case "+":
                                 {
-                                    exp = Expression.Add(castExpMultiToDouble, castExpSignToDouble);
+                                    exp = Expression.Add(ExpAdd, ExpMulti);
                                 }
                                 break;
                             case "-":
                                 {
-                                    exp = Expression.Subtract(castExpMultiToDouble, castExpSignToDouble);
+                                    exp = Expression.Subtract(ExpAdd, ExpMulti);
                                 }
                                 break;
                             default: throw new NotSupportedException();
@@ -352,33 +331,23 @@ namespace ArithmeticExpression
                         if (expOp.Value == null)
                             throw new NullReferenceException();
 
-                        Expression castExpSignToDouble;
-                        if (expSign.Type != typeof(double))
-                            castExpSignToDouble = Expression.Convert(expSign, typeof(double));
-                        else castExpSignToDouble = expSign;
-
-                        Expression castExpMultiToDouble;
-                        if (expMulti.Type != typeof(double))
-                            castExpMultiToDouble = Expression.Convert(expMulti, typeof(double));
-                        else castExpMultiToDouble = expMulti;
-
 
                         Expression exp;
                         switch (expOp.Value)
                         {
                             case "*":
                                 {
-                                    exp = Expression.Multiply(castExpMultiToDouble, castExpSignToDouble);
+                                    exp = Expression.Multiply(expMulti, expSign);
                                 }
                                 break;
                             case "/":
                                 {
-                                    exp = Expression.Divide(castExpMultiToDouble, castExpSignToDouble);
+                                    exp = Expression.Divide(expMulti, expSign);
                                 }
                                 break;
                             case "%":
                                 {
-                                    exp = Expression.Modulo(castExpMultiToDouble, castExpSignToDouble);
+                                    exp = Expression.Modulo(expMulti, expSign);
                                 }
                                 break;
                             default: throw new NotSupportedException();
@@ -402,10 +371,7 @@ namespace ArithmeticExpression
                         var expSign = expStack.Pop();
                         expStack.Pop();
 
-                        Expression exp;
-                        if (expSign.Type == typeof(object))
-                            exp = Expression.Negate(Expression.Convert(expSign, typeof(double)));
-                        else exp = Expression.Negate(expSign);
+                        var exp = Expression.Negate(expSign);
 
                         expStack.Push(exp);
                     }
@@ -419,25 +385,15 @@ namespace ArithmeticExpression
             var rightLength = production.Right.Count();
             switch (rightLength)
             {
-                case 1: // ExpValue
+                case 1: // ExpNumber
                     break;
-                case 3: // ExpValue ^ ExpSquare
+                case 3: // ExpNumber ^ ExpSquare
                     {
                         var expSquare = expStack.Pop();
                         expStack.Pop();
-                        var expValue = expStack.Pop();
+                        var expNumber = expStack.Pop();
 
-                        Expression castVar1ToDouble;
-                        if (expValue.Type != typeof(double))
-                            castVar1ToDouble = Expression.Convert(expValue, typeof(double));
-                        else castVar1ToDouble = expValue;
-
-                        Expression castVar2ToDouble;
-                        if (expSquare.Type != typeof(double))
-                            castVar2ToDouble = Expression.Convert(expSquare, typeof(double));
-                        else castVar2ToDouble = expSquare;
-
-                        var exp = Expression.Power(castVar1ToDouble, castVar2ToDouble);
+                        var exp = Expression.Power(expNumber, expSquare);
                         expStack.Push(exp);
                     }
                     break;
@@ -445,28 +401,37 @@ namespace ArithmeticExpression
             }
         }
 
-        private void Action_ExpValue(Production production)
+        private void Action_ExpNumber(Production production)
         {
             var rightLength = production.Right.Count();
-            var fstRight = production.Right.First().Name;
             switch (rightLength)
             {
-                case 1:
+                case 1: // number
+                    break;
+                case 3: // ( ExpObject )|( ExpArith )
                     {
-                        switch (fstRight)
+                        var t1 = production.Right.ElementAt(1).Name;
+                        switch (t1)
                         {
-                            case "ExpAtom":
-                            case "ExpObject":
+                            case "ExpObject": // ( ExpObject )
                                 {
                                     if (ParseToNumberMethod == null) throw new NullReferenceException();
 
+                                    expStack.Pop();
                                     var expObject = expStack.Pop();
-                                    Expression exp;
-                                    if (expObject.Type == typeof(double))
-                                        exp = expObject;
-                                    else exp = Expression.Call(ParseToNumberMethod, expObject);
+                                    expStack.Pop();
 
+                                    var exp = Expression.Call(ParseToNumberMethod, expObject);
                                     expStack.Push(exp);
+                                }
+                                break;
+                            case "ExpArith": // ( ExpArith )
+                                {
+                                    expStack.Pop();
+                                    var expArith = expStack.Pop();
+                                    expStack.Pop();
+
+                                    expStack.Push(expArith);
                                 }
                                 break;
                             default: throw new NotSupportedException();
@@ -480,120 +445,53 @@ namespace ArithmeticExpression
         private void Action_ExpObject(Production production)
         {
             var rightLength = production.Right.Count();
-            var fstRight = production.Right.First().Name;
+            var t0 = production.Right.First().Name;
             switch (rightLength)
             {
-                case 3:
+                case 1: // id|null
                     {
-                        switch (fstRight)
+                        switch (t0)
                         {
-                            case "id": // id_1 . id_2
+                            case "id":
                                 {
                                     if (GetMemberMethod == null || Parameter == null)
                                         throw new NullReferenceException();
 
-                                    var expId_2 = (ConstantExpression)expStack.Pop();
-                                    expStack.Pop();
-                                    var expId_1 = (ConstantExpression)expStack.Pop();
+                                    var exp_id = (ConstantExpression)expStack.Pop();
 
-                                    if (expId_1.Value == null || expId_2.Value == null)
-                                        throw new NotImplementedException();
-
-                                    var key1 = (string)expId_1.Value;
-                                    var expValue1 = Expression.Call(GetMemberMethod, Parameter, Expression.Constant(key1));
-
-                                    var key2 = (string)expId_2.Value;
-                                    var expValue2 = Expression.Call(GetMemberMethod, expValue1, Expression.Constant(key2));
-
-                                    expStack.Push(expValue2);
+                                    var exp = Expression.Call(GetMemberMethod, Parameter, exp_id);
+                                    expStack.Push(exp);
                                 }
                                 break;
-                            case "ExpObject": // ExpObject . id
-                                {
-                                    if (GetMemberMethod == null || Parameter == null)
-                                        throw new NullReferenceException();
-
-                                    var expId = (ConstantExpression)expStack.Pop();
-                                    expStack.Pop();
-                                    var expExpObject = expStack.Pop();
-
-                                    if (expId.Value == null)
-                                        throw new NotImplementedException();
-
-                                    var key2 = (string)expId.Value;
-                                    var expValue2 = Expression.Call(GetMemberMethod, expExpObject, Expression.Constant(key2));
-
-                                    expStack.Push(expValue2);
-                                }
-                                break;
+                            case "null": break;
                             default: throw new NotSupportedException();
                         }
                     }
                     break;
-                case 4:
-                    {                        
-                        switch (fstRight)
-                        {
-                            case "id": // id [ ExpValue ]
-                                {
-                                    if (GetIndexMethod == null || Parameter == null)
-                                        throw new NullReferenceException();
-
-                                    expStack.Pop();
-                                    var expValue = expStack.Pop();
-                                    expStack.Pop();
-                                    var exp_Id = (ConstantExpression)expStack.Pop();
-
-                                    var idValue = Expression.Call(GetIndexMethod, Parameter, Expression.Constant(exp_Id.Value));
-                                    var exp = Expression.Call(GetIndexMethod, idValue, expValue);
-
-                                    expStack.Push(exp);
-                                }
-                                break;
-                            case "ExpObject": // ExpObject [ ExpValue ]
-                                {
-                                    if (GetIndexMethod == null || Parameter == null)
-                                        throw new NullReferenceException();
-
-                                    expStack.Pop();
-                                    var expValue = expStack.Pop();
-                                    expStack.Pop();
-                                    var expObject = expStack.Pop();
-
-                                    var exp = Expression.Call(GetIndexMethod, expObject, Expression.Convert(expValue, typeof(object)));
-
-                                    expStack.Push(exp);
-                                }
-                                break;
-                            default: throw new NotSupportedException();
-                        }
-                    }
-                    break;                
-                default: throw new NotSupportedException();
-            }
-        }
-
-        private void Action_ExpAtom(Production production)
-        {
-            var rightLength = production.Right.Count();
-            var fstRight = production.Right.First().Name;
-            switch (rightLength)
-            {
-                case 1:
+                case 3: // ExpObject . id"
                     {
-                        switch (fstRight)
-                        {
-                            case "number": break;
-                            case "id": break;
-                            default: throw new NotSupportedException();
-                        }
+                        if (GetMemberMethod == null || Parameter == null)
+                            throw new NullReferenceException();
+
+                        var exp_id = (ConstantExpression)expStack.Pop();
+                        expStack.Pop();
+                        var expObject = expStack.Pop();
+
+                        var exp = Expression.Call(GetMemberMethod, expObject, exp_id);
+                        expStack.Push(exp);
                     }
                     break;
-                case 3: // ( Exp )
+                case 4: // ExpObject [ ExpArith ]
                     {
+                        if (GetIndexMethod == null || Parameter == null)
+                            throw new NullReferenceException();
+
                         expStack.Pop();
-                        var exp = expStack.Pop();
+                        var expArith = expStack.Pop();
                         expStack.Pop();
+                        var expObject = expStack.Pop();
+
+                        var exp = Expression.Call(GetIndexMethod, expObject, expArith);
                         expStack.Push(exp);
                     }
                     break;
@@ -601,13 +499,81 @@ namespace ArithmeticExpression
             }
         }
 
-
-
         protected override void OnAcceptItem()
         {
             base.OnAcceptItem();
 
             Target = Expression.Convert(expStack.Pop(), typeof(object));
+        }
+
+        public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
+        public Func<object, object?> Analyzer(string text)
+        {
+            using var reader = new StringReader(text);
+            if (LexicalAnalyzer == null)
+                throw new ArgumentNullException("LexicalAnalyzer", "词法分析器不能为空");
+            Analyzer(LexicalAnalyzer.GetEnumerator(reader));
+
+            if (Target == null || Parameter == null)
+                throw new NullReferenceException();
+
+            return Expression.Lambda<Func<object, object?>>(Target, Parameter).Compile();
+        }
+
+        public static ArithmeticSyntaxAnalyzer LoadFromFile(string? fileName = null)
+        {
+            if (fileName == null)
+                fileName = ArithmeticSyntaxBuilder.DefaultFileName;
+
+            FileInfo syntaxFile = new($"{fileName}.syntax");
+            FileInfo lexicalFile = new($"{fileName}.lexical");
+
+            if (!syntaxFile.Exists || !lexicalFile.Exists)
+            {
+                if (fileName == ArithmeticSyntaxBuilder.DefaultFileName)
+                {
+                    ArithmeticSyntaxBuilder.CreateRegularFiles();
+                    syntaxFile.Refresh();
+                    if (!syntaxFile.Exists)
+                        throw new FileNotFoundException("文件未找到", syntaxFile.FullName);
+                    lexicalFile.Refresh();
+                    if (!lexicalFile.Exists)
+                        throw new FileNotFoundException("文件未找到", lexicalFile.FullName);
+                }
+            }
+
+            Dictionary<(int state, Terminal t), List<ActionItem>>? actionTable = null;
+            Dictionary<(int state, NonTerminal t), int>? gotoTable = null;
+            LexicalAnalyzer.LexicalAnalyzer? lexical = null;
+
+            if (lexicalFile.Exists)
+            {
+                using (var fs = lexicalFile.Open(FileMode.Open))
+                using (var br = new BinaryReader(fs))
+                {
+                    lexical = new(br);
+                }
+            }
+            else
+            {
+                throw new FileNotFoundException("找不到词法数据", lexicalFile.FullName);
+            }
+
+            if (syntaxFile.Exists)
+            {
+                using (var fs = syntaxFile.Open(FileMode.Open, FileAccess.Read))
+                using (var br = new BinaryReader(fs))
+                {
+                    actionTable = LRSyntaxAnalyzerHelper.LoadActionTable(br);
+                    gotoTable = LRSyntaxAnalyzerHelper.LoadGotoTable(br);
+                }
+            }
+            else
+            {
+                throw new FileNotFoundException("找不到语法数据", syntaxFile.FullName);
+            }
+
+            return new(actionTable, gotoTable) { LexicalAnalyzer = lexical };
         }
     }
 }
