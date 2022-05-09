@@ -46,9 +46,31 @@ namespace SyntaxAnalyzerTest
             else Console.WriteLine(lL1Grammar);
         }
 
+        static void LR0GrammarExample()
+        {
+            var listProduction = new List<Production>();
+
+            listProduction.AddRange(Production.Create("ExpNumber", "number"));
+            listProduction.AddRange(Production.Create("ExpNumber2", "number"));
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法
+            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd|ExpNumber2")); // 算术表达式
+            Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+            Console.WriteLine(grammar);
+
+            if (!LR0Grammar.TryCreate(grammar, out var lR0Grammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{slrMsg}");
+
+                return;
+            }
+            else Console.WriteLine(lR0Grammar);
+        }
+
         static void Main(string[] args)
         {
-            LL1GrammarExample();
+            LR0GrammarExample();
         }
     }
 }
