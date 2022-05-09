@@ -12,9 +12,43 @@ namespace SyntaxAnalyzerTest
 {
     public class Program
     {
+        static void LL1GrammarExample()
+        {
+            var listProduction = new List<Production>();
+
+            listProduction.AddRange(Production.Create("ExpNumber", "number"));
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法 (存在直接左递归)
+            listProduction.AddRange(Production.Create("ExpMulti", "number ExpMulti'")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti'", "* ExpNumber ExpMulti|")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法 (存在直接左递归)
+            listProduction.AddRange(Production.Create("ExpAdd", "number ExpMulti' ExpAdd'")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd'", "+ ExpMulti ExpAdd'|")); // 加法
+            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
+            Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+            Console.WriteLine(grammar);
+
+            //// 间接左递归文法例子
+            //listProduction.AddRange(Production.Create("S", "Q c|"));
+            //listProduction.AddRange(Production.Create("Q", "R b|b"));
+            //listProduction.AddRange(Production.Create("R", "S a|a"));
+            //Grammar grammar = new Grammar(listProduction, new("S"));
+            //Console.WriteLine(grammar);
+
+            if (!LL1Grammar.TryCreate(grammar, out var lL1Grammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{slrMsg}");
+
+                grammar = LL1Grammar.EliminateLeftRecursion(grammar); // 消除左递归
+                Console.WriteLine(grammar);
+                return;
+            }
+            else Console.WriteLine(lL1Grammar);
+        }
+
         static void Main(string[] args)
         {
-            Console.WriteLine();
+            LL1GrammarExample();
         }
     }
 }

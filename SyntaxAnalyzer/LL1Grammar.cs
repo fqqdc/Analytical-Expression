@@ -135,10 +135,90 @@ namespace SyntaxAnalyzer
                     iGroup = setP.Where(p => p.Left == nonTerminals[i]).ToHashSet();
                     changed = !iGroup.SetEquals(iGroupCopy);
                 }
+
                 /// 消除直接左递归
                 EliminateDirectLeftRecursion(setP, nonTerminals[i]);
             }
             return setP;
+        }
+
+        public static bool HasLeftRecursion(Grammar grammar, [MaybeNullWhen(false)] out string msg)
+        {
+            var P = grammar.P;
+            var setP = P.ToHashSet();
+            var nonTerminals = P.Select(p => p.Left).Distinct().ToArray(); //产生固定的非终结符序列
+            var msgBuilder = new StringBuilder();
+
+            foreach (var p in setP)
+            {
+                if (p.Left == p.Right.First())
+                {
+                    msgBuilder.AppendLine($"存在或直接左递归产生式：{p}");
+                }
+            }
+
+            if (msgBuilder.Length == 0)
+            {
+                for (int i = 0; i < nonTerminals.Length; i++)
+                {
+                    // 将间接左递归合并为直接左递归                
+                    bool changed = true;
+                    while (changed)
+                    {
+                        var iGroup = setP.Where(p => p.Left == nonTerminals[i]).ToHashSet();
+                        var iGroupCopy = iGroup.ToHashSet();
+
+                        List<Production> exceptSet = new();
+                        List<Production> unionSet = new();
+
+                        foreach (var p in iGroup)
+                        {
+                            var fstSymbol = p.Right.ElementAt(0);
+                            if (fstSymbol is NonTerminal fstRight)
+                            {
+                                for (int j = 0; j < i; j++)
+                                {
+                                    var jLeft = nonTerminals[j];
+                                    if (fstRight == jLeft)
+                                    {
+                                        var jGroup = setP.Where(p => p.Left == nonTerminals[j]).ToHashSet();
+                                        exceptSet.Add(p);
+                                        foreach (var pReplaced in jGroup)
+                                        {
+                                            var newRight = Enumerable.Empty<Symbol>();
+                                            if (!pReplaced.Right.SequenceEqual(Production.Epsilon))
+                                                newRight = pReplaced.Right;
+                                            newRight = newRight.Concat(p.Right.Skip(1));
+                                            unionSet.Add(new(p.Left, newRight));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        setP.ExceptWith(exceptSet);
+                        setP.UnionWith(unionSet);
+                        iGroup = setP.Where(p => p.Left == nonTerminals[i]).ToHashSet();
+                        changed = !iGroup.SetEquals(iGroupCopy);
+                    }
+
+                    {
+                        foreach (var p in setP.Where(p => p.Left == nonTerminals[i]))
+                        {
+                            if (p.Left == p.Right.First())
+                            {
+                                msgBuilder.AppendLine($"存在至少一条间接左递归产生式：{p}");
+                            }
+                        }
+
+                        if (msgBuilder.Length > 0)
+                            break;
+                    }
+                }
+            }
+
+            msg = msgBuilder.ToString();
+            return !string.IsNullOrWhiteSpace(msg);
         }
 
         /// <summary>
@@ -171,6 +251,8 @@ namespace SyntaxAnalyzer
         }
 
         #endregion
+
+
 
         /// <summary>
         /// 消除左递归
@@ -238,12 +320,17 @@ namespace SyntaxAnalyzer
             return new(oldSet, S);
         }
 
-        public static bool TryCreateLL1Grammar(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
             var mapFollow = CalcFollows(P, mapFirst, S);
             StringBuilder stringBuilder = new();
+
+            if (HasLeftRecursion(grammar, out var msg))
+            {
+                stringBuilder.AppendLine(msg);
+            }
 
             ///对于文法中每一个非终结符A的各个产生式的候选首符集两两不相交。
             ///即，若A->α1|α2|...|αn
@@ -262,7 +349,11 @@ namespace SyntaxAnalyzer
                     {
                         var jFirst = CalcFirst(pArray[j].Right, mapFirst);
                         if (iFirst.Intersect(jFirst).Any())
-                            stringBuilder.AppendLine($" {pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                        {
+                            stringBuilder.AppendLine($"{pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                            stringBuilder.AppendLine($"    {pArray[i]}右部的FIRST集:{string.Join(", ", iFirst)}");
+                            stringBuilder.AppendLine($"    {pArray[j]}右部的FIRST集:{string.Join(", ", jFirst)}");
+                        }
                     }
 
                     if (iFirst.Any(t => t == Terminal.Epsilon))
@@ -273,7 +364,11 @@ namespace SyntaxAnalyzer
                             if (i == j) continue;
                             var jFirst = CalcFirst(pArray[j].Right, mapFirst);
                             if (jFirst.Intersect(follow).Any())
-                                stringBuilder.AppendLine($" {pArray[i]}右部的FIRST集含有ε，{pArray[i].Left}的FOLLOW集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                            {
+                                stringBuilder.AppendLine($"{pArray[i]}右部的FIRST集含有ε，{pArray[i].Left}的FOLLOW集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                                stringBuilder.AppendLine($"    {pArray[i].Left}的FOLLOW集: {string.Join(", ", follow)}");
+                                stringBuilder.AppendLine($"    {pArray[j]}右部的FIRST集: {string.Join(", ", jFirst)}");
+                            }
                         }
                     }
                 }
@@ -281,9 +376,17 @@ namespace SyntaxAnalyzer
 
             errorMsg = stringBuilder.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
+
             if (result)
                 lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);
-            else lL1Grammar = null;
+            else
+            {
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(mapFirst.ToString("First Sets"));
+                stringBuilder.AppendLine(mapFollow.ToString("Follow Sets"));
+                errorMsg = stringBuilder.ToString();
+                lL1Grammar = null;
+            }
             return result;
         }
     }
