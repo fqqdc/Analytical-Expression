@@ -1,12 +1,18 @@
 ﻿using ArithmeticExpression;
+using LexicalAnalyzer;
+using RegularExpression;
+using SyntaxAnalyzer;
 using System;
+using System.Collections.Generic;
 using System.Dynamic;
+using System.IO;
+using System.Linq.Expressions;
 
-namespace Example
+namespace ArithmeticExpressionTest
 {
     class Program
     {
-        static void ArithmeticExpression_Example()
+        static void Main(string[] args)
         {
             var analyzer = ArithmeticSyntaxAnalyzer.LoadFromFile();
 
@@ -58,11 +64,6 @@ namespace Example
             text = " s1 == s2  && 2 - 3 > -10";
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
-        }
-
-        static void Main(string[] args)
-        {
-            ArithmeticExpression_Example();
         }
     }
 }
