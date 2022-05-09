@@ -54,8 +54,6 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            LRGrammarHelper.PrintTable(grammar, Action, Goto);
-
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
@@ -64,6 +62,12 @@ namespace SyntaxAnalyzer
 
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
+
+            if (!result && LR1Grammar.CanPrintConflictTable)
+            {
+                LRGrammarHelper.PrintTable(grammar, Action, Goto);
+            }
+
             if (result)
                 lr1Grammar = new(P, S_Ex, Action, Goto);
             return result;

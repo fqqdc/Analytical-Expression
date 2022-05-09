@@ -9,6 +9,8 @@ namespace SyntaxAnalyzer
     public class Grammar
     {
         public static bool CanPrintItems = false;
+        public static bool CanPrintConflictTable = true;
+
         public Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal)
         {
             var symbols = allProduction.SelectMany(p => p.Right.Append(p.Left))

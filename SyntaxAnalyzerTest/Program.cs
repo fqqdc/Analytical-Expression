@@ -51,13 +51,14 @@ namespace SyntaxAnalyzerTest
             var listProduction = new List<Production>();
 
             listProduction.AddRange(Production.Create("ExpNumber", "number"));
-            listProduction.AddRange(Production.Create("ExpNumber2", "number"));
             listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法
             listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法
-            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd|ExpNumber2")); // 算术表达式
+            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
             Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+
             Console.WriteLine(grammar);
 
+            LR0Grammar.CanPrintItems = false;
             if (!LR0Grammar.TryCreate(grammar, out var lR0Grammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -70,7 +71,6 @@ namespace SyntaxAnalyzerTest
 
         static void Main(string[] args)
         {
-            LR0GrammarExample();
         }
     }
 }

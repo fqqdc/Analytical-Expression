@@ -55,8 +55,6 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            LRGrammarHelper.PrintTable(grammar, Action, Goto);
-
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
@@ -65,6 +63,12 @@ namespace SyntaxAnalyzer
 
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
+
+            if (!result && LR0Grammar.CanPrintConflictTable)
+            {
+                LRGrammarHelper.PrintTable(grammar, Action, Goto);
+            }
+
             if (result)
                 oPGrammar = new(P, S_Ex, Action, Goto);
             return result;
@@ -231,25 +235,28 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            // 打印项目集
-            foreach (var I in C)
+            if (LR0Grammar.CanPrintItems)
             {
-                var id_I = IdTable[I];
-                Console.WriteLine($"I_{id_I}");
-                foreach (var item in I)
+                // 打印项目集
+                foreach (var I in C)
                 {
-                    Console.WriteLine(item);
-                }
-                foreach (var symbol in V)
-                {
-                    var J = Go(I, symbol);
-                    if (J.Count > 0)
+                    var id_I = IdTable[I];
+                    Console.WriteLine($"I_{id_I}");
+                    foreach (var item in I)
                     {
-                        var id_J = IdTable[J];
-                        Console.WriteLine($"{symbol}->{id_J}");
+                        Console.WriteLine(item);
                     }
+                    foreach (var symbol in V)
+                    {
+                        var J = Go(I, symbol);
+                        if (J.Count > 0)
+                        {
+                            var id_J = IdTable[J];
+                            Console.WriteLine($"{symbol}->{id_J}");
+                        }
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
             }
 
             return (Action, Goto);
