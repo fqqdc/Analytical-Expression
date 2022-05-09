@@ -248,6 +248,10 @@ namespace SyntaxAnalyzer
             ///对于文法中每一个非终结符A的各个产生式的候选首符集两两不相交。
             ///即，若A->α1|α2|...|αn
             ///则 FIRST(αi) ∩ FIRST(αi)=∅ (i≠j)
+            ///
+            ///对于每个非终结符A的两个不同产生式，A->α,A->β，α，β不能同时推导到ε。
+            ///如果存在某条产生式能推导到ε，则 其他产生式A->α1|α2|...|αn
+            ///FIRST(αi) ∩ FOLLOW(A) = ∅
             foreach (var pGroup in P.GroupBy(p => p.Left))
             {
                 var pArray = pGroup.ToArray();
@@ -257,24 +261,21 @@ namespace SyntaxAnalyzer
                     for (int j = i + 1; j < pArray.Length; j++)
                     {
                         var jFirst = CalcFirst(pArray[j].Right, mapFirst);
-                        /// 如果产生的First交集中有ε，并不会造成冲突 
-                        /// if (iFirst.Intersect(jFirst).Any())
-                        if (iFirst.Intersect(jFirst).Any(t => t != Terminal.Epsilon))
+                        if (iFirst.Intersect(jFirst).Any())
                             stringBuilder.AppendLine($" {pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
                     }
-                }
-            }
 
-            ///对文法中的每一个终结符A，若它存在某个候选首符集包含ε，则
-            ///FIRST(αi) ∩ FOLLOW(A)=∅，i=1,2,...,n
-            foreach (var nonTerminal in grammar.Vn)
-            {
-                var first = mapFirst[nonTerminal];
-                if (first.Contains(Terminal.Epsilon))
-                {
-                    var follow = mapFollow[nonTerminal];
-                    if (first.Intersect(follow).Any())
-                        stringBuilder.AppendLine($" {nonTerminal}的FIRST集含有ε，并且与它的FOLLOW集相交不为空，无法满足LL1文法。");
+                    if (iFirst.Any(t => t == Terminal.Epsilon))
+                    {
+                        var follow = mapFollow[pArray[i].Left];
+                        for (int j = 0; j < pArray.Length; j++)
+                        {
+                            if (i == j) continue;
+                            var jFirst = CalcFirst(pArray[j].Right, mapFirst);
+                            if (jFirst.Intersect(follow).Any())
+                                stringBuilder.AppendLine($" {pArray[i]}右部的FIRST集含有ε，{pArray[i].Left}的FOLLOW集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
+                        }
+                    }
                 }
             }
 
