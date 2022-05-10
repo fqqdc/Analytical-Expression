@@ -64,7 +64,7 @@ namespace SyntaxAnalyzer
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
 
-            if (!result && LR0Grammar.CanPrintConflictTable)
+            if (!result && LR0Grammar.PrintTableIfConflict)
             {
                 LRGrammarHelper.PrintTable(grammar, Action, Goto);
             }
@@ -235,7 +235,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            if (LR0Grammar.CanPrintItems)
+            if (LR0Grammar.PrintItemsSet)
             {
                 // 打印项目集
                 foreach (var I in C)

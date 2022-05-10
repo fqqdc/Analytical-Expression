@@ -8,8 +8,9 @@ namespace SyntaxAnalyzer
 {
     public class Grammar
     {
-        public static bool CanPrintItems = false;
-        public static bool CanPrintConflictTable = true;
+        public static bool PrintItemsSet = false;
+        public static bool PrintTable = false;
+        public static bool PrintTableIfConflict = true;
 
         public Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal)
         {
@@ -250,14 +251,14 @@ namespace SyntaxAnalyzer
 
                                 if (containEpsilon && mapFollow.TryGetValue(production.Left, out var followLeft))
                                 {
-                                    follow.UnionWith(followLeft); //若A->αBβ是一个产生式，而β=>ε(既ε∈FIRST(β))，则将FIRST(A)加入FIRST(B)
+                                    follow.UnionWith(followLeft); //若A->αBβ是一个产生式，而β=>ε(既ε∈FIRST(β))，则将加入FOLLOW(A)加入加入FOLLOW(B)
                                 }
                             }
                             else
                             {
                                 if (mapFollow.TryGetValue(production.Left, out var followLeft))
                                 {
-                                    follow.UnionWith(followLeft); //若A->αB是一个产生式，则将FIRST(A)加入FIRST(B)
+                                    follow.UnionWith(followLeft); //若A->αB是一个产生式，则将FOLLOW(A)加入FOLLOW(B)
                                 }
                             }
 

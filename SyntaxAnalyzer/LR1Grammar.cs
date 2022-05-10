@@ -63,7 +63,7 @@ namespace SyntaxAnalyzer
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
 
-            if (!result && LR1Grammar.CanPrintConflictTable)
+            if (!result && LR1Grammar.PrintTableIfConflict)
             {
                 LRGrammarHelper.PrintTable(grammar, Action, Goto);
             }

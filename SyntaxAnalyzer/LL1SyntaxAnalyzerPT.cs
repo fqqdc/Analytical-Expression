@@ -14,12 +14,12 @@ namespace SyntaxAnalyzer
     {
         public delegate void AdvanceProcedure(out Terminal Sym);
 
-        private LL1Grammar grammar;
+        private LL2Grammar grammar;
         private AdvanceProcedure advanceProcedure;
         private Terminal sym = Terminal.Epsilon;
         private List<(NonTerminal n, Terminal t, Production p)> predictiveTable;
         private Stack<Symbol> stackAnalysis = new();
-        public LL1SyntaxAnalyzerPT(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
+        public LL1SyntaxAnalyzerPT(LL2Grammar grammar, AdvanceProcedure advanceProcedure)
         {
             this.grammar = grammar;
             this.advanceProcedure = advanceProcedure;

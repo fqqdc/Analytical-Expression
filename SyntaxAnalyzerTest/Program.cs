@@ -58,7 +58,7 @@ namespace SyntaxAnalyzerTest
 
             Console.WriteLine(grammar);
 
-            LR0Grammar.CanPrintItems = false;
+            LR0Grammar.PrintItemsSet = false;
             if (!LR0Grammar.TryCreate(grammar, out var lR0Grammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -71,6 +71,30 @@ namespace SyntaxAnalyzerTest
 
         static void Main(string[] args)
         {
+            var listProduction = new List<Production>();
+
+            listProduction.AddRange(Production.Create("ExpNumber", "number"));
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法 (存在直接左递归)
+            listProduction.AddRange(Production.Create("ExpMulti", "number ExpMulti'")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti'", "* ExpNumber ExpMulti|")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法 (存在直接左递归)
+            listProduction.AddRange(Production.Create("ExpAdd", "number ExpMulti' ExpAdd'")); // 加法
+            listProduction.AddRange(Production.Create("ExpAdd'", "+ ExpMulti ExpAdd'|")); // 加法
+            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
+            Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+            Console.WriteLine(grammar);
+
+            LL2Grammar.PrintTable = true;
+            if (!LL2Grammar.TryCreate(grammar, out var lL1Grammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{slrMsg}");
+
+                return;
+            }
+
+            //Console.WriteLine(lL1Grammar);
+
         }
     }
 }

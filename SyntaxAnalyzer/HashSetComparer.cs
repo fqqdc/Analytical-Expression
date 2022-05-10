@@ -35,19 +35,19 @@ namespace SyntaxAnalyzer
         }
     }
 
-    public class HashSetComparer<T, X> : IEqualityComparer<(HashSet<T>, X)>
+    public class HashSetComparer<SET, OBJ> : IEqualityComparer<(HashSet<SET>, OBJ)>
     {
         static HashSetComparer() => Default = new();
-        public static HashSetComparer<T, X> Default { get; private set; }
+        public static HashSetComparer<SET, OBJ> Default { get; private set; }
 
-        bool IEqualityComparer<(HashSet<T>, X)>.Equals((HashSet<T>, X) x, (HashSet<T>, X) y)
+        bool IEqualityComparer<(HashSet<SET>, OBJ)>.Equals((HashSet<SET>, OBJ) x, (HashSet<SET>, OBJ) y)
         {
             return x.Item2 != null
                 && x.Item2.Equals(y.Item2)
                 && x.Item1.SetEquals(y.Item1);
         }
 
-        int IEqualityComparer<(HashSet<T>, X)>.GetHashCode((HashSet<T>, X) obj)
+        int IEqualityComparer<(HashSet<SET>, OBJ)>.GetHashCode((HashSet<SET>, OBJ) obj)
         {
             var code = 0;
             if (obj.Item2 != null)
