@@ -9,24 +9,7 @@ namespace SyntaxAnalyzer
 {
     public static class PrintHelper
     {
-        public static string ToString(this Dictionary<NonTerminal, HashSet<Terminal>> dict, string? rowHead = null)
-        {            
-            StringBuilder builder = new StringBuilder();
-            if (rowHead != null)
-                builder.AppendLine(rowHead);
-            foreach (var kp in dict)
-            {
-                builder.Append($"{kp.Key} => ");
-                foreach (var t in kp.Value)
-                {
-                    builder.Append($"{t}, ");
-                }
-                builder.AppendLine();
-            }
-            return builder.ToString();
-        }
-
-        public static string ToString(this Dictionary<NonTerminal, HashSet<DoubleTerminal>> dict, string? rowHead = null)
+        public static string ToString<K, V>(this Dictionary<K, HashSet<V>> dict, string? rowHead = null) where K : notnull
         {
             StringBuilder builder = new StringBuilder();
             if (rowHead != null)

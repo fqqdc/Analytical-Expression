@@ -10,40 +10,19 @@ namespace SyntaxAnalyzer
     public class LL2Grammar : LLGrammar
     {
         private LL2Grammar(IEnumerable<Production> allProduction, NonTerminal startNonTerminal
-            , Dictionary<NonTerminal, HashSet<Terminal>> mapFirst
-            , Dictionary<NonTerminal, HashSet<Terminal>> mapFollow
+            , Dictionary<NonTerminal, HashSet<DoubleTerminal>> mapFirst2
+            , Dictionary<NonTerminal, HashSet<DoubleTerminal>> mapFollow2
             ) : base(allProduction, startNonTerminal)
         {
-            this.mapFirst = mapFirst.ToDictionary(i => i.Key, i => i.Value.ToHashSet());
-            this.mapFollow = mapFollow.ToDictionary(i => i.Key, i => i.Value.ToHashSet()); ;
+            this.mapFirst2 = mapFirst2.ToDictionary(i => i.Key, i => i.Value.ToHashSet());
+            this.mapFollow2 = mapFollow2.ToDictionary(i => i.Key, i => i.Value.ToHashSet()); ;
         }
 
-        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst;
-        private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow;
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFirst = new();
+        private Dictionary<NonTerminal, HashSet<Terminal>> mapFollow = new();
 
         private Dictionary<NonTerminal, HashSet<DoubleTerminal>> mapFirst2;
         private Dictionary<NonTerminal, HashSet<DoubleTerminal>> mapFollow2;
-
-        public HashSet<Terminal> CalcFirst(IEnumerable<Symbol> alpha)
-        {
-            return CalcFirst(alpha, this.mapFirst);
-        }
-
-        public HashSet<Terminal> GetFirst(Symbol symbol)
-        {
-            if (symbol is Terminal terminal)
-                return new(new Terminal[] { terminal });
-            else
-            {
-                var nonTerminal = (NonTerminal)symbol;
-                return mapFirst[nonTerminal].ToHashSet();
-            }
-        }
-        public HashSet<Terminal> GetFollow(NonTerminal nonTerminal)
-        {
-            return mapFollow[nonTerminal].ToHashSet();
-
-        }
 
         /// <summary>
         /// 计算FIRST2集
@@ -64,7 +43,7 @@ namespace SyntaxAnalyzer
 
                     foreach (var symbol in production.Right)
                     {
-                        HashSet<DoubleTerminal> first2N = new();
+                        HashSet<DoubleTerminal>? first2N = new();
 
                         if (symbol is Terminal terminal)
                         {
@@ -78,7 +57,7 @@ namespace SyntaxAnalyzer
                         {
                             if (!mapFirst2.TryGetValue(nonTerminal, out first2N))
                             {
-                                first2N = new() { DoubleTerminal.Epsilon };
+                                first2N = new();
                                 mapFirst2[nonTerminal] = first2N;
                                 hasChanged = true;
                             }
@@ -136,7 +115,7 @@ namespace SyntaxAnalyzer
                 /// FIRST2(X) = FIRST2(X) X FIRST2(Yi)
                 first2.ProductWith(first2N);
 
-                /// 如果FIRST(X)不含有类似(any, ε)的元素对
+                /// 如果FIRST(X)为空或FIRST(X)不含有类似(any, ε)的符号对，则推导结束
                 if (first2.All(dt => dt.Second != Terminal.Epsilon))
                     break;
             }
@@ -145,7 +124,7 @@ namespace SyntaxAnalyzer
         }
 
         /// <summary>
-        /// 计算FOLLOW集
+        /// 计算FOLLOW2集
         /// </summary>
         protected static Dictionary<NonTerminal, HashSet<DoubleTerminal>> CalcFollow2Sets(IEnumerable<Production> P, Dictionary<NonTerminal, HashSet<DoubleTerminal>> mapFirst2, NonTerminal S)
         {
@@ -175,41 +154,35 @@ namespace SyntaxAnalyzer
                             if (!mapFollow2.TryGetValue(nonTerminal, out var follow2N))
                             {
                                 follow2N = new();
-                                follow2N.Add(DoubleTerminal.Epsilon);
                                 mapFollow2[nonTerminal] = follow2N;
                                 hasChanged = true;
                             }
 
                             var oldFollow2 = follow2N.ToHashSet();
 
-                            //FOLLOW2(B) = {(ε,ε)}
-                            HashSet<DoubleTerminal> newFollow2 = new();
-                            newFollow2.Add(DoubleTerminal.Epsilon);
-
                             if (beta.Any())
                             {
                                 var first2 = CalcFirst2(beta, mapFirst2);
-                                //若A->αBβ是一个产生式，FOLLOW2(B) = FOLLOW2(B) X FIRST2(β)
-                                newFollow2.ProductWith(first2);
-
-                                /// 如果FIRST2(β)含有类似(any, ε)的元素对
-                                bool containEpsilon = first2.Any(dt => dt.Second == Terminal.Epsilon);
-
-                                if (containEpsilon && mapFollow2.TryGetValue(production.Left, out var follow2Left))
+                                //若A->αBβ是一个产生式，FOLLOW2(B) = FIRST2(β) X FOLLOW2(A)
+                                if (mapFollow2.TryGetValue(production.Left, out var follow2Left))
                                 {
-                                    //若A->αBβ是一个产生式，而(any,ε)∈FIRST2(β)，则将FOLLOW2(B) = FOLLOW2(B) X FOLLOW2(A)
-                                    newFollow2.ProductWith(follow2Left);
+                                    if (follow2Left.Count > 0)
+                                        first2.ProductWith(follow2Left);
                                 }
-                                follow2N.UnionWith(newFollow2);
+
+                                /// 去除所有类似(any,ε)的元素对，(end,ε)除外
+                                var follow2 = first2.Where(dt => dt.Second != Terminal.Epsilon || dt == DoubleTerminal.EndTerminal);
+
+                                follow2N.UnionWith(follow2);
                             }
                             else
                             {
                                 if (mapFollow2.TryGetValue(production.Left, out var follow2Left))
                                 {
-                                    //newFollow2.ProductWith(follow2Left);
+                                    /// 去除所有类似(any,ε)的元素对，(end,ε)除外
+                                    var follow2 = follow2Left.Where(dt => dt.Second != Terminal.Epsilon || dt == DoubleTerminal.EndTerminal);
 
-                                    //follow2N.UnionWith(newFollow2); //若A->αB是一个产生式，则将{(ε,ε)} X FOLLOW2(A)加入FOLLOW2(B)
-                                    follow2N.ProductWith(follow2Left);
+                                    follow2N.UnionWith(follow2);
                                 }
                             }
 
@@ -228,10 +201,7 @@ namespace SyntaxAnalyzer
             lL2Grammar = null;
 
             var (S, P) = (grammar.S, grammar.P);
-            var mapFirst = CalcFirsts(P);
             var mapFirst2 = CalcFirst2Sets(P);
-
-            var mapFollow = CalcFollows(P, mapFirst, S);
             var mapFollow2 = CalcFollow2Sets(P, mapFirst2, S);
             StringBuilder stringBuilder = new();
 
@@ -240,44 +210,25 @@ namespace SyntaxAnalyzer
                 stringBuilder.AppendLine(msg);
             }
 
-            ///对于文法中每一个非终结符A的各个产生式的候选首符集两两不相交。
-            ///即，若A->α1|α2|...|αn
-            ///则 FIRST(αi) ∩ FIRST(αi)=∅ (i≠j)
-            ///
-            ///对于每个非终结符A的两个不同产生式，A->α,A->β，α，β不能同时推导到ε。
-            ///如果存在某条产生式能推导到ε，则 其他产生式A->α1|α2|...|αn
-            ///FIRST(αi) ∩ FOLLOW(A) = ∅
-            foreach (var pGroup in P.GroupBy(p => p.Left))
+            var pArray = P.ToArray();
+            var mapSelect2 = new Dictionary<Production, HashSet<DoubleTerminal>>();
+            foreach (var p in pArray)
             {
-                var pArray = pGroup.ToArray();
-                for (int i = 0; i < pArray.Length; i++)
-                {
-                    var iFirst = CalcFirst(pArray[i].Right, mapFirst);
-                    for (int j = i + 1; j < pArray.Length; j++)
-                    {
-                        var jFirst = CalcFirst(pArray[j].Right, mapFirst);
-                        if (iFirst.Intersect(jFirst).Any())
-                        {
-                            stringBuilder.AppendLine($"{pArray[i]}右部的FIRST集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
-                            stringBuilder.AppendLine($"    {pArray[i]}右部的FIRST集:{string.Join(", ", iFirst)}");
-                            stringBuilder.AppendLine($"    {pArray[j]}右部的FIRST集:{string.Join(", ", jFirst)}");
-                        }
-                    }
+                mapSelect2[p] = CalcFirst2(p.Right, mapFirst2).Product(mapFollow2[p.Left]);
+            }
 
-                    if (iFirst.Any(t => t == Terminal.Epsilon))
+            for (int i = 0; i < pArray.Length; i++)
+            {
+                var iSelect2 = mapSelect2[pArray[i]];
+                for (int j = i + 1; j < pArray.Length; j++)
+                {
+                    var jSelect2 = mapSelect2[pArray[j]];
+
+                    if (pArray[i].Left == pArray[j].Left && iSelect2.Intersect(jSelect2).Any())
                     {
-                        var follow = mapFollow[pArray[i].Left];
-                        for (int j = 0; j < pArray.Length; j++)
-                        {
-                            if (i == j) continue;
-                            var jFirst = CalcFirst(pArray[j].Right, mapFirst);
-                            if (jFirst.Intersect(follow).Any())
-                            {
-                                stringBuilder.AppendLine($"{pArray[i]}右部的FIRST集含有ε，{pArray[i].Left}的FOLLOW集与{pArray[j]}右部的FIRST集相交不为空，无法满足LL1文法。");
-                                stringBuilder.AppendLine($"    {pArray[i].Left}的FOLLOW集: {string.Join(", ", follow)}");
-                                stringBuilder.AppendLine($"    {pArray[j]}右部的FIRST集: {string.Join(", ", jFirst)}");
-                            }
-                        }
+                        stringBuilder.AppendLine($"{pArray[i]}的SELECT2集与{pArray[j]}的SELECT2集相交不为空，无法满足LL2文法。");
+                        stringBuilder.AppendLine($"    {pArray[i]}的SELECT2集: {string.Join(", ", iSelect2)}");
+                        stringBuilder.AppendLine($"    {pArray[j]}的SELECT2集 {string.Join(", ", jSelect2)}");
                     }
                 }
             }
@@ -286,14 +237,14 @@ namespace SyntaxAnalyzer
             var result = string.IsNullOrWhiteSpace(errorMsg);
 
             if (result)
-                lL2Grammar = new LL2Grammar(P, S, mapFirst, mapFollow);
+                lL2Grammar = new LL2Grammar(P, S, mapFirst2, mapFollow2);
 
             if (LL2Grammar.PrintTable || !result && LL2Grammar.PrintTableIfConflict)
             {
-                Console.WriteLine(mapFirst.ToString("First Sets"));
-                Console.WriteLine(mapFollow.ToString("Follow Sets"));
                 Console.WriteLine(mapFirst2.ToString("First2 Sets"));
                 Console.WriteLine(mapFollow2.ToString("Follow2 Sets"));
+                Console.WriteLine(mapSelect2.ToString("Select2 Sets"));
+                Console.WriteLine($"DoubleTerminal number: {mapSelect2.SelectMany(i=>i.Value).Distinct().Count()}");
             }
 
             errorMsg = stringBuilder.ToString();

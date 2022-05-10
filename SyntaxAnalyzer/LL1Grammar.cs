@@ -42,7 +42,7 @@ namespace SyntaxAnalyzer
 
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
+        public static bool TryCreate2(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
@@ -109,6 +109,65 @@ namespace SyntaxAnalyzer
                 errorMsg = stringBuilder.ToString();
                 lL1Grammar = null;
             }
+            return result;
+        }
+
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
+        {
+            lL1Grammar = null;
+            var (S, P) = (grammar.S, grammar.P);
+            var mapFirst = CalcFirsts(P);
+            var mapFollow = CalcFollows(P, mapFirst, S);
+
+            StringBuilder msgBuilder = new();
+            if (HasLeftRecursion(grammar, out var msg))
+            {
+                msgBuilder.AppendLine(msg);
+            }
+
+            var pArray = P.ToArray();
+            var mapSelect = new Dictionary<Production, HashSet<Terminal>>();
+            foreach (var p in pArray)
+            {
+                var set = CalcFirst(p.Right, mapFirst);
+                if (set.Remove(Terminal.Epsilon))
+                    set.UnionWith(mapFollow[p.Left]);
+
+                mapSelect[p] = set;
+            }
+
+            ///对于文法中每一个非终结符A的各个产生式的SELECT集两两不相交。
+            ///即，若A->α1|α2|...|αn
+            ///则 SELECT(αi) ∩ SELECT(αi)=∅ (i≠j)
+            for (int i = 0; i < pArray.Length; i++)
+            {
+                var iSelect = mapSelect[pArray[i]];
+                for (int j = i + 1; j < pArray.Length; j++)
+                {
+                    var jSelect = mapSelect[pArray[j]];
+
+                    if (pArray[i].Left == pArray[j].Left && iSelect.Intersect(jSelect).Any())
+                    {
+                        msgBuilder.AppendLine($"{pArray[i]}的SELECT集与{pArray[j]}的SELECT集相交不为空，无法满足LL1文法。");
+                        msgBuilder.AppendLine($"    {pArray[i]}的SELECT集: {string.Join(", ", iSelect)}");
+                        msgBuilder.AppendLine($"    {pArray[j]}的SELECT集:  {string.Join(", ", jSelect)}");
+                    }
+                }
+            }
+
+            errorMsg = msgBuilder.ToString();
+            var result = string.IsNullOrWhiteSpace(errorMsg);
+
+            if (result)
+                lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);
+
+            if (LL2Grammar.PrintTable || !result && LL2Grammar.PrintTableIfConflict)
+            {
+                Console.WriteLine(mapFirst.ToString("First Sets"));
+                Console.WriteLine(mapFollow.ToString("Follow Sets"));
+                Console.WriteLine(mapSelect.ToString("Select Sets"));
+            }
+
             return result;
         }
     }

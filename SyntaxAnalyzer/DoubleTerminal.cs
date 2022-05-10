@@ -32,6 +32,31 @@ namespace SyntaxAnalyzer
 
     public static class DoubleTerminalExtensions
     {
+        public static HashSet<DoubleTerminal> Product(this HashSet<DoubleTerminal> fst, HashSet<DoubleTerminal> snd)
+        {
+            HashSet<DoubleTerminal> product = new();
+
+            foreach (var fstDt in fst)
+            {
+                foreach (var sndDt in snd)
+                {
+                    var fstT = fstDt.TakeWhile(t => t != Terminal.Epsilon);
+                    var sndT = sndDt.TakeWhile(t => t != Terminal.Epsilon);
+
+                    var seqT = fstT.Union(sndT);
+
+                    DoubleTerminal dt = new(seqT.ElementAtOrDefault(0) ?? Terminal.Epsilon, seqT.ElementAtOrDefault(1) ?? Terminal.Epsilon);
+
+                    if (dt.First == Terminal.EndTerminal)
+                        dt = dt with { Second = Terminal.Epsilon };
+
+                    product.Add(dt);
+                }
+            }
+
+            return product;
+        }
+
         public static void ProductWith(this HashSet<DoubleTerminal> fst, HashSet<DoubleTerminal> snd)
         {
             HashSet<DoubleTerminal> product = new();
