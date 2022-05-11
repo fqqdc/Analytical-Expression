@@ -58,7 +58,7 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+                    sbErrorMsg.AppendLine($"无法满足LR0文法：ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
             }
 
             errorMsg = sbErrorMsg.ToString();
@@ -66,7 +66,7 @@ namespace SyntaxAnalyzer
 
             if (LR0Grammar.PrintTable || !result && LR0Grammar.PrintTableIfConflict)
             {
-                LRGrammarHelper.PrintTable(grammar, Action, Goto);
+                Console.WriteLine(LRGrammarHelper.GetTableFullString(grammar, Action, Goto));
             }
 
             if (result)
@@ -160,29 +160,31 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            // =================
-            Dictionary<FixHashSet<ProductionItem>, int> IdTable = new(FixHashSetComparer<ProductionItem>.Default); // ID 表
-            IdTable[I_0] = 0;
+            Dictionary<FixHashSet<ProductionItem>, int> stateTable = new(FixHashSetComparer<ProductionItem>.Default); // ID 表
+            stateTable[I_0] = 0;
 
-            Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
+            Dictionary<(int state, Terminal t), HashSet<ActionItem>> actionTable = new(); // ACTION 表
+            #region ACTION 方法
             HashSet<ActionItem> GetActionItemList((int state, Terminal t) key)
             {
-                if (!Action.TryGetValue(key, out var list))
+                if (!actionTable.TryGetValue(key, out var list))
                 {
                     list = new HashSet<ActionItem>();
-                    Action[key] = list;
+                    actionTable[key] = list;
                 }
                 return list;
             }
-            Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
+            #endregion
+
+            Dictionary<(int state, NonTerminal t), int> gotoTable = new(); // GOTO表
 
             var accept = new ProductionItem(startProduction, 1);
 
             queueWork = new();
-            HashSet<FixHashSet<ProductionItem>> visited = new(FixHashSetComparer<ProductionItem>.Default);
+            HashSet<FixHashSet<ProductionItem>> exists = new(FixHashSetComparer<ProductionItem>.Default);
 
             queueWork.Enqueue(I_0);
-            visited.Add(I_0);
+            exists.Add(I_0);
 
             // 构造分析表
             while (queueWork.Count > 0)
@@ -192,14 +194,14 @@ namespace SyntaxAnalyzer
                 {
                     if (item == accept)
                     {
-                        var list = GetActionItemList((IdTable[I], Terminal.EndTerminal));
+                        var list = GetActionItemList((stateTable[I], Terminal.EndTerminal));
                         list.Add(new AcceptItem());
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
                         foreach (var t in Vt.Append(Terminal.EndTerminal))
                         {
-                            var list = GetActionItemList((IdTable[I], t));
+                            var list = GetActionItemList((stateTable[I], t));
                             list.Add(new ReduceItem(item.Production));
                         }
                     }
@@ -210,26 +212,26 @@ namespace SyntaxAnalyzer
 
                         Debug.Assert(J.Count != 0);
 
-                        if (!IdTable.TryGetValue(J, out var id_J))
+                        if (!stateTable.TryGetValue(J, out var state_J))
                         {
-                            id_J = IdTable.Count;
-                            IdTable[J] = id_J;
+                            state_J = stateTable.Count;
+                            stateTable[J] = state_J;
                         }
 
-                        if (!visited.Contains(J))
+                        if (!exists.Contains(J))
                         {
-                            visited.Add(J);
+                            exists.Add(J);
                             queueWork.Enqueue(J);
                         }
 
                         if (symbol is Terminal terminal)
                         {
-                            var list = GetActionItemList((IdTable[I], terminal));
-                            list.Add(new ShiftItem(id_J));
+                            var list = GetActionItemList((stateTable[I], terminal));
+                            list.Add(new ShiftItem(state_J));
                         }
                         else if (symbol is NonTerminal nonTerminal)
                         {
-                            Goto[(IdTable[I], nonTerminal)] = id_J;
+                            gotoTable[(stateTable[I], nonTerminal)] = state_J;
                         }
                     }
                 }
@@ -240,7 +242,7 @@ namespace SyntaxAnalyzer
                 // 打印项目集
                 foreach (var I in C)
                 {
-                    var id_I = IdTable[I];
+                    var id_I = stateTable[I];
                     Console.WriteLine($"I_{id_I}");
                     foreach (var item in I)
                     {
@@ -251,7 +253,7 @@ namespace SyntaxAnalyzer
                         var J = Go(I, symbol);
                         if (J.Count > 0)
                         {
-                            var id_J = IdTable[J];
+                            var id_J = stateTable[J];
                             Console.WriteLine($"{symbol}->{id_J}");
                         }
                     }
@@ -259,7 +261,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            return (Action, Goto);
+            return (actionTable, gotoTable);
         }
     }
 

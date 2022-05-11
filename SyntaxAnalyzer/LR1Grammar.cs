@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -65,7 +66,7 @@ namespace SyntaxAnalyzer
 
             if (LR1Grammar.PrintTable || !result && LR1Grammar.PrintTableIfConflict)
             {
-                LRGrammarHelper.PrintTable(grammar, Action, Goto);
+                Console.WriteLine(LRGrammarHelper.GetTableFullString(grammar, Action, Goto));
             }
 
             if (result)
@@ -80,9 +81,9 @@ namespace SyntaxAnalyzer
             var startProduction = P.Single(p => p.Left == S);
             var mapFirst = Grammar.CalcFirsts(P);
 
-            // ================
+            #region inter methods
 
-            HashSet<ProductionItem_1> Closure(IEnumerable<ProductionItem_1> I)
+            FixHashSet<ProductionItem_1> Closure(IEnumerable<ProductionItem_1> I)
             {
                 HashSet<ProductionItem_1> closure = new(I);
                 Queue<ProductionItem_1> queueWork = new(I);
@@ -111,12 +112,12 @@ namespace SyntaxAnalyzer
                     }
                 }
 
-                return closure;
+                return new(closure);
             }
 
-            Dictionary<(HashSet<ProductionItem_1> I, Symbol X), HashSet<ProductionItem_1>> GoCache = new(HashSetComparer<ProductionItem_1, Symbol>.Default);
+            Dictionary<(FixHashSet<ProductionItem_1> I, Symbol X), FixHashSet<ProductionItem_1>> GoCache = new(FixHashSetComparer<ProductionItem_1, Symbol>.Default);
 
-            HashSet<ProductionItem_1> Go(HashSet<ProductionItem_1> I, Symbol X)
+            FixHashSet<ProductionItem_1> Go(FixHashSet<ProductionItem_1> I, Symbol X)
             {
                 if (!GoCache.TryGetValue((I, X), out var closureJ))
                 {
@@ -135,10 +136,10 @@ namespace SyntaxAnalyzer
                 return closureJ;
             }
 
-            // =================
+            #endregion
 
-            HashSet<HashSet<ProductionItem_1>> C = new(HashSetComparer<ProductionItem_1>.Default);
-            Queue<HashSet<ProductionItem_1>> queueWork = new();
+            HashSet<FixHashSet<ProductionItem_1>> C = new(FixHashSetComparer<ProductionItem_1>.Default);
+            Queue<FixHashSet<ProductionItem_1>> queueWork = new();
 
             var I_0 = Closure(new ProductionItem_1[] { new(startProduction, 0, Terminal.EndTerminal) }); // 初态项目集
 
@@ -163,26 +164,27 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            // =================
-            Dictionary<HashSet<ProductionItem_1>, int> IdTable = new(HashSetComparer<ProductionItem_1>.Default); // ID 表
-            IdTable[I_0] = 0;
+            Dictionary<FixHashSet<ProductionItem_1>, int> stateTable = new(FixHashSetComparer<ProductionItem_1>.Default); // ID 表
+            stateTable[I_0] = 0;
 
-            Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
+            Dictionary<(int state, Terminal t), HashSet<ActionItem>> actionTable = new(); // ACTION 表
+            #region ACTION 方法
             HashSet<ActionItem> GetActionItemSet((int state, Terminal t) key)
             {
-                if (!Action.TryGetValue(key, out var set))
+                if (!actionTable.TryGetValue(key, out var set))
                 {
                     set = new();
-                    Action[key] = set;
+                    actionTable[key] = set;
                 }
                 return set;
             }
-            Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
+            #endregion
+            Dictionary<(int state, NonTerminal t), int> gotoTable = new(); // GOTO表
 
-            var accept = new ProductionItem_1(startProduction, 1, Terminal.EndTerminal);
+            var ACCEPT = new ProductionItem_1(startProduction, 1, Terminal.EndTerminal);
 
             queueWork = new();
-            HashSet<HashSet<ProductionItem_1>> visited = new(HashSetComparer<ProductionItem_1>.Default);
+            HashSet<FixHashSet<ProductionItem_1>> visited = new(FixHashSetComparer<ProductionItem_1>.Default);
 
             queueWork.Enqueue(I_0);
             visited.Add(I_0);
@@ -193,27 +195,26 @@ namespace SyntaxAnalyzer
                 var I = queueWork.Dequeue();
                 foreach (var item in I)
                 {
-                    if (item == accept)
+                    if (item == ACCEPT)
                     {
-                        var list = GetActionItemSet((IdTable[I], Terminal.EndTerminal));
+                        var list = GetActionItemSet((stateTable[I], Terminal.EndTerminal));
                         list.Add(new AcceptItem());
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
-                        var list = GetActionItemSet((IdTable[I], item.Follow));
+                        var list = GetActionItemSet((stateTable[I], item.Follow));
                         list.Add(new ReduceItem(item.Production));
                     }
                     else
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
                         var J = Go(I, symbol);
-                        if (J.Count == 0)
-                            continue;
+                        Debug.Assert(J.Count != 0);
 
-                        if (!IdTable.TryGetValue(J, out var id_J))
+                        if (!stateTable.TryGetValue(J, out var id_J))
                         {
-                            id_J = IdTable.Count;
-                            IdTable[J] = id_J;
+                            id_J = stateTable.Count;
+                            stateTable[J] = id_J;
                         }
 
                         if (!visited.Contains(J))
@@ -224,51 +225,42 @@ namespace SyntaxAnalyzer
 
                         if (symbol is Terminal terminal)
                         {
-                            var list = GetActionItemSet((IdTable[I], terminal));
+                            var list = GetActionItemSet((stateTable[I], terminal));
                             list.Add(new ShiftItem(id_J));
                         }
                         else if (symbol is NonTerminal nonTerminal)
                         {
-                            Goto[(IdTable[I], nonTerminal)] = id_J;
+                            gotoTable[(stateTable[I], nonTerminal)] = id_J;
                         }
                     }
                 }
-
-                //foreach (var n in Vn)
-                //{
-                //    var J = Go(I, n);
-                //    if (J.Count > 0)
-                //    {
-                //        if (!IdTable.TryGetValue(J, out var id_J))
-                //            id_J = IdTable.Count;
-                //        IdTable[J] = id_J;
-                //        Goto[(IdTable[I], n)] = id_J;
-                //    }
-                //}
             }
 
-            // 打印项目集
-            foreach (var I in C)
+            if (PrintStateItems)
             {
-                var id_I = IdTable[I];
-                Console.WriteLine($"I_{id_I}");
-                foreach (var item in I)
+                // 打印项目集
+                foreach (var I in C)
                 {
-                    Console.WriteLine(item);
-                }
-                foreach (var symbol in V)
-                {
-                    var J = Go(I, symbol);
-                    if (J.Count > 0)
+                    var id_I = stateTable[I];
+                    Console.WriteLine($"I_{id_I}");
+                    foreach (var item in I)
                     {
-                        var id_J = IdTable[J];
-                        Console.WriteLine($"{symbol}->{id_J}");
+                        Console.WriteLine(item);
                     }
+                    foreach (var symbol in V)
+                    {
+                        var J = Go(I, symbol);
+                        if (J.Count > 0)
+                        {
+                            var id_J = stateTable[J];
+                            Console.WriteLine($"{symbol}->{id_J}");
+                        }
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
             }
 
-            return (Action, Goto);
+            return (actionTable, gotoTable);
         }
     }
 }

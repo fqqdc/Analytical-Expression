@@ -56,7 +56,7 @@ namespace SyntaxAnalyzer
 
             if (!result && LALRGrammar.PrintTableIfConflict)
             {
-                LRGrammarHelper.PrintTable(grammar, Action, Goto);
+                Console.WriteLine(LRGrammarHelper.GetTableFullString(grammar, Action, Goto));
             }
 
             if (result)
@@ -86,8 +86,6 @@ namespace SyntaxAnalyzer
             P.Add(new Production(S_Ex, S));
             var (Action, Goto) = CreateItemSets(P, grammar.Vt, Vn, S_Ex);
 
-            LRGrammarHelper.PrintTable(grammar, Action, Goto);
-
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
@@ -96,6 +94,12 @@ namespace SyntaxAnalyzer
 
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
+
+            if (LALRGrammar.PrintTable || !result && LALRGrammar.PrintTableIfConflict)
+            {
+                Console.WriteLine(LRGrammarHelper.GetTableFullString(grammar, Action, Goto));
+            }
+
             if (result)
                 lalrGrammar = new(P, S_Ex, Action, Goto);
             return result;

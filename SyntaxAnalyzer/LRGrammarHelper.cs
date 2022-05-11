@@ -9,7 +9,7 @@ namespace SyntaxAnalyzer
 {
     public static class LRGrammarHelper
     {
-        public static void PrintTable(Grammar grammar, Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
+        public static string GetTableFullString(Grammar grammar, Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action, Dictionary<(int state, NonTerminal t), int> Goto)
         {
             var symbols = grammar.Vt.Cast<Symbol>()
                 .Append(Terminal.EndTerminal)
@@ -106,7 +106,8 @@ namespace SyntaxAnalyzer
                 }
                 if (i + 1 < rows) sb.AppendLine();
             }
-            Console.WriteLine(sb.ToString());
+
+            return sb.ToString();
         }
 
         public static string ToFullString(this Dictionary<(int state, Terminal t), List<ActionItem>> Action)

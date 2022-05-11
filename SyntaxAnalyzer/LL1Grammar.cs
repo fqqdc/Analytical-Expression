@@ -42,6 +42,7 @@ namespace SyntaxAnalyzer
 
         }
 
+        [Obsolete("TryCreate方法的旧版本备份")]
         public static bool TryCreate2(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
         {
             var (S, P) = (grammar.S, grammar.P);
@@ -112,17 +113,25 @@ namespace SyntaxAnalyzer
             return result;
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL1Grammar lL1Grammar, out string createMsg)
         {
             lL1Grammar = null;
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst = CalcFirsts(P);
             var mapFollow = CalcFollows(P, mapFirst, S);
 
-            StringBuilder msgBuilder = new();
-            if (HasLeftRecursion(grammar, out var msg))
+            StringBuilder createMsgBuilder = new();
+            if (HasLeftRecursion(grammar, out var recMsg))
             {
-                msgBuilder.AppendLine(msg);
+                createMsgBuilder.AppendLine("无法满足LL1文法：");
+                foreach (var msg in recMsg.Split("\n"))
+                {
+                    if (!string.IsNullOrWhiteSpace(msg))
+                        createMsgBuilder.AppendLine($"  =>{msg}");
+                }
+
+                createMsg = createMsgBuilder.ToString();
+                return false;
             }
 
             var pArray = P.ToArray();
@@ -148,15 +157,15 @@ namespace SyntaxAnalyzer
 
                     if (pArray[i].Left == pArray[j].Left && iSelect.Intersect(jSelect).Any())
                     {
-                        msgBuilder.AppendLine($"{pArray[i]}的SELECT集与{pArray[j]}的SELECT集相交不为空，无法满足LL1文法。");
-                        msgBuilder.AppendLine($"    {pArray[i]}的SELECT集: {string.Join(", ", iSelect)}");
-                        msgBuilder.AppendLine($"    {pArray[j]}的SELECT集:  {string.Join(", ", jSelect)}");
+                        createMsgBuilder.AppendLine($"无法满足LL1文法：{pArray[i]}的SELECT集与{pArray[j]}的SELECT集相交不为空。");
+                        createMsgBuilder.AppendLine($"  =>{pArray[i]}的SELECT集: {string.Join(", ", iSelect)}");
+                        createMsgBuilder.AppendLine($"  =>{pArray[j]}的SELECT集:  {string.Join(", ", jSelect)}");
                     }
                 }
             }
 
-            errorMsg = msgBuilder.ToString();
-            var result = string.IsNullOrWhiteSpace(errorMsg);
+            createMsg = createMsgBuilder.ToString();
+            var result = string.IsNullOrWhiteSpace(createMsg);
 
             if (result)
                 lL1Grammar = new LL1Grammar(P, S, mapFirst, mapFollow);

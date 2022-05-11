@@ -8,7 +8,16 @@ namespace SyntaxAnalyzer
 {
     public record Production
     {
-        private Symbol[] right;
+        private Symbol[] _right;
+        private int _hashCode = 0;
+
+        private int ToHashCode()
+        {
+            int value = Left.GetHashCode();
+            foreach (var item in _right)
+                value ^= item.GetHashCode();
+            return value;
+        }
 
         public Production(NonTerminal left, IEnumerable<Symbol> right)
         {
@@ -16,7 +25,8 @@ namespace SyntaxAnalyzer
             if (right == null) throw new ArgumentNullException("right");
 
             Left = left;
-            this.right = right.ToArray();
+            this._right = right.ToArray();
+            this._hashCode = ToHashCode();
         }
 
         public Production(NonTerminal left, Symbol singleSymbol) : this(left, new Symbol[] { singleSymbol }) { }
@@ -25,7 +35,7 @@ namespace SyntaxAnalyzer
 
         public IEnumerable<Symbol> Right
         {
-            get { return right; }
+            get { return _right; }
         }
 
         public static Symbol[] Epsilon { get; private set; } = new Symbol[] { Terminal.Epsilon };
@@ -64,10 +74,7 @@ namespace SyntaxAnalyzer
 
         public override int GetHashCode()
         {
-            int value = Left.GetHashCode();
-            foreach (var item in Right)
-                value ^= item.GetHashCode();
-            return value;
+            return _hashCode;
         }
 
         public static Production CreateSingle(string left, string right)

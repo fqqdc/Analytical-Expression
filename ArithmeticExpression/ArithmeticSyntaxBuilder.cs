@@ -40,7 +40,7 @@ namespace ArithmeticExpression
 
             listProduction.AddRange(Production.Create("ExpBool", "ExpArith == ExpArith|ExpArith != ExpArith")); // 比较数值
             listProduction.AddRange(Production.Create("ExpBool", "ExpArith > ExpArith|ExpArith >= ExpArith|ExpArith < ExpArith|ExpArith <= ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject == ExpObject")); // 比较对象
+            listProduction.AddRange(Production.Create("ExpBool", "ExpObject == ExpObject|ExpObject != ExpObject")); // 比较对象
             listProduction.AddRange(Production.Create("ExpBool", "( ExpLogic )")); // 布尔
             listProduction.AddRange(Production.Create("ExpBool", "bool")); // 布尔
 

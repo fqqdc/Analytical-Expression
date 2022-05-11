@@ -196,18 +196,26 @@ namespace SyntaxAnalyzer
             return mapFollow2;
         }
 
-        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL2Grammar lL2Grammar, out string errorMsg)
+        public static bool TryCreate(Grammar grammar, [MaybeNullWhen(false)] out LL2Grammar lL2Grammar, out string createMsg)
         {
             lL2Grammar = null;
 
             var (S, P) = (grammar.S, grammar.P);
             var mapFirst2 = CalcFirst2Sets(P);
             var mapFollow2 = CalcFollow2Sets(P, mapFirst2, S);
-            StringBuilder stringBuilder = new();
 
-            if (HasLeftRecursion(grammar, out var msg))
+            StringBuilder createMsgBuilder = new();
+            if (HasLeftRecursion(grammar, out var recMsg))
             {
-                stringBuilder.AppendLine(msg);
+                createMsgBuilder.AppendLine("无法满足LL1文法：");
+                foreach (var msg in recMsg.Split("\n"))
+                {
+                    if (!string.IsNullOrWhiteSpace(msg))
+                        createMsgBuilder.AppendLine($"  =>{msg}");
+                }
+
+                createMsg = createMsgBuilder.ToString();
+                return false;
             }
 
             var pArray = P.ToArray();
@@ -226,15 +234,15 @@ namespace SyntaxAnalyzer
 
                     if (pArray[i].Left == pArray[j].Left && iSelect2.Intersect(jSelect2).Any())
                     {
-                        stringBuilder.AppendLine($"{pArray[i]}的SELECT2集与{pArray[j]}的SELECT2集相交不为空，无法满足LL2文法。");
-                        stringBuilder.AppendLine($"    {pArray[i]}的SELECT2集: {string.Join(", ", iSelect2)}");
-                        stringBuilder.AppendLine($"    {pArray[j]}的SELECT2集 {string.Join(", ", jSelect2)}");
+                        createMsgBuilder.AppendLine($"无法满足LL2文法：{pArray[i]}的SELECT2集与{pArray[j]}的SELECT2集相交不为空。");
+                        createMsgBuilder.AppendLine($"  =>{pArray[i]}的SELECT2集: {string.Join(", ", iSelect2)}");
+                        createMsgBuilder.AppendLine($"  =>{pArray[j]}的SELECT2集: {string.Join(", ", jSelect2)}");
                     }
                 }
             }
 
-            errorMsg = stringBuilder.ToString();
-            var result = string.IsNullOrWhiteSpace(errorMsg);
+            createMsg = createMsgBuilder.ToString();
+            var result = string.IsNullOrWhiteSpace(createMsg);
 
             if (result)
                 lL2Grammar = new LL2Grammar(P, S, mapFirst2, mapFollow2);
@@ -244,10 +252,10 @@ namespace SyntaxAnalyzer
                 Console.WriteLine(mapFirst2.ToString("First2 Sets"));
                 Console.WriteLine(mapFollow2.ToString("Follow2 Sets"));
                 Console.WriteLine(mapSelect2.ToString("Select2 Sets"));
-                Console.WriteLine($"DoubleTerminal number: {mapSelect2.SelectMany(i=>i.Value).Distinct().Count()}");
+                Console.WriteLine($"LL2前看符号合计：{mapSelect2.SelectMany(i=>i.Value).Distinct().Count()}");
             }
 
-            errorMsg = stringBuilder.ToString();
+            createMsg = createMsgBuilder.ToString();
             return result;
         }
     }

@@ -27,19 +27,20 @@ namespace Example
 
             obj.s1 = "aaa";
             obj.s2 = "aaa";
+            obj.s3 = "aaa";
 
             string text;
             object? value;
 
-            text = " v2 == 3 == v4 == 5";
+            text = " v2 == 3==v4 == 5";
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
-            text = " b.c[2*v2] ";
+            text = " b.c[ 2* v2] ";
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
-            text = " v2 * v3";
+            text = " v2 *v3";
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
@@ -55,7 +56,7 @@ namespace Example
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
-            text = " s1 == s2  && 2 - 3 > -10";
+            text = " s1==s2 &&s2 !=s3";
             value = analyzer.Analyzer(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
         }
