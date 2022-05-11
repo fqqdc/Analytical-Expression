@@ -8,7 +8,7 @@ namespace SyntaxAnalyzer
 {
     public class Grammar
     {
-        public static bool PrintItemsSet = false;
+        public static bool PrintStateItems = false;
         public static bool PrintTable = false;
         public static bool PrintTableIfConflict = true;
 

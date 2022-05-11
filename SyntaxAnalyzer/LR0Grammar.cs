@@ -64,7 +64,7 @@ namespace SyntaxAnalyzer
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
 
-            if (!result && LR0Grammar.PrintTableIfConflict)
+            if (LR0Grammar.PrintTable || !result && LR0Grammar.PrintTableIfConflict)
             {
                 LRGrammarHelper.PrintTable(grammar, Action, Goto);
             }
@@ -80,9 +80,9 @@ namespace SyntaxAnalyzer
             var V = Vn.Cast<Symbol>().Union(Vt).Append(Terminal.EndTerminal);
             var startProduction = P.Single(p => p.Left == S);
 
-            // ================
+            #region inter methods
 
-            HashSet<ProductionItem> Closure(IEnumerable<ProductionItem> I)
+            FixHashSet<ProductionItem> Closure(IEnumerable<ProductionItem> I)
             {
                 HashSet<ProductionItem> closure = new(I);
                 Queue<ProductionItem> queueWork = new(I);
@@ -108,12 +108,12 @@ namespace SyntaxAnalyzer
                     }
                 }
 
-                return closure;
+                return new(closure);
             }
 
-            Dictionary<(HashSet<ProductionItem> I, Symbol X), HashSet<ProductionItem>> GoCache = new(HashSetComparer<ProductionItem, Symbol>.Default);
+            Dictionary<(FixHashSet<ProductionItem> I, Symbol X), FixHashSet<ProductionItem>> GoCache = new(FixHashSetComparer<ProductionItem, Symbol>.Default);
 
-            HashSet<ProductionItem> Go(HashSet<ProductionItem> I, Symbol X)
+            FixHashSet<ProductionItem> Go(FixHashSet<ProductionItem> I, Symbol X)
             {
                 if (!GoCache.TryGetValue((I, X), out var closureJ))
                 {
@@ -132,10 +132,10 @@ namespace SyntaxAnalyzer
                 return closureJ;
             }
 
-            // =================
+            #endregion
 
-            HashSet<HashSet<ProductionItem>> C = new(HashSetComparer<ProductionItem>.Default);
-            Queue<HashSet<ProductionItem>> queueWork = new();
+            HashSet<FixHashSet<ProductionItem>> C = new(FixHashSetComparer<ProductionItem>.Default);
+            Queue<FixHashSet<ProductionItem>> queueWork = new();
 
             var I_0 = Closure(new ProductionItem[] { new(startProduction, 0) }); // 初态项目集
 
@@ -161,7 +161,7 @@ namespace SyntaxAnalyzer
             }
 
             // =================
-            Dictionary<HashSet<ProductionItem>, int> IdTable = new(HashSetComparer<ProductionItem>.Default); // ID 表
+            Dictionary<FixHashSet<ProductionItem>, int> IdTable = new(FixHashSetComparer<ProductionItem>.Default); // ID 表
             IdTable[I_0] = 0;
 
             Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
@@ -179,7 +179,7 @@ namespace SyntaxAnalyzer
             var accept = new ProductionItem(startProduction, 1);
 
             queueWork = new();
-            HashSet<HashSet<ProductionItem>> visited = new(HashSetComparer<ProductionItem>.Default);
+            HashSet<FixHashSet<ProductionItem>> visited = new(FixHashSetComparer<ProductionItem>.Default);
 
             queueWork.Enqueue(I_0);
             visited.Add(I_0);
@@ -235,7 +235,7 @@ namespace SyntaxAnalyzer
                 }
             }
 
-            if (LR0Grammar.PrintItemsSet)
+            if (LR0Grammar.PrintStateItems)
             {
                 // 打印项目集
                 foreach (var I in C)

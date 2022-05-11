@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LexicalAnalyzer;
 using System.IO;
+using System.Collections.Immutable;
 
 namespace SyntaxAnalyzerTest
 {
@@ -50,15 +51,21 @@ namespace SyntaxAnalyzerTest
         {
             var listProduction = new List<Production>();
 
-            listProduction.AddRange(Production.Create("ExpNumber", "number"));
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法
-            listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
-            Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+            //listProduction.AddRange(Production.Create("ExpNumber", "number"));
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法
+            //listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
+            //Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+
+            listProduction.AddRange(Production.Create("S", "E"));
+            listProduction.AddRange(Production.Create("E", "a A|b B"));
+            listProduction.AddRange(Production.Create("A", "c A|d"));
+            listProduction.AddRange(Production.Create("B", "c B|d"));
+            Grammar grammar = new Grammar(listProduction, new("E"));
 
             Console.WriteLine(grammar);
-
-            LR0Grammar.PrintItemsSet = false;
+            LR0Grammar.PrintStateItems = false;
+            LR0Grammar.PrintTable = true;
             if (!LR0Grammar.TryCreate(grammar, out var lR0Grammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -139,7 +146,7 @@ namespace SyntaxAnalyzerTest
 
         static void Main(string[] args)
         {
-
+            LR0GrammarExample();
         }
     }
 }
