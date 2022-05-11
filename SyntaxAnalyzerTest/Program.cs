@@ -212,9 +212,46 @@ namespace SyntaxAnalyzerTest
             else Console.WriteLine(lR1Grammar);
         }
 
+        static void LALRGrammarExample()
+        {
+            var listProduction = new List<Production>();
+
+            listProduction.AddRange(Production.Create("S", "L = R|R"));
+            listProduction.AddRange(Production.Create("L", "* R|i"));
+            listProduction.AddRange(Production.Create("R", "L"));
+            Grammar grammar = new Grammar(listProduction, new("S"));
+
+            Console.WriteLine(grammar);
+            string? createMsg = null;
+
+            Grammar.PrintStateItems = false;
+            Grammar.PrintTable = true;
+
+            if (!SLRGrammar.TryCreate(grammar, out var sLRGrammar, out createMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{createMsg}");
+            }
+            else Console.WriteLine(sLRGrammar);
+
+            if (!LR1Grammar.TryCreate(grammar, out var lR1Grammar, out createMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{createMsg}"); 
+            }
+            else Console.WriteLine(lR1Grammar);
+
+            if (!LALRGrammar.TryCreate(grammar, out var lALRGrammar, out createMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error:\n{createMsg}");
+            }
+            else Console.WriteLine(lALRGrammar);            
+        }
+
         static void Main(string[] args)
         {
-            LR1GrammarExample();
+            LALRGrammarExample();
         }
     }
 }

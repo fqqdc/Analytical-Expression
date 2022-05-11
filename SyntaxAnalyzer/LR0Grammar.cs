@@ -240,7 +240,8 @@ namespace SyntaxAnalyzer
             if (LR0Grammar.PrintStateItems)
             {
                 // 打印项目集
-                foreach (var I in C)
+                var list = stateTable.OrderBy(i => i.Value).Select(i => i.Key);
+                foreach (var I in list)
                 {
                     var id_I = stateTable[I];
                     Console.WriteLine($"I_{id_I}");

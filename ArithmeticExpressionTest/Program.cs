@@ -148,20 +148,12 @@ namespace ArithmeticExpressionTest
             //}
             //else Console.WriteLine(rl0Grammar);
 
-            //if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
-            //{
-            //    Console.WriteLine();
-            //    Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
-            //    return;
-            //}
-            //else Console.WriteLine(slrGrammar);
-
-            //var clr1Grammar = CLR1Grammar.Create(grammar);
-
-            //Console.WriteLine();
-            //Console.WriteLine($"CLR1Grammar Conflict:\n{clr1Grammar.ConflictMessage}");
-
-            //Console.WriteLine(clr1Grammar);
+            if (!SLRGrammar.TryCreate(grammar, out var slrGrammar, out var slrMsg))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"SLRGrammar Error:\n{slrMsg}");
+            }
+            else Console.WriteLine(slrGrammar);
 
             //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
             //{

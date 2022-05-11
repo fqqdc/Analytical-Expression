@@ -48,13 +48,13 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+                    sbErrorMsg.AppendLine($"无法满足LALR文法：ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
             }
 
             errorMsg = sbErrorMsg.ToString();
             var result = string.IsNullOrWhiteSpace(errorMsg);
 
-            if (!result && LALRGrammar.PrintTableIfConflict)
+            if (LALRGrammar.PrintTable || !result && LALRGrammar.PrintTableIfConflict)
             {
                 Console.WriteLine(LRGrammarHelper.GetTableFullString(grammar, Action, Goto));
             }
@@ -89,7 +89,7 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+                    sbErrorMsg.AppendLine($"无法满足LALR文法：ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
             }
 
             errorMsg = sbErrorMsg.ToString();
@@ -112,9 +112,9 @@ namespace SyntaxAnalyzer
             var startProduction = P.Single(p => p.Left == S);
             var mapFirst = Grammar.CalcFirsts(P);
 
-            // ================
+            #region inter methods
 
-            HashSet<ProductionItem_1> Closure(IEnumerable<ProductionItem_1> I)
+            FixHashSet<ProductionItem_1> Closure(IEnumerable<ProductionItem_1> I)
             {
                 HashSet<ProductionItem_1> closure = new(I);
                 Queue<ProductionItem_1> queueWork = new(I);
@@ -143,12 +143,12 @@ namespace SyntaxAnalyzer
                     }
                 }
 
-                return closure;
+                return new(closure);
             }
 
-            Dictionary<(HashSet<ProductionItem_1> I, Symbol X), HashSet<ProductionItem_1>> GoCache =
-                new(HashSetComparer<ProductionItem_1, Symbol>.Default);
-            HashSet<ProductionItem_1> Go(HashSet<ProductionItem_1> I, Symbol X)
+            Dictionary<(FixHashSet<ProductionItem_1> I, Symbol X), FixHashSet<ProductionItem_1>> GoCache =
+                new(FixHashSetComparer<ProductionItem_1, Symbol>.Default);
+            FixHashSet<ProductionItem_1> Go(FixHashSet<ProductionItem_1> I, Symbol X)
             {
                 if (!GoCache.TryGetValue((I, X), out var closureJ))
                 {
@@ -167,25 +167,32 @@ namespace SyntaxAnalyzer
                 return closureJ;
             }
 
-            HashSet<HashSet<ProductionItem_1>> C = new(HashSetComparer<ProductionItem_1>.Default);
-            HashSet<ProductionItem_1> GoEx(HashSet<ProductionItem_1> I, Symbol X)
+            HashSet<FixHashSet<ProductionItem_1>> C = new(FixHashSetComparer<ProductionItem_1>.Default);
+
+            Dictionary<(FixHashSet<ProductionItem_1> I, Symbol X), FixHashSet<ProductionItem_1>> GoConcentricCache =
+                new(FixHashSetComparer<ProductionItem_1, Symbol>.Default);
+            FixHashSet<ProductionItem_1> GoConcentric(FixHashSet<ProductionItem_1> I, Symbol X)
             {
-                var J = Go(I, X);
-                if(J.Count == 0) 
-                    return J;
-                J = C.First(set =>
+                if (!GoConcentricCache.TryGetValue((I, X), out var concentricJ))
                 {
-                    var comparer = (IEqualityComparer<HashSet<ProductionItem_1>>)LALRGrammarComparer.Default;
-                    return comparer.Equals(set, J);
-                });
-                Debug.Assert(C.Contains(J));
-                return J;
+                    var J = Go(I, X);
+                    if (J.Count == 0) return J;
+                    
+                    concentricJ = C.First(set =>
+                    {
+                        // 查找同心项集合
+                        IEqualityComparer<FixHashSet<ProductionItem_1>> comparer = LALRGrammarComparer.Default;
+                        return comparer.Equals(set, J);
+                    });
+                    GoConcentricCache[(I, X)] = concentricJ;
+                }
+                return concentricJ;
             }
 
-            // =================
+            #endregion
 
-            // 项目集队列及初始化
-            Queue<HashSet<ProductionItem_1>> queueWork = new();
+            // 项目集队列及初始化            
+            Queue<FixHashSet<ProductionItem_1>> queueWork = new();
             var initItem = new ProductionItem_1(startProduction, 0, Terminal.EndTerminal); // 开始项目
             var I_0 = Closure(new ProductionItem_1[] { initItem }); // 初态项目集
 
@@ -212,39 +219,37 @@ namespace SyntaxAnalyzer
 
             // 合并同心集
             var groups = C.GroupBy(set => set, LALRGrammarComparer.Default);
-            var newC = new HashSet<HashSet<ProductionItem_1>>(HashSetComparer<ProductionItem_1>.Default);
-            var mapRecord = new Dictionary<HashSet<ProductionItem_1>, HashSet<ProductionItem_1>[]>
-                (HashSetComparer<ProductionItem_1>.Default);
+            var newC = new HashSet<FixHashSet<ProductionItem_1>>(FixHashSetComparer<ProductionItem_1>.Default);
             foreach (var group in groups)
             {
                 var newSet = group.SelectMany(set => set).ToHashSet();
-                mapRecord[newSet] = group.ToArray();
+                newC.Add(new(newSet));
             }
-            newC.UnionWith(mapRecord.Keys);
             C = newC;
-            //UpdateGoCache();
 
             // 开始集
             I_0 = C.Single(I => I.Contains(initItem));
 
             // 分配集合ID
-            Dictionary<HashSet<ProductionItem_1>, int> IdTable = new(HashSetComparer<ProductionItem_1>.Default); // ID 表
-            IdTable[I_0] = 0;
+            Dictionary<FixHashSet<ProductionItem_1>, int> stateTable = new(FixHashSetComparer<ProductionItem_1>.Default); // ID 表
+            stateTable[I_0] = 0;
 
             // Action
-            Dictionary<(int state, Terminal t), HashSet<ActionItem>> Action = new(); // ACTION 表
+            Dictionary<(int state, Terminal t), HashSet<ActionItem>> actionTable = new(); // ACTION 表
+            #region ACTION 方法
             HashSet<ActionItem> GetActionItemSet((int state, Terminal t) key)
             {
-                if (!Action.TryGetValue(key, out var set))
+                if (!actionTable.TryGetValue(key, out var set))
                 {
                     set = new();
-                    Action[key] = set;
+                    actionTable[key] = set;
                 }
                 return set;
             }
+            #endregion
 
             // Goto
-            Dictionary<(int state, NonTerminal t), int> Goto = new(); // GOTO表
+            Dictionary<(int state, NonTerminal t), int> gotoTable = new(); // GOTO表
 
             // 接受项目
             var accept = new ProductionItem_1(startProduction, 1, Terminal.EndTerminal);
@@ -252,7 +257,7 @@ namespace SyntaxAnalyzer
             // 遍历队列
             queueWork = new();
             // 已遍历集合
-            HashSet<HashSet<ProductionItem_1>> visited = new(HashSetComparer<ProductionItem_1>.Default);
+            HashSet<FixHashSet<ProductionItem_1>> visited = new(FixHashSetComparer<ProductionItem_1>.Default);
 
             // 初始化遍历队列
             queueWork.Enqueue(I_0);
@@ -266,24 +271,24 @@ namespace SyntaxAnalyzer
                 {
                     if (item == accept)
                     {
-                        var list = GetActionItemSet((IdTable[I], Terminal.EndTerminal));
+                        var list = GetActionItemSet((stateTable[I], Terminal.EndTerminal));
                         list.Add(new AcceptItem());
                     }
                     else if (item.Production.Right.Count() == item.Position)
                     {
-                        var list = GetActionItemSet((IdTable[I], item.Follow));
+                        var list = GetActionItemSet((stateTable[I], item.Follow));
                         list.Add(new ReduceItem(item.Production));
                     }
                     else
                     {
                         var symbol = item.Production.Right.ElementAt(item.Position);
-                        var J = GoEx(I, symbol);
+                        var J = GoConcentric(I, symbol);
                         Debug.Assert(J.Count != 0);
 
-                        if (!IdTable.TryGetValue(J, out var id_J))
+                        if (!stateTable.TryGetValue(J, out var id_J))
                         {
-                            id_J = IdTable.Count;
-                            IdTable[J] = id_J;
+                            id_J = stateTable.Count;
+                            stateTable[J] = id_J;
                         }
 
                         if (!visited.Contains(J))
@@ -294,47 +299,51 @@ namespace SyntaxAnalyzer
 
                         if (symbol is Terminal terminal)
                         {
-                            var list = GetActionItemSet((IdTable[I], terminal));
+                            var list = GetActionItemSet((stateTable[I], terminal));
                             list.Add(new ShiftItem(id_J));
                         }
                         else if (symbol is NonTerminal nonTerminal)
                         {
-                            Goto[(IdTable[I], nonTerminal)] = id_J;
+                            gotoTable[(stateTable[I], nonTerminal)] = id_J;
                         }
                     }
                 }
             }
 
-            // 打印项目集
-            foreach (var I in C)
+            if (PrintStateItems)
             {
-                var id_I = IdTable[I];
-                Console.WriteLine($"I_{id_I}");
-                foreach (var item in I)
+                // 打印项目集
+                var list = stateTable.OrderBy(i => i.Value).Select(i => i.Key);
+                foreach (var I in list)
                 {
-                    Console.WriteLine(item);
-                }
-                foreach (var symbol in V)
-                {
-                    var J = GoEx(I, symbol);
-                    if (J.Count > 0)
+                    var id_I = stateTable[I];
+                    Console.WriteLine($"I_{id_I}");
+                    foreach (var item in I)
                     {
-                        var id_J = IdTable[J];
-                        Console.WriteLine($"{symbol}->{id_J}");
+                        Console.WriteLine(item);
                     }
+                    foreach (var symbol in V)
+                    {
+                        var J = GoConcentric(I, symbol);
+                        if (J.Count > 0)
+                        {
+                            var id_J = stateTable[J];
+                            Console.WriteLine($"{symbol}->{id_J}");
+                        }
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
             }
 
-            return (Action, Goto);
+            return (actionTable, gotoTable);
         }
     }
 
-    internal class LALRGrammarComparer : IEqualityComparer<HashSet<ProductionItem_1>>
+    internal class LALRGrammarComparer : IEqualityComparer<FixHashSet<ProductionItem_1>>
     {
         static LALRGrammarComparer() => Default = new();
         public static LALRGrammarComparer Default { get; private set; }
-        bool IEqualityComparer<HashSet<ProductionItem_1>>.Equals(HashSet<ProductionItem_1>? x, HashSet<ProductionItem_1>? y)
+        bool IEqualityComparer<FixHashSet<ProductionItem_1>>.Equals(FixHashSet<ProductionItem_1>? x, FixHashSet<ProductionItem_1>? y)
         {
             if (ReferenceEquals(x, y))
             {
@@ -350,7 +359,7 @@ namespace SyntaxAnalyzer
 
             return false;
         }
-        int IEqualityComparer<HashSet<ProductionItem_1>>.GetHashCode(HashSet<ProductionItem_1> obj)
+        int IEqualityComparer<FixHashSet<ProductionItem_1>>.GetHashCode(FixHashSet<ProductionItem_1> obj)
         {
             var code = 0;
             var set = obj.Select(i => new ProductionItem(i.Production, i.Position)).ToHashSet();
@@ -360,7 +369,7 @@ namespace SyntaxAnalyzer
                     continue;
                 code = code ^ item.GetHashCode();
             }
-            return code;
+            return obj.GetHashCode();
         }
     }
 }

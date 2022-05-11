@@ -58,7 +58,7 @@ namespace SyntaxAnalyzer
             foreach (var item in Action)
             {
                 if (item.Value.Count() > 1)
-                    sbErrorMsg.AppendLine($"ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
+                    sbErrorMsg.AppendLine($"无法满足LR1文法：ACTION {item.Key} 有多重入口：({string.Join(",", item.Value)})");
             }
 
             errorMsg = sbErrorMsg.ToString();
@@ -239,7 +239,8 @@ namespace SyntaxAnalyzer
             if (PrintStateItems)
             {
                 // 打印项目集
-                foreach (var I in C)
+                var list = stateTable.OrderBy(i => i.Value).Select(i => i.Key);
+                foreach (var I in list)
                 {
                     var id_I = stateTable[I];
                     Console.WriteLine($"I_{id_I}");
