@@ -247,7 +247,7 @@ namespace ArithmeticExpression
             RegisterFunction("ExpBool", "ExpObject != ExpObject", arr =>
             {
                 if (ObjectEqualsMethod == null) throw new NullReferenceException();
-                return Expression.Negate(Expression.Call(ObjectEqualsMethod, (Expression)arr[0], (Expression)arr[1]));
+                return Expression.Not(Expression.Call(ObjectEqualsMethod, (Expression)arr[0], (Expression)arr[1]));
             }); // 比较对象
             RegisterFunction("ExpBool", "ExpArith > ExpArith", arr =>
             {
