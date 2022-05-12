@@ -175,16 +175,13 @@ namespace LexicalAnalyzer
                     return returnValue;
                 }
 
-                throw new Exception("无值");
+                return default;
             }
         }
 
         object IEnumerator.Current => this.Current;
 
-        public void Dispose()
-        {
-            throw new NotSupportedException();
-        }
+        public void Dispose() { }
 
         private void GetNextValue()
         {
@@ -279,7 +276,6 @@ namespace LexicalAnalyzer
 
     public class LexicalAnalyzerException : Exception
     {
-        public LexicalAnalyzerException(string seq)
-        : base($"匹配错误，当前序列为：{seq}。") { }
+        public LexicalAnalyzerException(string seq) : base($"匹配错误，当前序列为：{seq}。") { }
     }
 }
