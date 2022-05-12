@@ -99,38 +99,38 @@ namespace ArithmeticExpressionTest
 
             listProduction.AddRange(Production.Create("ExpObject", "id|null")); // 对象
 
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject != ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith != ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject == ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith == ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith <= ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith < ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith >= ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpArith")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpArith > ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpObject")); // 比较数值
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpMulti")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd - ExpObject")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpObject")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpMulti")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd + ExpObject")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpObject")); // 加法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpSign")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti % ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpSign")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti / ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpSign")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti * ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpObject")); // 乘法
-            listProduction.AddRange(Production.Create("ExpSign", "- ExpObject")); // 取反
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject != ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith != ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject == ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith == ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith <= ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject <= ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith < ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject < ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith >= ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject >= ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpArith")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpArith > ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpBool", "ExpObject > ExpObject")); // 比较数值
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpMulti")); // 加法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd - ExpObject")); // 加法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpObject - ExpObject")); // 加法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpMulti")); // 加法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpAdd + ExpObject")); // 加法
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpObject + ExpObject")); // 加法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpSign")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti % ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject % ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpSign")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti / ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject / ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpSign")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpMulti * ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpObject * ExpObject")); // 乘法
+            //listProduction.AddRange(Production.Create("ExpSign", "- ExpObject")); // 取反
             listProduction.AddRange(Production.Create("ExpSquare", "ExpObject ^ ExpSquare")); // 开方
             listProduction.AddRange(Production.Create("ExpSquare", "ExpNumber ^ ExpObject")); // 开方
             listProduction.AddRange(Production.Create("ExpSquare", "ExpObject ^ ExpObject")); // 开方
@@ -155,6 +155,8 @@ namespace ArithmeticExpressionTest
             }
             else Console.WriteLine(slrGrammar);
 
+            return;
+
             //if (!LR1Grammar.TryCreate(grammar, out var lr1Grammar, out var lr1Msg))
             //{
             //    Console.WriteLine();
@@ -163,12 +165,12 @@ namespace ArithmeticExpressionTest
             //}
             //else Console.WriteLine(lr1Grammar);
 
-            if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
-            {
-                Console.WriteLine();
-                Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
-            }
-            else Console.WriteLine(lalrGrammar);
+            //if (!LALRGrammar.TryCreate(grammar, out var lalrGrammar, out var lalrMsg))
+            //{
+            //    Console.WriteLine();
+            //    Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
+            //}
+            //else Console.WriteLine(lalrGrammar);
         }
     }
 }
