@@ -70,6 +70,8 @@ namespace SyntaxAnalyzer
             stackAnalysis.Push(Terminal.EndTerminal);
             stackAnalysis.Push(grammar.S);
         }
+        protected void OnTerminalFinish(Terminal terminal) { }
+        protected void OnProcedureFinish(Production production) { }
 
         private void Procedure()
         {
@@ -82,6 +84,7 @@ namespace SyntaxAnalyzer
                     {
                         if (terminal == Terminal.EndTerminal)
                             break;
+                        OnTerminalFinish(terminal);
                         Advance();
                     }
                     else Error();
@@ -105,6 +108,40 @@ namespace SyntaxAnalyzer
                 }
 
             } while (true);
+        }
+
+        private void Procedure(Production production)
+        {
+            foreach (var symbol in production.Right)
+            {
+                if (symbol is Terminal terminal)
+                {
+                    if (sym == terminal)
+                    {
+                        OnTerminalFinish(terminal);
+                        Advance();
+                        continue;
+                    }
+                    else Error();
+                }
+
+                if (symbol is NonTerminal nonTerminal)
+                {
+                    var item = predictiveTable.SingleOrDefault(i => i.n == symbol && i.t == sym);
+                    var p = item.p;
+                    if (p == null)
+                        Error();
+                    else
+                    {
+                        Console.WriteLine(p);
+                        Procedure(p);
+                    }
+                }
+
+                throw new NotSupportedException();
+            }
+
+            OnProcedureFinish(production);
         }
 
         public void Analyzer()

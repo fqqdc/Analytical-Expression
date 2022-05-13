@@ -97,6 +97,8 @@ namespace SyntaxAnalyzer
                                         if (!pReplaced.Right.SequenceEqual(Production.Epsilon))
                                             newRight = pReplaced.Right;
                                         newRight = newRight.Concat(p.Right.Skip(1));
+                                        if (!newRight.Any())
+                                            newRight = Production.Epsilon;
                                         unionSet.Add(new(p.Left, newRight));
                                     }
                                 }
@@ -163,6 +165,8 @@ namespace SyntaxAnalyzer
                                             if (!pReplaced.Right.SequenceEqual(Production.Epsilon))
                                                 newRight = pReplaced.Right;
                                             newRight = newRight.Concat(p.Right.Skip(1));
+                                            if (!newRight.Any())
+                                                newRight = Production.Epsilon;
                                             unionSet.Add(new(p.Left, newRight));
                                         }
                                     }

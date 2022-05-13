@@ -37,6 +37,9 @@ namespace SyntaxAnalyzer
             Procedure(new Symbol[] { grammar.S });
         }
 
+        protected void OnTerminalFinish(Terminal terminal) { }
+        protected void OnProcedureFinish(Production production) { }
+
         private void Procedure(IEnumerable<Symbol> symbols)
         {
             foreach (var symbol in symbols)
@@ -45,6 +48,7 @@ namespace SyntaxAnalyzer
                 {
                     if (Sym == terminal)
                     {
+                        OnTerminalFinish(terminal);
                         Advance();
                         continue;
                     }
@@ -66,6 +70,7 @@ namespace SyntaxAnalyzer
                         {
                             Console.WriteLine(p);
                             Procedure(p.Right);
+                            OnProcedureFinish(p);
                             matched = true;
                             break;
                         }
