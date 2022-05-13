@@ -8,25 +8,32 @@ using System.Threading.Tasks;
 using LexicalAnalyzer;
 using System.IO;
 using System.Collections.Immutable;
+using System.Linq.Expressions;
 
 namespace SyntaxAnalyzerTest
 {
     public class Program
     {
+
         static void LL1GrammarExample()
         {
             var listProduction = new List<Production>();
 
-            //listProduction.AddRange(Production.Create("ExpNumber", "number"));
-            //listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法 (存在直接左递归)
-            listProduction.AddRange(Production.Create("ExpMulti", "number ExpMulti'")); // 乘法
-            listProduction.AddRange(Production.Create("ExpMulti'", "* ExpNumber ExpMulti|")); // 乘法
-            //listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法 (存在直接左递归)
-            listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti' ExpAdd'")); // 加法
-            listProduction.AddRange(Production.Create("ExpAdd'", "+ ExpMulti ExpAdd'|")); // 加法
+            listProduction.AddRange(Production.Create("ExpNumber", "number|( ExpArith )")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber ExpMultiA")); // 乘法
+            listProduction.AddRange(Production.Create("ExpMultiA", "* ExpNumber ExpMultiA|")); // 乘法
+            listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti ExpAddA")); // 加法
+            listProduction.AddRange(Production.Create("ExpAddA", "+ ExpMulti ExpAddA|")); // 加法
             listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
             Grammar grammar = new Grammar(listProduction, new("ExpArith"));
             Console.WriteLine(grammar);
+
+            //listProduction.AddRange(Production.Create("ExpNumber", "number|( ExpArith )"));
+            //listProduction.AddRange(Production.Create("ExpMulti", "ExpNumber|ExpMulti * ExpNumber")); // 乘法 (存在直接左递归)
+            //listProduction.AddRange(Production.Create("ExpAdd", "ExpMulti|ExpAdd + ExpMulti")); // 加法 (存在直接左递归)
+            //listProduction.AddRange(Production.Create("ExpArith", "ExpAdd")); // 算术表达式
+            //Grammar grammar = new Grammar(listProduction, new("ExpArith"));
+            //Console.WriteLine(grammar);
 
             //// 间接左递归文法例子
             //listProduction.AddRange(Production.Create("S", "Q c|"));
@@ -35,7 +42,7 @@ namespace SyntaxAnalyzerTest
             //Grammar grammar = new Grammar(listProduction, new("S"));
             //Console.WriteLine(grammar);
 
-            //grammar = LL1Grammar.EliminateLeftRecursion(grammar); // 消除左递归
+            grammar = LL1Grammar.EliminateLeftRecursion(grammar); // 消除左递归
             if (!LL1Grammar.TryCreate(grammar, out var lL1Grammar, out var slrMsg))
             {
                 Console.WriteLine();
@@ -237,7 +244,7 @@ namespace SyntaxAnalyzerTest
             if (!LR1Grammar.TryCreate(grammar, out var lR1Grammar, out createMsg))
             {
                 Console.WriteLine();
-                Console.WriteLine($"Error:\n{createMsg}"); 
+                Console.WriteLine($"Error:\n{createMsg}");
             }
             else Console.WriteLine(lR1Grammar);
 
@@ -246,12 +253,50 @@ namespace SyntaxAnalyzerTest
                 Console.WriteLine();
                 Console.WriteLine($"Error:\n{createMsg}");
             }
-            else Console.WriteLine(lALRGrammar);            
+            else Console.WriteLine(lALRGrammar);
         }
+
 
         static void Main(string[] args)
         {
-            LL1GrammarExample();
+            Dictionary<Expression, ParameterExpression> ParameterTable = new();
+
+            // ExpMulti' ->
+            Func<Expression, Expression> ExpMultiA0()
+            {
+                Func<Expression, Expression> func = exp => exp;
+                return func;
+            }
+
+            // ExpMulti' -> * ExpNumber ExpMulti'            
+
+            Func<Expression, Expression> ExpMultiA3(params object[] arr)
+            {
+                var expNumber = (Expression)arr[1];
+                var funcMultiA = (Func<Expression, Expression>)arr[2];     
+                Func<Expression, Expression> func = exp => funcMultiA(Expression.Multiply(exp, expNumber));
+                return func;
+            }
+
+            // ExpMulti -> ExpNumber ExpMulti'
+            Expression ExpMulti2(params object[] arr)
+            {
+                var expNumber = (Expression)arr[0];
+                var funcMultiA = (Func<Expression, Expression>)arr[1];
+                return funcMultiA(expNumber);
+            }
+
+            var func = ExpMultiA0();
+            // * 4 A
+            func = ExpMultiA3(Expression.Constant("*"), Expression.Constant(4d), func);
+            // * 3 A
+            func = ExpMultiA3(Expression.Constant("*"), Expression.Constant(3d), func);
+            // 2 A
+            var exp = ExpMulti2(Expression.Constant(2d), func);
+
+            var func2 = Expression.Lambda<Func<double>>(exp).Compile();
+            Console.WriteLine(func2());
+
         }
     }
 }

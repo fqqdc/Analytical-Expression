@@ -10,19 +10,20 @@ namespace SyntaxAnalyzer
     /// <summary>
     /// LL1分析器（构造预测分析表）
     /// </summary>
-    public class LL1SyntaxAnalyzerPT
+    public class LL1SyntaxAnalyzer
     {
-        public delegate void AdvanceProcedure(out Terminal Sym);
+        public delegate void AdvanceProcedure(out Terminal Sym, out string terminalToken);
 
         private LL1Grammar grammar;
-        private AdvanceProcedure advanceProcedure;
+        protected AdvanceProcedure _advanceProcedure;
         private Terminal sym = Terminal.Epsilon;
+        private string symToken = string.Empty;
         private List<(NonTerminal n, Terminal t, Production p)> predictiveTable;
         private Stack<Symbol> stackAnalysis = new();
-        public LL1SyntaxAnalyzerPT(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
+        public LL1SyntaxAnalyzer(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
         {
             this.grammar = grammar;
-            this.advanceProcedure = advanceProcedure;
+            this._advanceProcedure = advanceProcedure;
 
             this.predictiveTable = ConstructingPredictiveAnalysisTable();
         }
@@ -59,8 +60,8 @@ namespace SyntaxAnalyzer
         private Dictionary<Production, HashSet<Terminal>> rightFirst = new();
         private void Advance()
         {
-            advanceProcedure(out this.sym);
-            Console.WriteLine($"input:{this.sym}");
+            _advanceProcedure(out this.sym, out this.symToken);
+            Console.WriteLine($"input:{this.sym}: {this.symToken}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
@@ -70,59 +71,32 @@ namespace SyntaxAnalyzer
             stackAnalysis.Push(Terminal.EndTerminal);
             stackAnalysis.Push(grammar.S);
         }
-        protected void OnTerminalFinish(Terminal terminal) { }
-        protected void OnProcedureFinish(Production production) { }
+        protected virtual void OnTerminalFinish(Terminal terminal, string terminalToken) { }
+        protected virtual void OnProcedureFinish(Production production) { }
+        protected virtual void OnAnalyzerFinish() { }
 
-        private void Procedure()
+        private void ProcedureStart()
         {
-            do
-            {
-                var symbolTop = stackAnalysis.Pop();
-                if (symbolTop is Terminal terminal)
-                {
-                    if (terminal == sym)
-                    {
-                        if (terminal == Terminal.EndTerminal)
-                            break;
-                        OnTerminalFinish(terminal);
-                        Advance();
-                    }
-                    else Error();
-                }
-                else
-                {
-                    var item = predictiveTable.SingleOrDefault(i => i.n == symbolTop && i.t == sym);
-                    var p = item.p;
-                    if (p == null)
-                        Error();
-                    else
-                    {
-                        Console.WriteLine(p);
-                        foreach (var symbol in p.Right.Reverse())
-                        {
-                            if (symbol == Terminal.Epsilon)
-                                continue;
-                            stackAnalysis.Push(symbol);
-                        }
-                    }
-                }
-
-            } while (true);
+            Procedure(new Symbol[] { grammar.S });
         }
 
-        private void Procedure(Production production)
+        private void Procedure(IEnumerable<Symbol> symbols)
         {
-            foreach (var symbol in production.Right)
+            foreach (var symbol in symbols)
             {
                 if (symbol is Terminal terminal)
                 {
+                    if (symbol == Terminal.Epsilon)
+                        continue;
+
                     if (sym == terminal)
                     {
-                        OnTerminalFinish(terminal);
+                        OnTerminalFinish(terminal, symToken);
                         Advance();
                         continue;
                     }
                     else Error();
+                    continue;
                 }
 
                 if (symbol is NonTerminal nonTerminal)
@@ -134,21 +108,24 @@ namespace SyntaxAnalyzer
                     else
                     {
                         Console.WriteLine(p);
-                        Procedure(p);
+                        Procedure(p.Right);
+                        OnProcedureFinish(p);
                     }
+                    continue;
                 }
 
                 throw new NotSupportedException();
             }
 
-            OnProcedureFinish(production);
+            
         }
 
         public void Analyzer()
         {
             ProcedureInit();
             Advance();
-            Procedure();
+            ProcedureStart();
+            OnAnalyzerFinish();
         }
     }
 }

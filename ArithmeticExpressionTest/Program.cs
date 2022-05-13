@@ -12,7 +12,7 @@ namespace ArithmeticExpressionTest
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main1(string[] args)
         {
             var analyzer = ArithmeticSyntaxAnalyzer.LoadFromFile();
 
@@ -171,6 +171,18 @@ namespace ArithmeticExpressionTest
             //    Console.WriteLine($"LALRGrammar Error:\n{lalrMsg}");
             //}
             //else Console.WriteLine(lalrGrammar);
+        }
+
+        static void Main(string[] args)
+        {
+            ArithmeticSyntaxLL1Analyzer analyzer = ArithmeticSyntaxLL1Analyzer.LoadFromFile();
+
+            string text;
+            object? value;
+
+            text = " 1+2*(3+4)*(5+6)*10";
+            value = analyzer.Analyzer(text)();
+            Console.WriteLine($"{text} => {value ?? "null"} {value?.GetType().Name}");
         }
     }
 }

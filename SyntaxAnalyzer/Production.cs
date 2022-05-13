@@ -82,6 +82,9 @@ namespace SyntaxAnalyzer
             var sLeft = new NonTerminal(left);
             string[] itemsRight = right.Split(' ', StringSplitOptions.TrimEntries);
 
+            if (itemsRight.Length == 0)
+                return new Production(sLeft, Epsilon);
+
             if (itemsRight.Length == 1 && string.IsNullOrWhiteSpace(itemsRight[0]))
                 return new Production(sLeft, Epsilon);
 

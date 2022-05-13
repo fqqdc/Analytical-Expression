@@ -387,13 +387,13 @@ namespace ArithmeticExpression
             RegisterFunction("ExpOr", "ExpEqual", _defaultFunction);
             RegisterFunction("ExpOr", "ExpOr or ExpEqual", arr =>
             {
-                return Expression.Or((Expression)arr[0], (Expression)arr[2]);
+                return Expression.OrElse((Expression)arr[0], (Expression)arr[2]);
             });
             // 与
             RegisterFunction("ExpAnd", "ExpOr", _defaultFunction);
             RegisterFunction("ExpAnd", "ExpAnd && ExpOr", arr =>
             {
-                return Expression.And((Expression)arr[0], (Expression)arr[2]);
+                return Expression.AndAlso((Expression)arr[0], (Expression)arr[2]);
             });
             // 布尔表达式
             RegisterFunction("ExpLogic", "ExpAnd", _defaultFunction);
