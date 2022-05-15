@@ -72,18 +72,24 @@ namespace SyntaxAnalyzer
             stackAnalysis.Push(grammar.S);
         }
         protected virtual void OnTerminalFinish(Terminal terminal, string terminalToken) { }
+        protected virtual void OnProcedureDoing(Production production, int index) { }
         protected virtual void OnProcedureFinish(Production production) { }
+        
         protected virtual void OnAnalyzerFinish() { }
 
         private void ProcedureStart()
         {
-            Procedure(new Symbol[] { grammar.S });
+            var start = grammar.P.Single(p => p.Left == grammar.S);
+            Procedure(start);
         }
 
-        private void Procedure(IEnumerable<Symbol> symbols)
+        private void Procedure(Production production)
         {
-            foreach (var symbol in symbols)
+            int index = 0;
+            foreach (var symbol in production.Right)
             {
+                OnProcedureDoing(production, index);
+                index++;
                 if (symbol is Terminal terminal)
                 {
                     if (symbol == Terminal.Epsilon)
@@ -108,7 +114,7 @@ namespace SyntaxAnalyzer
                     else
                     {
                         Console.WriteLine(p);
-                        Procedure(p.Right);
+                        Procedure(p);
                         OnProcedureFinish(p);
                     }
                     continue;
