@@ -8,7 +8,7 @@ namespace Example
     {
         static void ArithmeticExpression_Example()
         {
-            var analyzer = ArithmeticSyntaxAnalyzer.LoadFromFile();
+            var analyzer = ArithmeticSyntaxTranslator.LoadFromFile();
 
             dynamic obj = new ExpandoObject();
             obj.a = new { b = new { c = 666 } };

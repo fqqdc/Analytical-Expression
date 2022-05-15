@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace ArithmeticExpression
 {
-    public class ArithmeticSyntaxLL1Analyzer2 : LL1SyntaxAnalyzer
+    public class ArithmeticSyntaxLL1Translator : LL1SyntaxAnalyzer
     {
         private Dictionary<Production, Func<object, object[], object>> _semanticSubroutine = new(); // 语义子程序字典
         private Dictionary<Production, Action<object, object[]>[]> _semanticSubroutineDoing = new(); // 语义子程序字典
@@ -19,9 +19,8 @@ namespace ArithmeticExpression
         private Func<object, object[], object> _defaultFunction = (left, arr) => arr[0];
 
         private const string IN = "in";
-        private const string OUT = "out";
 
-        public ArithmeticSyntaxLL1Analyzer2(LL1Grammar grammar, AdvanceProcedure advanceProcedure) : base(grammar, advanceProcedure)
+        public ArithmeticSyntaxLL1Translator(LL1Grammar grammar, AdvanceProcedure advanceProcedure) : base(grammar, advanceProcedure)
         {
             RegisterFunction("ExpNumber", "number", _defaultFunction);
             RegisterFunction("ExpNumber", "( ExpArith )", (left, arr) =>
@@ -31,9 +30,9 @@ namespace ArithmeticExpression
             RegisterFunction("ExpMultiA", "", (left, arr) =>
             {
                 var dictLeft = (Dictionary<string, object>)left;
-                return dictLeft[OUT];
+                return dictLeft[IN];
             });
-            RegisterFunction("ExpMultiA", "* ExpNumber ExpMultiA", 2, (left, arr) =>
+            RegisterFuncDoing("ExpMultiA", "* ExpNumber ExpMultiA", 2, (left, arr) =>
             {
                 var dictLeft = (Dictionary<String, object>)left;
                 var expNumber = (Expression)arr[1];
@@ -43,15 +42,18 @@ namespace ArithmeticExpression
             });
             RegisterFunction("ExpMultiA", "* ExpNumber ExpMultiA", (left, arr) =>
             {
-                var dictLeft = (Dictionary<string, object>)left;
-                return dictLeft[OUT];
+                return (Expression)arr[2];
             });
-            //RegisterFunction("ExpMulti", "ExpNumber ExpMultiA", arr =>
-            //{
-            //    var expNumber = (Expression)arr[0];
-            //    var funcMultiA = (Func<Expression, Expression>)arr[1];
-            //    return funcMultiA(expNumber);
-            //});
+            RegisterFuncDoing("ExpMulti", "ExpNumber ExpMultiA", 1, (left, arr) =>
+            {
+                var expNumber = (Expression)arr[0];
+                var dictExpMultiA = (Dictionary<String, object>)arr[1];
+                dictExpMultiA[IN] = expNumber;
+            });
+            RegisterFunction("ExpMulti", "ExpNumber ExpMultiA", (left, arr) =>
+            {
+                return (Expression)arr[2];
+            });
             //RegisterFunction("ExpAddA", "", arr =>
             //{
             //    Func<Expression, Expression> func = exp => exp;
@@ -78,7 +80,7 @@ namespace ArithmeticExpression
             _semanticSubroutine[Production.CreateSingle(left, right)] = function;
         }
 
-        private void RegisterFunction(string left, string right, int index, Action<object, object[]> function)
+        private void RegisterFuncDoing(string left, string right, int index, Action<object, object[]> function)
         {
             var p = Production.CreateSingle(left, right);
             if (!_semanticSubroutineDoing.TryGetValue(p, out var arrFunc))

@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace ArithmeticExpression
 {
-    public class ArithmeticSyntaxAnalyzer : LRSyntaxAnalyzer
+    public class ArithmeticSyntaxTranslator : LRSyntaxAnalyzer
     {
         private static MethodInfo? GetMemberMethod = typeof(ArithmeticHelper).GetMethod(nameof(ArithmeticHelper.GetMember), new[] { typeof(object), typeof(string) });
         private static MethodInfo? GetIndexMethod = typeof(ArithmeticHelper).GetMethod(nameof(ArithmeticHelper.GetIndex), new[] { typeof(object), typeof(double) });
@@ -24,8 +24,8 @@ namespace ArithmeticExpression
         private Stack<object> _pushdownStack = new(); // 下推栈
         private Func<object[], object> _defaultFunction = arr => arr[0];
 
-        public ArithmeticSyntaxAnalyzer(Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, Dictionary<(int state, NonTerminal t), int> gotoTable)
-            : base(actionTable, gotoTable)
+        public ArithmeticSyntaxTranslator(Dictionary<(int state, Terminal t), List<ActionItem>> actionTable, Dictionary<(int state, NonTerminal t), int> gotoTable)
+            : base(actionTable, gotoTable) 
         {
             // 对象
             RegisterFunction("ExpObject", "id", arr =>
@@ -524,7 +524,7 @@ namespace ArithmeticExpression
             return Expression.Lambda<Func<object, object?>>(Target, Parameter).Compile();
         }
 
-        public static ArithmeticSyntaxAnalyzer LoadFromFile(string? fileName = null)
+        public static ArithmeticSyntaxTranslator LoadFromFile(string? fileName = null)
         {
             if (fileName == null)
                 fileName = ArithmeticSyntaxBuilder.DefaultFileName;
