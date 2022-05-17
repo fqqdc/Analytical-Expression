@@ -12,83 +12,62 @@ namespace ArithmeticExpression
 {
     public class ArithmeticSyntaxLL1Translator : LL1SyntaxAnalyzer
     {
-        private Dictionary<Production, Func<object, object[], object>> _semanticSubroutine = new(); // 语义子程序字典
-        private Dictionary<Production, Action<object, object[]>[]> _semanticSubroutineDoing = new(); // 语义子程序字典
-
+        private Dictionary<Production, Func<object[], object>> _semanticSubroutine = new(); // 语义子程序字典
         private Stack<object> _pushdownStack = new(); // 下推栈
-        private Func<object, object[], object> _defaultFunction = (left, arr) => arr[0];
+        private Func<object[], object> _defaultFunction = arr => arr[0];
 
-        private const string IN = "in";
+        private ParameterExpression _varExp = Expression.Variable(typeof(double));
+        private VariableModifier _modifier;
 
         public ArithmeticSyntaxLL1Translator(LL1Grammar grammar, AdvanceProcedure advanceProcedure) : base(grammar, advanceProcedure)
         {
+            _modifier = new VariableModifier(_varExp);
+
             RegisterFunction("ExpNumber", "number", _defaultFunction);
-            RegisterFunction("ExpNumber", "( ExpArith )", (left, arr) =>
+            RegisterFunction("ExpNumber", "( ExpArith )", arr =>
             {
                 return arr[1];
             });
-            RegisterFunction("ExpMultiA", "", (left, arr) =>
+            RegisterFunction("ExpMultiA", "", arr =>
             {
-                var dictLeft = (Dictionary<string, object>)left;
-                return dictLeft[IN];
+                return _varExp;
             });
-            RegisterFuncDoing("ExpMultiA", "* ExpNumber ExpMultiA", 2, (left, arr) =>
+            RegisterFunction("ExpMultiA", "* ExpNumber ExpMultiA", arr =>
             {
-                var dictLeft = (Dictionary<String, object>)left;
                 var expNumber = (Expression)arr[1];
-                var exp = Expression.Multiply((Expression)dictLeft[IN], expNumber);
-                var dictExpMultiA = (Dictionary<String, object>)arr[2];
-                dictExpMultiA[IN] = exp;
+                var expMultiA = (Expression)arr[2];
+                var exp = Expression.Multiply(_varExp, expNumber);
+                return _modifier.Modify(expMultiA, exp);
             });
-            RegisterFunction("ExpMultiA", "* ExpNumber ExpMultiA", (left, arr) =>
-            {
-                return (Expression)arr[2];
-            });
-            RegisterFuncDoing("ExpMulti", "ExpNumber ExpMultiA", 1, (left, arr) =>
+            RegisterFunction("ExpMulti", "ExpNumber ExpMultiA", arr =>
             {
                 var expNumber = (Expression)arr[0];
-                var dictExpMultiA = (Dictionary<String, object>)arr[1];
-                dictExpMultiA[IN] = expNumber;
+                var expMultiA = (Expression)arr[1];
+                return _modifier.Modify(expMultiA, expNumber);
             });
-            RegisterFunction("ExpMulti", "ExpNumber ExpMultiA", (left, arr) =>
+            RegisterFunction("ExpAddA", "", arr =>
             {
-                return (Expression)arr[2];
+                return _varExp;
             });
-            //RegisterFunction("ExpAddA", "", arr =>
-            //{
-            //    Func<Expression, Expression> func = exp => exp;
-            //    return func;
-            //});
-            //RegisterFunction("ExpAddA", "+ ExpMulti ExpAddA", arr =>
-            //{
-            //    var expMulti = (Expression)arr[1];
-            //    var funcMultiA = (Func<Expression, Expression>)arr[2];
-            //    Func<Expression, Expression> func = exp => funcMultiA(Expression.Add(exp, expMulti));
-            //    return func;
-            //});
-            //RegisterFunction("ExpAdd", "ExpMulti ExpAddA", arr =>
-            //{
-            //    var expMulti = (Expression)arr[0];
-            //    var funcMultiA = (Func<Expression, Expression>)arr[1];
-            //    return funcMultiA(expMulti);
-            //});
+            RegisterFunction("ExpAddA", "+ ExpMulti ExpAddA", arr =>
+            {
+                var expMulti = (Expression)arr[1];
+                var expAddA = (Expression)arr[2];
+                var exp = Expression.Add(_varExp, expMulti);
+                return _modifier.Modify(expAddA, exp);
+            });
+            RegisterFunction("ExpAdd", "ExpMulti ExpAddA", arr =>
+            {
+                var expMulti = (Expression)arr[0];
+                var expAddA = (Expression)arr[1];
+                return _modifier.Modify(expAddA, expMulti);
+            });
             RegisterFunction("ExpArith", "ExpAdd", _defaultFunction);
         }
 
-        private void RegisterFunction(string left, string right, Func<object, object[], object> function)
+        private void RegisterFunction(string left, string right, Func<object[], object> function)
         {
             _semanticSubroutine[Production.CreateSingle(left, right)] = function;
-        }
-
-        private void RegisterFuncDoing(string left, string right, int index, Action<object, object[]> function)
-        {
-            var p = Production.CreateSingle(left, right);
-            if (!_semanticSubroutineDoing.TryGetValue(p, out var arrFunc))
-            {
-                arrFunc = new Action<object, object[]>[p.Right.Count()];
-                _semanticSubroutineDoing[p] = arrFunc;
-            }
-            arrFunc[index] = function;
         }
 
         protected override void OnTerminalFinish(Terminal terminal, string terminalToken)
@@ -110,13 +89,6 @@ namespace ArithmeticExpression
             }
         }
 
-        protected override void OnProcedureDoing(Production production, int index)
-        {
-            base.OnProcedureDoing(production, index);
-
-            throw new NotImplementedException();
-        }
-
         protected override void OnProcedureFinish(Production production)
         {
             base.OnProcedureFinish(production);
@@ -131,8 +103,7 @@ namespace ArithmeticExpression
             object[] rightObjects = new object[rightLength];
             for (int i = rightLength - 1; i >= 0; i--)
                 rightObjects[i] = _pushdownStack.Pop();
-            var left = _pushdownStack.Pop(); // production.Left
-            _pushdownStack.Push(function(left, rightObjects));
+            _pushdownStack.Push(function(rightObjects));
         }
 
         protected override void OnAnalyzerFinish()
@@ -144,7 +115,7 @@ namespace ArithmeticExpression
 
         public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
 
-        public static ArithmeticSyntaxLL1Analyzer LoadFromFile(string? fileName = null)
+        public static ArithmeticSyntaxLL1Translator LoadFromFile(string? fileName = null)
         {
             if (fileName == null)
                 fileName = ArithmeticSyntaxBuilder.DefaultFileName;
@@ -191,7 +162,7 @@ namespace ArithmeticExpression
         }
 
         public Expression? Target { get; private set; }
-        public Func<double> Analyzer(string text)
+        public Func<double> Translate(string text)
         {
             using var reader = new StringReader(text);
             if (LexicalAnalyzer == null)
@@ -211,6 +182,39 @@ namespace ArithmeticExpression
                 throw new NullReferenceException();
 
             return Expression.Lambda<Func<double>>(Target).Compile();
+        }
+    }
+
+    internal class VariableModifier : ExpressionVisitor
+    {
+        public ParameterExpression _replaced;
+        public Expression? _replace;
+
+        public VariableModifier(ParameterExpression replaced)
+        {
+            _replaced = replaced;
+        }
+
+        public Expression Modify(Expression expression, Expression replace)
+        {
+            try
+            {
+                _replace = replace;
+                return Visit(expression);
+            }
+            finally
+            {
+                _replace = null;
+            }
+
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            if (_replace != null && node == _replaced)
+                return _replace;
+
+            return base.VisitParameter(node);
         }
     }
 }

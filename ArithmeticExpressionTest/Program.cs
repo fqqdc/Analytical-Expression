@@ -175,13 +175,14 @@ namespace ArithmeticExpressionTest
 
         static void Main(string[] args)
         {
-            ArithmeticSyntaxLL1Analyzer analyzer = ArithmeticSyntaxLL1Analyzer.LoadFromFile();
+            ArithmeticSyntaxLL1Translator analyzer = ArithmeticSyntaxLL1Translator.LoadFromFile();
 
             string text;
             object? value;
 
             text = " 1+2*(3+4)*(5+6)*10";
-            value = analyzer.Analyzer(text)();
+            //text = "1*2*3";
+            value = analyzer.Translate(text)();
             Console.WriteLine($"{text} => {value ?? "null"} {value?.GetType().Name}");
         }
     }

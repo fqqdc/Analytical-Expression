@@ -19,7 +19,7 @@ namespace SyntaxAnalyzer
         private Terminal sym = Terminal.Epsilon;
         private string symToken = string.Empty;
         private List<(NonTerminal n, Terminal t, Production p)> predictiveTable;
-        private Stack<Symbol> stackAnalysis = new();
+
         public LL1SyntaxAnalyzer(LL1Grammar grammar, AdvanceProcedure advanceProcedure)
         {
             this.grammar = grammar;
@@ -49,10 +49,14 @@ namespace SyntaxAnalyzer
                     }
                 }
             }
+
+            Console.WriteLine("预测分析表 : ");
             foreach (var row in predictiveTable)
             {
                 Console.WriteLine(row);
             }
+            Console.WriteLine();
+
             return predictiveTable;
         }
 
@@ -61,16 +65,10 @@ namespace SyntaxAnalyzer
         private void Advance()
         {
             _advanceProcedure(out this.sym, out this.symToken);
-            Console.WriteLine($"input:{this.sym}: {this.symToken}");
+            Console.WriteLine($"输入 : {this.sym}: {this.symToken}");
         }
         private void Error() { throw new Exception("语法分析错误"); }
 
-        private void ProcedureInit()
-        {
-            stackAnalysis.Clear();
-            stackAnalysis.Push(Terminal.EndTerminal);
-            stackAnalysis.Push(grammar.S);
-        }
         protected virtual void OnTerminalFinish(Terminal terminal, string terminalToken) { }
         protected virtual void OnProcedureDoing(Production production, int index) { }
         protected virtual void OnProcedureFinish(Production production) { }
@@ -98,6 +96,7 @@ namespace SyntaxAnalyzer
                     if (sym == terminal)
                     {
                         OnTerminalFinish(terminal, symToken);
+                        Console.WriteLine($"匹配 : {this.sym}: {this.symToken}");
                         Advance();
                         continue;
                     }
@@ -113,7 +112,7 @@ namespace SyntaxAnalyzer
                         Error();
                     else
                     {
-                        Console.WriteLine(p);
+                        Console.WriteLine($"选择 : {p}");
                         Procedure(p);
                         OnProcedureFinish(p);
                     }
@@ -128,7 +127,6 @@ namespace SyntaxAnalyzer
 
         public void Analyzer()
         {
-            ProcedureInit();
             Advance();
             ProcedureStart();
             OnAnalyzerFinish();
