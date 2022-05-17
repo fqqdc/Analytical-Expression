@@ -33,31 +33,31 @@ namespace Example
             object? value;
 
             text = " v2 == 3==v4 == 5";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " b.c[ 2* v2] ";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " v2 *v3";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " b.e.f + b.e.g";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " b.c[b.v1]";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " 2 ^ (3 * (4 - 1) % 5) + 6 / 7";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
 
             text = " s1==s2 &&s2 !=s3";
-            value = analyzer.Analyzer(text)(obj);
+            value = analyzer.Translate(text)(obj);
             Console.WriteLine($"{text} => {value ?? "null" } {value?.GetType().Name}");
         }
 

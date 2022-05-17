@@ -511,7 +511,7 @@ namespace ArithmeticExpression
         }
 
         public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
-        public Func<object, object?> Analyzer(string text)
+        public Func<object, object?> Translate(string text)
         {
             using var reader = new StringReader(text);
             if (LexicalAnalyzer == null)

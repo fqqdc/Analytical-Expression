@@ -14,16 +14,10 @@ namespace ArithmeticExpression
     {
         public const string DefaultFileName = "Arithmetic";
 
-        private static RegularLRSyntaxAnalyzer RegularAnalyzer = RegularLRSyntaxAnalyzer.LoadFromFile();
+        private static RegularLRSyntaxTranslater RegularAnalyzer = RegularLRSyntaxTranslater.LoadFromFile();
         private static NFA CreateNFA(string regularExp)
         {
-            RegularAnalyzer.Analyzer(regularExp);
-
-            if (RegularAnalyzer.RegularNFA == null)
-                throw new NotSupportedException();
-
-            var dfa = DFA.CreateFrom(RegularAnalyzer.RegularNFA);
-
+            var dfa = DFA.CreateFrom(RegularAnalyzer.Translate(regularExp));
             return dfa.Minimize().ToNFA();
         }
 

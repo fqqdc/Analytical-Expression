@@ -3,15 +3,15 @@ using SyntaxAnalyzer;
 
 namespace RegularExpression
 {
-    public class RegularLRSyntaxAnalyzer : LRSyntaxAnalyzer
+    public class RegularLRSyntaxTranslater : LRSyntaxAnalyzer
     {
-        public RegularLRSyntaxAnalyzer(
+        public RegularLRSyntaxTranslater(
             Dictionary<(int state, Terminal t), List<ActionItem>> actionTable,
             Dictionary<(int state, NonTerminal t), int> gotoTable
             ) : base(actionTable, gotoTable) { }
 
         public LexicalAnalyzer.LexicalAnalyzer? LexicalAnalyzer { get; set; }
-        public static RegularLRSyntaxAnalyzer LoadFromFile(string? fileName = null)
+        public static RegularLRSyntaxTranslater LoadFromFile(string? fileName = null)
         {
             if (fileName == null)
                 fileName = RegularLRSyntaxBuilder.DefaultFileName;
@@ -270,12 +270,17 @@ namespace RegularExpression
             RegularNFA = (NFA)nfaStack.Pop();
         }
 
-        public void Analyzer(string text)
+        public NFA Translate(string text)
         {
             using var reader = new StringReader(text);
             if (LexicalAnalyzer == null)
                 throw new ArgumentNullException("LexicalAnalyzer", "词法分析器不能为空");
             Analyzer(LexicalAnalyzer.GetEnumerator(reader));
+
+            if (RegularNFA == null)
+                throw new NotSupportedException();
+
+            return RegularNFA;
         }
     }
 }

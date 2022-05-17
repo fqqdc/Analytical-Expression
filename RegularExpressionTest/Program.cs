@@ -12,9 +12,9 @@ namespace RegularExpressionTest
     {
         static void Main(string[] args)
         {
-            var analyzer = RegularLRSyntaxAnalyzer.LoadFromFile();
+            var analyzer = RegularLRSyntaxTranslater.LoadFromFile();
 
-            analyzer.Analyzer("\\d+(\\.\\d*)?|\\.\\d+");
+            analyzer.Translate("\\d+(\\.\\d*)?|\\.\\d+");
             if (analyzer.RegularNFA != null)
             {
                 var nfa = analyzer.RegularNFA;
