@@ -148,9 +148,9 @@ namespace LexicalAnalyzer
         /// <summary>
         /// 上次被接受的状态
         /// </summary>
-        private int matchState = -1;
+        private int matchedState = -1;
 
-        private Queue<char> qFallback = new();
+        private Queue<char> cacheQueue = new();
 
         public LexicalAnalyzerEnumerator(TextReader reader,
             DFA dfa,
@@ -185,76 +185,80 @@ namespace LexicalAnalyzer
 
         private void GetNextValue()
         {
-            StringBuilder currentToken = new(); //待匹配字符串
-            StringBuilder matchToken = new(); //已匹配字符串
+            StringBuilder viewedChars = new(); //待匹配字符串
+            StringBuilder matchChars = new(); //已匹配字符串
             nextValue = null;
 
-            while (qFallback.Count > 0 || textReader.Peek() != -1)
+            // 从缓存队列或者reader中读取字符
+            while (cacheQueue.Count > 0 || textReader.Peek() != -1)
             {
                 char c;
-                if (qFallback.Count > 0)
-                    c = qFallback.Dequeue();
+                if (cacheQueue.Count > 0)
+                    c = cacheQueue.Dequeue();
                 else
                     c = (char)textReader.Read();
 
-                var items = mappingTable.Where(i => i.s1 == currentState && i.c == c); //查找下一个状态
+                var nextItems = mappingTable.Where(i => i.s1 == currentState && i.c == c); //查找下一个状态
 
-                if (!items.Any())
+                if (!nextItems.Any())
                 {
-                    if (matchState == -1)
-                        throw new LexicalAnalyzerException(currentToken.ToString() + c);
+                    if (matchedState == -1)
+                        throw new LexicalAnalyzerException(viewedChars.ToString() + c);
 
-                    //将匹配失败的字符串放回待匹配的队列
-                    foreach (var cFallback in currentToken.ToString())
-                        qFallback.Enqueue(cFallback);
-                    qFallback.Enqueue(c);
+                    //将匹配失败的字符串放回缓存队列
+                    foreach (var viewedChar in viewedChars.ToString())
+                        cacheQueue.Enqueue(viewedChar);
+                    cacheQueue.Enqueue(c);
 
-                    Terminal terminal = z2TerminalTable[matchState];
-                    string tokenString = matchToken.ToString();
+                    Terminal terminal = z2TerminalTable[matchedState];
+                    string tokenString = matchChars.ToString();
 
-                    nextValue = (terminal, tokenString);
-                    currentState = 0;
-                    matchState = -1;
+                    SetNextValue((terminal, tokenString));
                     break;
                 }
                 else
                 {
-                    (int s1, char _, int s2) = items.First();
+                    (int s1, char _, int s2) = nextItems.First();
                     currentState = s2; //更新当前状态
-                    currentToken.Append(c);
+                    viewedChars.Append(c);
 
                     if (finalStates.Contains(currentState)) //当前状态属于接受状态
                     {
-                        matchState = currentState;
-                        matchToken.Append(currentToken); //更长的字符串被接受，更新已匹配字符串
-                        currentToken.Clear();
+                        matchedState = currentState;
+                        matchChars.Append(viewedChars); //更长的字符串被接受，更新已匹配字符串
+                        viewedChars.Clear();
                     }
                 }
             }
 
             if (nextValue == null)
             {
-                if (matchState == -1)
+                if (matchedState == -1)
                 {
-                    if (currentToken.Length > 0)
-                        throw new LexicalAnalyzerException(currentToken.ToString());
+                    if (viewedChars.Length > 0)
+                        throw new LexicalAnalyzerException(viewedChars.ToString());
                 }
                 else
                 {
                     //将匹配失败的字符串放回待匹配的队列
-                    foreach (var cFallback in currentToken.ToString())
-                        qFallback.Enqueue(cFallback);
+                    foreach (var viewedChar in viewedChars.ToString())
+                        cacheQueue.Enqueue(viewedChar);
 
-                    Terminal terminal = z2TerminalTable[matchState];
-                    string tokenString = matchToken.ToString();
+                    Terminal terminal = z2TerminalTable[matchedState];
+                    string tokenString = matchChars.ToString();
 
-                    nextValue = (terminal, tokenString);
-                    currentState = 0;
-                    matchState = -1;
+                    SetNextValue((terminal, tokenString));
                 }
             }
 
 
+        }
+
+        private void SetNextValue((Terminal, string) value)
+        {
+            nextValue = value;
+            currentState = 0;
+            matchedState = -1;
         }
 
         public bool MoveNext()
