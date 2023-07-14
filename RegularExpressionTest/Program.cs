@@ -14,7 +14,8 @@ namespace RegularExpressionTest
         {
             var analyzer = RegularLRSyntaxTranslater.LoadFromFile();
 
-            analyzer.Translate("\\d+(\\.\\d*)?|\\.\\d+");
+            //analyzer.Translate("\\d+(\\.\\d*)?|\\.\\d+");
+            analyzer.Translate("[123]+(\\.[123]*)?|\\.[123]+");
             if (analyzer.RegularNFA != null)
             {
                 var nfa = analyzer.RegularNFA;

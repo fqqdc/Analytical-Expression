@@ -218,7 +218,7 @@ namespace RegularExpression
                     {
                         var str1 = (string)nfaStack.Pop();
                         var nfa1 = (NFA)nfaStack.Pop();
-                        nfaStack.Push(nfa1.Join(NFA.CreateFrom(str1[0])));
+                        nfaStack.Push(nfa1.Or(NFA.CreateFrom(str1[0])));
                     }
                     break;
                 case 3: // char - char
