@@ -8,7 +8,7 @@ namespace LexicalAnalyzer
 {
     public class DFA : FA
     {
-        public DFA(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
+        private DFA(IEnumerable<int> S, IEnumerable<char> Sigma, IEnumerable<(int s1, char c, int s2)> MappingTable, int S_0, IEnumerable<int> Z)
             : base(S, Sigma, MappingTable, Z)
         {
             this.S_0 = S_0;
