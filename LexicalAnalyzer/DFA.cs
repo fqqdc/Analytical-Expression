@@ -121,19 +121,19 @@ namespace LexicalAnalyzer
             (var x, nfa) = InitNfa(nfa); // 初始化
             var nfaMappingTable = nfa.MappingTable;
             var Q = new HashSet<HashSet<int>>(HashSetComparer<int>.Default);
-            var workQ = new Queue<HashSet<int>>();
+            var queue = new Queue<HashSet<int>>();
             var I = EpsilonClosure(nfaMappingTable, nfa.S_0);
             Q.Add(I);
             Set2Id[I] = Set2Id.Count;
-            workQ.Enqueue(I);
+            queue.Enqueue(I);
 
             //Mapping
             var MappingTable = new HashSet<(int s1, char c, int s2)>();
 
             // 构造子集
-            while (workQ.Count > 0)
+            while (queue.Count > 0)
             {
-                I = workQ.Dequeue();
+                I = queue.Dequeue();
                 foreach (var c in nfa.Sigma)
                 {
                     var J = Delta(nfaMappingTable, I, c);
@@ -142,7 +142,7 @@ namespace LexicalAnalyzer
                     if (Q.Add(I_c))
                     {
                         Set2Id[I_c] = Set2Id.Count;
-                        workQ.Enqueue(I_c);
+                        queue.Enqueue(I_c);
                     }
                     MappingTable.Add((Set2Id[I], c, Set2Id[I_c]));
                 }
@@ -190,6 +190,25 @@ namespace LexicalAnalyzer
                     (s, arrZ) => new { s, nfaNodes = arrZ.SelectMany(z => _ZNfaNodes[z]).ToHashSet() })
                 .GroupBy(i => i.nfaNodes, HashSetComparer<int>.Default)
                 .Select(g => g.Select(i => i.s).ToHashSet())
+                .ToHashSet(HashSetComparer<int>.Default);
+        }
+
+        /// <summary>
+        /// 分割集合
+        /// 按 非终态集合、终态集合 分割
+        /// 其中 终态集合 按原DFA中的终态情况分割
+        /// </summary>
+        private HashSet<HashSet<int>> SplitSetByZ()
+        {
+            return S.GroupBy(s =>
+            {
+                if (_ZNfaNodes.TryGetValue(s, out var set))
+                {
+                   return string.Join(" ", _ZNfaNodes[s].OrderBy(i => i));
+                }
+                return string.Empty;
+            })
+                .Select(g => g.ToHashSet())
                 .ToHashSet(HashSetComparer<int>.Default);
         }
 
@@ -290,6 +309,11 @@ namespace LexicalAnalyzer
         public DFA MinimizeByNfaFinal()
         {
             return MinimizeProcess(SplitSetByNfa());
+        }
+
+        public DFA MinimizeByZ()
+        {
+            return MinimizeProcess(SplitSetByZ());
         }
 
         public NFA ToNFA()

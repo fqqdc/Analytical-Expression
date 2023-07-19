@@ -74,7 +74,7 @@ namespace RegularExpression
 
         Stack<object> nfaStack = new();
 
-        public NFA? RegularNFA { get; set; }
+        public NFA? RegularNFA { get; private set; }
 
         protected override void OnShiftItem(Terminal terminal, string terminalToken)
         {

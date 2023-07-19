@@ -285,14 +285,14 @@ namespace LexicalAnalyzer
         {
             //S
             var S = new HashSet<int>();
-            int head = 0;
-            S.Add(head);
+            //int head = 0;
+            //S.Add(head);
             int fst_base_id = S.Count;
             S.UnionWith(fst.S.Select(s => fst_base_id + s));
             int snd_base_id = S.Count;
             S.UnionWith(snd.S.Select(s => snd_base_id + s));
-            int tail = S.Count;
-            S.Add(tail);
+            //int tail = S.Count;
+            //S.Add(tail);
 
             //Sigma
             var Sigma = new HashSet<char>();
@@ -306,17 +306,21 @@ namespace LexicalAnalyzer
 
             //Z
             var Z = new HashSet<int>();
-            Z.Add(tail);
+            //Z.Add(tail);
+            Z.UnionWith(fst.Z.Select(z => fst_base_id + z));
+            Z.UnionWith(snd.Z.Select(z => snd_base_id + z));
 
             //S_0
             var S_0 = new HashSet<int>();
-            S_0.Add(head);
+            //S_0.Add(head);
+            S_0.UnionWith(fst.S_0.Select(s => fst_base_id + s));
+            S_0.UnionWith(snd.S_0.Select(s => snd_base_id + s));
 
             //Or
-            MappingTable.UnionWith(fst.S_0.Select(s => (head, FA.CHAR_Epsilon, fst_base_id + s)));
-            MappingTable.UnionWith(snd.S_0.Select(s => (head, FA.CHAR_Epsilon, snd_base_id + s)));
-            MappingTable.UnionWith(fst.Z.Select(z => (fst_base_id + z, FA.CHAR_Epsilon, tail)));
-            MappingTable.UnionWith(snd.Z.Select(z => (snd_base_id + z, FA.CHAR_Epsilon, tail)));
+            //MappingTable.UnionWith(fst.S_0.Select(s => (head, FA.CHAR_Epsilon, fst_base_id + s)));
+            //MappingTable.UnionWith(snd.S_0.Select(s => (head, FA.CHAR_Epsilon, snd_base_id + s)));
+            //MappingTable.UnionWith(fst.Z.Select(z => (fst_base_id + z, FA.CHAR_Epsilon, tail)));
+            //MappingTable.UnionWith(snd.Z.Select(z => (snd_base_id + z, FA.CHAR_Epsilon, tail)));
 
             return new(S, Sigma, MappingTable, S_0, Z);
         }
